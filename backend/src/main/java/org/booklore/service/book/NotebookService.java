@@ -25,9 +25,12 @@ public class NotebookService {
 
     private final NotebookEntryRepository repository;
     private final AuthenticationService authenticationService;
+    private final AnnotationService annotationService;
+    private final BookNoteV2Service bookNoteV2Service;
+    private final BookMarkService bookMarkService;
 
     public Page<NotebookEntry> getNotebookEntries(int page, int size, Set<String> types, Long bookId,
-                                                  String search, String sort) {
+            String search, String sort) {
         Long userId = authenticationService.getAuthenticatedUser().getId();
         Pageable pageable = PageRequest.of(page, size, toSort(sort));
         return repository.findEntries(userId, types, bookId, wrapSearch(search), pageable)
@@ -50,8 +53,19 @@ public class NotebookService {
                 .toList();
     }
 
+    @Transactional
+    public void deleteEntry(Long entryId, String type) {
+        switch (type.toUpperCase()) {
+            case "HIGHLIGHT" -> annotationService.deleteAnnotation(entryId);
+            case "NOTE" -> bookNoteV2Service.deleteNote(entryId);
+            case "BOOKMARK" -> bookMarkService.deleteBookmark(entryId);
+            default -> throw new IllegalArgumentException("Unknown entry type: " + type);
+        }
+    }
+
     private String wrapSearch(String search) {
-        if (search == null || search.isBlank()) return null;
+        if (search == null || search.isBlank())
+            return null;
         return "%" + escapeLike(search) + "%";
     }
 
@@ -79,6 +93,8 @@ public class NotebookService {
                 .color(p.getColor())
                 .style(p.getStyle())
                 .chapterTitle(p.getChapterTitle())
+                .cfi(p.getCfi())
+                .pageNumber(p.getPageNumber())
                 .primaryBookType(p.getPrimaryBookType())
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())

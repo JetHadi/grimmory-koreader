@@ -345,6 +345,10 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.isLoading.set(true);
         this.bookId = +params.get('bookId')!;
         this.altBookType = this.route.snapshot.queryParamMap.get('bookType') ?? undefined;
+        const bookmarkedPage = Number(this.route.snapshot.queryParamMap.get('page'));
+        if (Number.isInteger(bookmarkedPage) && bookmarkedPage > 0) {
+          this.page.set(bookmarkedPage);
+        }
 
         return from(this.bookService.fetchFreshBookDetail(this.bookId, false)).pipe(
           switchMap((book) => {

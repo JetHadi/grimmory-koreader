@@ -12,31 +12,31 @@ import java.util.Optional;
 
 public interface AnnotationRepository extends JpaRepository<AnnotationEntity, Long> {
 
-    Optional<AnnotationEntity> findByIdAndUserId(Long id, Long userId);
+        Optional<AnnotationEntity> findByIdAndUserId(Long id, Long userId);
 
-    @Query("SELECT a FROM AnnotationEntity a WHERE a.bookId = :bookId AND a.userId = :userId ORDER BY a.createdAt DESC")
-    List<AnnotationEntity> findByBookIdAndUserIdOrderByCreatedAtDesc(
-            @Param("bookId") Long bookId,
-            @Param("userId") Long userId
-    );
+        @Query("SELECT a FROM AnnotationEntity a WHERE a.bookId = :bookId AND a.userId = :userId ORDER BY a.createdAt DESC")
+        List<AnnotationEntity> findByBookIdAndUserIdOrderByCreatedAtDesc(
+                        @Param("bookId") Long bookId,
+                        @Param("userId") Long userId);
 
-    boolean existsByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
+        Optional<AnnotationEntity> findByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
 
-    @Query("SELECT COUNT(a) > 0 FROM AnnotationEntity a WHERE a.cfi = :cfi AND a.bookId = :bookId AND a.userId = :userId AND a.id != :excludeId")
-    boolean existsByCfiAndBookIdAndUserIdExcludeId(
-            @Param("cfi") String cfi,
-            @Param("bookId") Long bookId,
-            @Param("userId") Long userId,
-            @Param("excludeId") Long excludeId
-    );
+        boolean existsByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
 
-    long countByBookIdAndUserId(Long bookId, Long userId);
+        @Query("SELECT COUNT(a) > 0 FROM AnnotationEntity a WHERE a.cfi = :cfi AND a.bookId = :bookId AND a.userId = :userId AND a.id != :excludeId")
+        boolean existsByCfiAndBookIdAndUserIdExcludeId(
+                        @Param("cfi") String cfi,
+                        @Param("bookId") Long bookId,
+                        @Param("userId") Long userId,
+                        @Param("excludeId") Long excludeId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Transactional
-    @Query("DELETE FROM AnnotationEntity a WHERE a.bookId = :bookId AND a.userId = :userId")
-    void deleteByBookIdAndUserId(@Param("bookId") Long bookId, @Param("userId") Long userId);
+        long countByBookIdAndUserId(Long bookId, Long userId);
 
-    @Query("SELECT a FROM AnnotationEntity a JOIN FETCH a.book b JOIN FETCH b.metadata WHERE a.userId = :userId ORDER BY a.createdAt DESC")
-    List<AnnotationEntity> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Transactional
+        @Query("DELETE FROM AnnotationEntity a WHERE a.bookId = :bookId AND a.userId = :userId")
+        void deleteByBookIdAndUserId(@Param("bookId") Long bookId, @Param("userId") Long userId);
+
+        @Query("SELECT a FROM AnnotationEntity a JOIN FETCH a.book b JOIN FETCH b.metadata WHERE a.userId = :userId ORDER BY a.createdAt DESC")
+        List<AnnotationEntity> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
 }

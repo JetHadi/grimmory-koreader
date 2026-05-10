@@ -109,6 +109,20 @@ export class UrlHelperService {
     return this.router.createUrlTree([`/${baseUrl}/book/${book.id}`], undefined);
   }
 
+  getPdfReaderUrl(bookId: number, pageNumber?: number) {
+    const extras = pageNumber && pageNumber > 0
+      ? {queryParams: {page: pageNumber}}
+      : undefined;
+
+    return this.router.createUrlTree(['/pdf-reader/book', bookId], extras);
+  }
+
+  getEbookReaderUrl(bookId: number, cfi?: string) {
+    const extras = cfi ? {queryParams: {cfi}} : undefined;
+
+    return this.router.createUrlTree(['/ebook-reader/book', bookId], extras);
+  }
+
   filterBooksBy(filterKey: string, filterValue: string) {
     if (filterKey === 'series') {
       return this.router.createUrlTree(['/series', filterValue])

@@ -233,6 +233,15 @@
   &:hover {
     background: color-mix(in srgb, var(--ground-background) 40%, var(--p-surface-800) 60%);
   }
+
+  &.bookmark-entry {
+    cursor: pointer;
+  }
+
+  &.bookmark-entry:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
 }
 
 .entry-top-row {
@@ -284,11 +293,31 @@
   }
 }
 
+.entry-bookmark-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+  color: var(--p-primary-color);
+
+  .pi {
+    font-size: 0.6875rem;
+  }
+}
+
 .entry-date {
   margin-left: auto;
   font-size: 0.75rem;
   color: var(--p-text-muted-color);
   white-space: nowrap;
+}
+
+:host ::ng-deep .entry-delete-button {
+  margin-left: 0.125rem;
 }
 
 .entry-text {
@@ -366,6 +395,10 @@
   }
 
   .entry-date {
+    margin-left: 0;
+  }
+
+  :host ::ng-deep .entry-delete-button {
     margin-left: 0;
   }
 }

@@ -3,13 +3,19 @@ package org.booklore.service.koreader;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.booklore.config.security.userdetails.KoreaderUserDetails;
+import org.booklore.config.BookmarkProperties;
 import org.booklore.exception.ApiError;
+import org.booklore.model.dto.koreader.KoreaderAnnotationRejection;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncItem;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncRequest;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncResponse;
 import org.booklore.model.dto.progress.KoreaderProgress;
 import org.booklore.model.entity.*;
 import org.booklore.model.enums.ReadStatus;
 import org.booklore.repository.*;
 import org.booklore.service.hardcover.HardcoverSyncService;
 import org.booklore.util.koreader.EpubCfiService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,7 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @AllArgsConstructor
@@ -27,11 +38,15 @@ public class KoreaderService {
 
     private final UserBookProgressRepository progressRepository;
     private final UserBookFileProgressRepository fileProgressRepository;
+    private final AnnotationRepository annotationRepository;
+    private final BookNoteV2Repository bookNoteV2Repository;
+    private final BookMarkRepository bookMarkRepository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final KoreaderUserRepository koreaderUserRepository;
     private final HardcoverSyncService hardcoverSyncService;
     private final EpubCfiService epubCfiService;
+    private final BookmarkProperties bookmarkProperties;
 
     public ResponseEntity<Map<String, String>> authorizeUser() {
         KoreaderUserDetails authDetails = getAuthDetails();
@@ -81,17 +96,97 @@ public class KoreaderService {
         // Also save to file-level progress table (dual-write)
         saveToFileProgress(user, book, userProgress);
 
-        log.info("saveProgress: saved progress='{}' percentage={} for userId={} bookHash={}", koProgress.getProgress(), koProgress.getPercentage(), authDetails.getBookLoreUserId(), bookHash);
+        log.info("saveProgress: saved progress='{}' percentage={} for userId={} bookHash={}", koProgress.getProgress(),
+                koProgress.getPercentage(), authDetails.getBookLoreUserId(), bookHash);
 
         // Sync progress to Hardcover asynchronously (if enabled for this user)
-        // But only if the progress percentage has changed from last time, or the read status has changed
+        // But only if the progress percentage has changed from last time, or the read
+        // status has changed
         if (koProgress.getPercentage() != null && (!koProgress.getPercentage().equals(previousProgressPercent)
                 || userProgress.getReadStatus() != previousReadStatus)) {
             Float progressPercent = normalizeProgressPercent(koProgress.getPercentage());
-            hardcoverSyncService.syncProgressToHardcover(book.getId(), progressPercent, authDetails.getBookLoreUserId());
+            hardcoverSyncService.syncProgressToHardcover(book.getId(), progressPercent,
+                    authDetails.getBookLoreUserId());
         }
     }
 
+    @Transactional
+    public KoreaderAnnotationSyncResponse syncAnnotations(KoreaderAnnotationSyncRequest request) {
+        KoreaderUserDetails authDetails = getAuthDetailsWithSyncCheck();
+        String bookHash = request.getDocument();
+        Long userId = authDetails.getBookLoreUserId();
+
+        var maybeBook = bookRepository.findByCurrentHash(bookHash);
+        if (maybeBook.isEmpty()) {
+            List<KoreaderAnnotationRejection> rejections = new ArrayList<>();
+            for (int i = 0; i < request.getAnnotations().size(); i++) {
+                KoreaderAnnotationSyncItem item = request.getAnnotations().get(i);
+                rejections.add(KoreaderAnnotationRejection.builder()
+                        .index(i)
+                        .location(item.getLocation())
+                        .reason("book_not_found_for_hash")
+                        .build());
+            }
+
+            return KoreaderAnnotationSyncResponse.builder()
+                    .bookId(null)
+                    .matchedBook(false)
+                    .matchedBy("hash")
+                    .created(0)
+                    .updated(0)
+                    .skippedDuplicates(0)
+                    .rejected(rejections.size())
+                    .rejectionReasons(rejections)
+                    .build();
+        }
+
+        BookEntity book = maybeBook.get();
+        BookLoreUserEntity user = findBookLoreUser(userId);
+
+        int created = 0;
+        int updated = 0;
+        int skippedDuplicates = 0;
+        List<KoreaderAnnotationRejection> rejections = new ArrayList<>();
+
+        for (int i = 0; i < request.getAnnotations().size(); i++) {
+            KoreaderAnnotationSyncItem item = request.getAnnotations().get(i);
+            try {
+                SyncResult result = syncAnnotationItem(book, user, userId, item, request.getDevice());
+                if (result == SyncResult.CREATED) {
+                    created++;
+                } else if (result == SyncResult.UPDATED) {
+                    updated++;
+                } else {
+                    skippedDuplicates++;
+                }
+            } catch (DataIntegrityViolationException ex) {
+                // Unique (user_id, book_id, cfi) ensures idempotency under concurrent sync
+                // calls.
+                skippedDuplicates++;
+            } catch (Exception ex) {
+                log.warn("Failed to sync KOReader annotation at index {} for userId={} bookId={}: {}",
+                        i, userId, book.getId(), ex.getMessage());
+                rejections.add(KoreaderAnnotationRejection.builder()
+                        .index(i)
+                        .location(item.getLocation())
+                        .reason("invalid_annotation_payload")
+                        .build());
+            }
+        }
+
+        return KoreaderAnnotationSyncResponse.builder()
+                .bookId(book.getId())
+                .matchedBook(true)
+                .matchedBy("hash")
+                .created(created)
+                .updated(updated)
+                .skippedDuplicates(skippedDuplicates)
+                .rejected(rejections.size())
+                .rejectionReasons(rejections)
+                .build();
+    }
+
+    @SuppressWarnings("deprecation")
     private void saveToFileProgress(BookLoreUserEntity user, BookEntity book, UserBookProgressEntity progress) {
         try {
             BookFileEntity primaryFile = book.getPrimaryBookFile();
@@ -111,14 +206,17 @@ public class KoreaderService {
                     fileProgress.setProgressPercent(progress.getEpubProgressPercent());
                 }
                 case PDF -> {
-                    fileProgress.setPositionData(progress.getPdfProgress() != null ?
-                            String.valueOf(progress.getPdfProgress()) : null);
+                    fileProgress.setPositionData(
+                            progress.getPdfProgress() != null ? String.valueOf(progress.getPdfProgress()) : null);
                     fileProgress.setProgressPercent(progress.getPdfProgressPercent());
                 }
                 case CBX -> {
-                    fileProgress.setPositionData(progress.getCbxProgress() != null ?
-                            String.valueOf(progress.getCbxProgress()) : null);
+                    fileProgress.setPositionData(
+                            progress.getCbxProgress() != null ? String.valueOf(progress.getCbxProgress()) : null);
                     fileProgress.setProgressPercent(progress.getCbxProgressPercent());
+                }
+                case AUDIOBOOK -> {
+                    // KOReader does not sync audiobook positions.
                 }
             }
 
@@ -128,7 +226,9 @@ public class KoreaderService {
         }
     }
 
-    private void updateProgressData(UserBookProgressEntity userProgress, KoreaderProgress koProgress, boolean syncWithBookloreReader, BookEntity book) {
+    @SuppressWarnings("deprecation")
+    private void updateProgressData(UserBookProgressEntity userProgress, KoreaderProgress koProgress,
+            boolean syncWithBookloreReader, BookEntity book) {
         userProgress.setKoreaderProgress(koProgress.getProgress());
         userProgress.setKoreaderProgressPercent(koProgress.getPercentage());
         userProgress.setKoreaderDevice(koProgress.getDevice());
@@ -180,6 +280,318 @@ public class KoreaderService {
             return progress * 100.0f;
         }
         return progress;
+    }
+
+    private AnnotationEntity buildAnnotation(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item,
+            String device) {
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+
+        return AnnotationEntity.builder()
+                .book(book)
+                .user(user)
+                .cfi(item.getLocation())
+                .text(item.getSelectedText())
+                .note(item.getNoteContent())
+                .chapterTitle(item.getChapterTitle())
+                .color(item.getColor() == null ? "#FFFF00" : item.getColor())
+                .style("highlight")
+                .createdAt(annotatedAt)
+                .updatedAt(annotatedAt)
+                .build();
+    }
+
+    private BookNoteV2Entity buildNote(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item) {
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+
+        return BookNoteV2Entity.builder()
+                .book(book)
+                .user(user)
+                .cfi(item.getLocation())
+                .selectedText(item.getSelectedText())
+                .noteContent(getIncomingNoteContent(item))
+                .chapterTitle(item.getChapterTitle())
+                .color(item.getColor() == null ? "#FFC107" : item.getColor())
+                .createdAt(annotatedAt)
+                .updatedAt(annotatedAt)
+                .build();
+    }
+
+    private BookMarkEntity buildBookmark(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item) {
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+
+        return BookMarkEntity.builder()
+                .book(book)
+                .user(user)
+                .cfi(item.getLocation())
+                .pageNumber(parsePageNumber(item.getPage()))
+                .title(getBookmarkTitle(item))
+                .color(item.getColor())
+                .notes(getBookmarkNotes(item))
+                .priority(bookmarkProperties.getDefaultPriority())
+                .createdAt(annotatedAt)
+                .updatedAt(annotatedAt)
+                .build();
+    }
+
+    private void applyAnnotationUpdate(AnnotationEntity existing, KoreaderAnnotationSyncItem item, String device) {
+        existing.setText(item.getSelectedText());
+        existing.setNote(item.getNoteContent());
+        existing.setChapterTitle(item.getChapterTitle());
+        existing.setColor(item.getColor() == null ? "#FFFF00" : item.getColor());
+        existing.setStyle("highlight");
+
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+        if (annotatedAt != null) {
+            existing.setUpdatedAt(annotatedAt);
+        }
+    }
+
+    private void applyNoteUpdate(BookNoteV2Entity existing, KoreaderAnnotationSyncItem item) {
+        existing.setSelectedText(item.getSelectedText());
+        existing.setNoteContent(getIncomingNoteContent(item));
+        existing.setChapterTitle(item.getChapterTitle());
+        existing.setColor(item.getColor() == null ? "#FFC107" : item.getColor());
+
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+        if (annotatedAt != null) {
+            existing.setUpdatedAt(annotatedAt);
+        }
+    }
+
+    private void applyBookmarkUpdate(BookMarkEntity existing, KoreaderAnnotationSyncItem item) {
+        existing.setCfi(item.getLocation());
+        existing.setPageNumber(parsePageNumber(item.getPage()));
+        existing.setTitle(getBookmarkTitle(item));
+        existing.setColor(item.getColor());
+        existing.setNotes(getBookmarkNotes(item));
+        if (existing.getPriority() == null) {
+            existing.setPriority(bookmarkProperties.getDefaultPriority());
+        }
+
+        LocalDateTime annotatedAt = toLocalDateTime(item.getAnnotatedAt());
+        if (annotatedAt != null) {
+            existing.setUpdatedAt(annotatedAt);
+        }
+    }
+
+    private boolean hasChanges(AnnotationEntity existing, KoreaderAnnotationSyncItem item, String device) {
+        String incomingColor = item.getColor() == null ? "#FFFF00" : item.getColor();
+
+        return !Objects.equals(existing.getText(), item.getSelectedText())
+                || !Objects.equals(existing.getNote(), item.getNoteContent())
+                || !Objects.equals(existing.getChapterTitle(), item.getChapterTitle())
+                || !Objects.equals(existing.getColor(), incomingColor)
+                || !Objects.equals(existing.getStyle(), "highlight");
+    }
+
+    private boolean hasChanges(BookNoteV2Entity existing, KoreaderAnnotationSyncItem item) {
+        String incomingColor = item.getColor() == null ? "#FFC107" : item.getColor();
+
+        return !Objects.equals(existing.getSelectedText(), item.getSelectedText())
+                || !Objects.equals(existing.getNoteContent(), getIncomingNoteContent(item))
+                || !Objects.equals(existing.getChapterTitle(), item.getChapterTitle())
+                || !Objects.equals(existing.getColor(), incomingColor);
+    }
+
+    private boolean hasChanges(BookMarkEntity existing, KoreaderAnnotationSyncItem item) {
+        return !Objects.equals(existing.getCfi(), item.getLocation())
+                || !Objects.equals(existing.getPageNumber(), parsePageNumber(item.getPage()))
+                || !Objects.equals(existing.getTitle(), getBookmarkTitle(item))
+                || !Objects.equals(existing.getColor(), item.getColor())
+                || !Objects.equals(existing.getNotes(), getBookmarkNotes(item));
+    }
+
+    private SyncResult syncAnnotationItem(BookEntity book, BookLoreUserEntity user, Long userId,
+            KoreaderAnnotationSyncItem item, String device) {
+        AnnotationEntity existingAnnotation = annotationRepository
+                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .orElse(null);
+        BookNoteV2Entity existingNote = bookNoteV2Repository
+                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .orElse(null);
+        BookMarkEntity existingBookmark = bookMarkRepository
+                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .orElse(null);
+
+        boolean hadExistingEntry = existingAnnotation != null || existingNote != null || existingBookmark != null;
+        SyncKind kind = determineSyncKind(item);
+
+        return switch (kind) {
+            case NOTE ->
+                syncNote(book, user, item, existingAnnotation, existingNote, existingBookmark, hadExistingEntry);
+            case BOOKMARK -> syncBookmark(book, user, item, existingAnnotation, existingNote, existingBookmark,
+                    hadExistingEntry);
+            case HIGHLIGHT -> syncHighlight(book, user, item, device, existingAnnotation, existingNote,
+                    existingBookmark, hadExistingEntry);
+        };
+    }
+
+    private SyncResult syncHighlight(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item,
+            String device, AnnotationEntity existingAnnotation, BookNoteV2Entity existingNote,
+            BookMarkEntity existingBookmark, boolean hadExistingEntry) {
+        boolean cleaned = deleteOtherKinds(existingNote, existingBookmark);
+
+        if (existingAnnotation == null) {
+            annotationRepository.save(buildAnnotation(book, user, item, device));
+            return hadExistingEntry ? SyncResult.UPDATED : SyncResult.CREATED;
+        }
+
+        if (hasChanges(existingAnnotation, item, device)) {
+            applyAnnotationUpdate(existingAnnotation, item, device);
+            annotationRepository.save(existingAnnotation);
+            return SyncResult.UPDATED;
+        }
+
+        return cleaned ? SyncResult.UPDATED : SyncResult.SKIPPED;
+    }
+
+    private SyncResult syncNote(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item,
+            AnnotationEntity existingAnnotation, BookNoteV2Entity existingNote, BookMarkEntity existingBookmark,
+            boolean hadExistingEntry) {
+        boolean cleaned = deleteOtherKinds(existingAnnotation, existingBookmark);
+
+        if (existingNote == null) {
+            bookNoteV2Repository.save(buildNote(book, user, item));
+            return hadExistingEntry ? SyncResult.UPDATED : SyncResult.CREATED;
+        }
+
+        if (hasChanges(existingNote, item)) {
+            applyNoteUpdate(existingNote, item);
+            bookNoteV2Repository.save(existingNote);
+            return SyncResult.UPDATED;
+        }
+
+        return cleaned ? SyncResult.UPDATED : SyncResult.SKIPPED;
+    }
+
+    private SyncResult syncBookmark(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item,
+            AnnotationEntity existingAnnotation, BookNoteV2Entity existingNote, BookMarkEntity existingBookmark,
+            boolean hadExistingEntry) {
+        boolean cleaned = deleteOtherKinds(existingAnnotation, existingNote);
+
+        if (existingBookmark == null) {
+            bookMarkRepository.save(buildBookmark(book, user, item));
+            return hadExistingEntry ? SyncResult.UPDATED : SyncResult.CREATED;
+        }
+
+        if (hasChanges(existingBookmark, item)) {
+            applyBookmarkUpdate(existingBookmark, item);
+            bookMarkRepository.save(existingBookmark);
+            return SyncResult.UPDATED;
+        }
+
+        return cleaned ? SyncResult.UPDATED : SyncResult.SKIPPED;
+    }
+
+    private boolean deleteOtherKinds(AnnotationEntity annotation, BookNoteV2Entity note) {
+        boolean deleted = false;
+
+        if (annotation != null) {
+            annotationRepository.delete(annotation);
+            deleted = true;
+        }
+
+        if (note != null) {
+            bookNoteV2Repository.delete(note);
+            deleted = true;
+        }
+
+        return deleted;
+    }
+
+    private boolean deleteOtherKinds(AnnotationEntity annotation, BookMarkEntity bookmark) {
+        boolean deleted = false;
+
+        if (annotation != null) {
+            annotationRepository.delete(annotation);
+            deleted = true;
+        }
+
+        if (bookmark != null) {
+            bookMarkRepository.delete(bookmark);
+            deleted = true;
+        }
+
+        return deleted;
+    }
+
+    private boolean deleteOtherKinds(BookNoteV2Entity note, BookMarkEntity bookmark) {
+        boolean deleted = false;
+
+        if (note != null) {
+            bookNoteV2Repository.delete(note);
+            deleted = true;
+        }
+
+        if (bookmark != null) {
+            bookMarkRepository.delete(bookmark);
+            deleted = true;
+        }
+
+        return deleted;
+    }
+
+    private SyncKind determineSyncKind(KoreaderAnnotationSyncItem item) {
+        String externalId = item.getExternalId();
+        if (externalId != null) {
+            if (externalId.startsWith("bookmark::")) {
+                return SyncKind.BOOKMARK;
+            }
+            if (externalId.startsWith("note::")) {
+                return SyncKind.NOTE;
+            }
+            if (externalId.startsWith("highlight::")) {
+                return SyncKind.HIGHLIGHT;
+            }
+        }
+
+        return item.getNoteContent() != null && !item.getNoteContent().isBlank()
+                ? SyncKind.NOTE
+                : SyncKind.HIGHLIGHT;
+    }
+
+    private String getIncomingNoteContent(KoreaderAnnotationSyncItem item) {
+        if (item.getNoteContent() != null && !item.getNoteContent().isBlank()) {
+            return item.getNoteContent();
+        }
+        return item.getSelectedText();
+    }
+
+    private String getBookmarkTitle(KoreaderAnnotationSyncItem item) {
+        if (item.getChapterTitle() != null && !item.getChapterTitle().isBlank()) {
+            return item.getChapterTitle();
+        }
+        if (item.getSelectedText() != null && !item.getSelectedText().isBlank()) {
+            return item.getSelectedText();
+        }
+        return "Bookmark";
+    }
+
+    private String getBookmarkNotes(KoreaderAnnotationSyncItem item) {
+        if (item.getNoteContent() == null || item.getNoteContent().isBlank()) {
+            return null;
+        }
+        return item.getNoteContent();
+    }
+
+    private Integer parsePageNumber(String page) {
+        if (page == null || page.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.valueOf(page);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private LocalDateTime toLocalDateTime(Long epochSeconds) {
+        if (epochSeconds == null) {
+            return null;
+        }
+
+        return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), ZoneId.systemDefault());
     }
 
     private KoreaderUserDetails getAuthDetails() {
@@ -243,5 +655,17 @@ public class KoreaderService {
             log.warn("Sync is disabled for user '{}'", details.getUsername());
             throw ApiError.GENERIC_UNAUTHORIZED.createException("Sync is disabled for this user");
         }
+    }
+
+    private enum SyncKind {
+        HIGHLIGHT,
+        NOTE,
+        BOOKMARK
+    }
+
+    private enum SyncResult {
+        CREATED,
+        UPDATED,
+        SKIPPED
     }
 }

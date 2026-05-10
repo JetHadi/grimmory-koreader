@@ -23,8 +23,13 @@ export class ReaderAnnotationService {
   private annotationStyles = new Map<string, { color: string; style: AnnotationStyle }>();
   private allAnnotations: Annotation[] = [];
 
+  private isRenderableAnnotationValue(value: string | null | undefined): value is string {
+    const trimmed = value?.trim();
+    return !!trimmed && /^epubcfi\(/i.test(trimmed);
+  }
+
   addAnnotation(view: AnnotationView | null | undefined, annotation: Annotation): Observable<{ index: number; label: string } | undefined> {
-    if (!view) return of(undefined);
+    if (!view || !this.isRenderableAnnotationValue(annotation.value)) return of(undefined);
 
     const style = annotation.style || 'highlight';
     const color = annotation.color || '#FACC15';
@@ -42,7 +47,7 @@ export class ReaderAnnotationService {
   }
 
   deleteAnnotation(view: AnnotationView | null | undefined, cfi: string): Observable<void> {
-    if (!view) return of(undefined);
+    if (!view || !this.isRenderableAnnotationValue(cfi)) return of(undefined);
 
     this.annotationStyles.delete(cfi);
     this.allAnnotations = this.allAnnotations.filter(a => a.value !== cfi);
@@ -51,13 +56,17 @@ export class ReaderAnnotationService {
   }
 
   showAnnotation(view: AnnotationView | null | undefined, cfi: string): Observable<void> {
-    if (!view) return of(undefined);
+    if (!view || !this.isRenderableAnnotationValue(cfi)) return of(undefined);
 
     return defer(() => from(view.showAnnotation({value: cfi}) as Promise<void>));
   }
 
   addAnnotations(view: AnnotationView | null | undefined, annotations: Annotation[]): void {
     annotations.forEach(annotation => {
+      if (!this.isRenderableAnnotationValue(annotation.value)) {
+        return;
+      }
+
       const style = annotation.style || 'highlight';
       const color = annotation.color || '#FACC15';
       this.annotationStyles.set(annotation.value, {color, style});

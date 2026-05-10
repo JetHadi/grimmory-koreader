@@ -16,28 +16,47 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
 
     interface EntryProjection {
         Long getId();
+
         String getType();
+
         Long getBookId();
+
         String getBookTitle();
+
         String getText();
+
         String getNote();
+
         String getColor();
+
         String getStyle();
+
         String getChapterTitle();
+
+        String getCfi();
+
+        Integer getPageNumber();
+
         String getPrimaryBookType();
+
         LocalDateTime getCreatedAt();
+
         LocalDateTime getUpdatedAt();
     }
 
     interface BookProjection {
         Long getBookId();
+
         String getBookTitle();
     }
 
     interface BookWithCountProjection {
         Long getBookId();
+
         String getBookTitle();
+
         int getNoteCount();
+
         Instant getCoverUpdatedOn();
     }
 
@@ -51,6 +70,8 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
                    ne.color as color,
                    ne.style as style,
                    ne.chapterTitle as chapterTitle,
+                   ne.cfi as cfi,
+                   ne.pageNumber as pageNumber,
                    ne.primaryBookType as primaryBookType,
                    ne.createdAt as createdAt,
                    ne.updatedAt as updatedAt
@@ -63,8 +84,7 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
                  OR ne.noteContent LIKE :search ESCAPE '\\'
                  OR ne.bookTitle LIKE :search ESCAPE '\\'
                  OR ne.chapterTitle LIKE :search ESCAPE '\\')
-            """,
-           countQuery = """
+            """, countQuery = """
             SELECT count(ne)
             FROM NotebookEntryView ne
             WHERE ne.userId = :userId
@@ -77,10 +97,10 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
                  OR ne.chapterTitle LIKE :search ESCAPE '\\')
             """)
     Page<EntryProjection> findEntries(@Param("userId") Long userId,
-                                      @Param("types") Set<String> types,
-                                      @Param("bookId") Long bookId,
-                                      @Param("search") String search,
-                                      Pageable pageable);
+            @Param("types") Set<String> types,
+            @Param("bookId") Long bookId,
+            @Param("search") String search,
+            Pageable pageable);
 
     @Query("""
             SELECT DISTINCT ne.bookId as bookId, ne.bookTitle as bookTitle
@@ -90,8 +110,8 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
             ORDER BY ne.bookTitle
             """)
     List<BookProjection> findBooksWithAnnotations(@Param("userId") Long userId,
-                                                  @Param("search") String search,
-                                                  Pageable pageable);
+            @Param("search") String search,
+            Pageable pageable);
 
     @Query(value = """
             SELECT ne.bookId as bookId,
@@ -103,14 +123,13 @@ public interface NotebookEntryRepository extends Repository<NotebookEntryView, L
             AND (:search IS NULL OR ne.bookTitle LIKE :search ESCAPE '\\')
             GROUP BY ne.bookId, ne.bookTitle, ne.coverUpdatedOn
             ORDER BY ne.bookTitle
-            """,
-           countQuery = """
+            """, countQuery = """
             SELECT count(DISTINCT ne.bookId)
             FROM NotebookEntryView ne
             WHERE ne.userId = :userId
             AND (:search IS NULL OR ne.bookTitle LIKE :search ESCAPE '\\')
             """)
     Page<BookWithCountProjection> findBooksWithAnnotationsPaginated(@Param("userId") Long userId,
-                                                                    @Param("search") String search,
-                                                                    Pageable pageable);
+            @Param("search") String search,
+            Pageable pageable);
 }

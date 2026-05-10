@@ -63,6 +63,28 @@ describe('ReaderAnnotationService', () => {
     expect(service.getAllAnnotations()).toEqual([]);
   });
 
+  it('ignores invalid annotation locations that are not EPUB CFIs', async () => {
+    const view = {
+      addAnnotation: vi.fn().mockResolvedValue({index: 1, label: 'Ignored'}),
+      deleteAnnotation: vi.fn().mockResolvedValue(undefined),
+      showAnnotation: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await expect(firstValueFrom(service.addAnnotation(view, {value: '1'}))).resolves.toBeUndefined();
+    await expect(firstValueFrom(service.addAnnotation(view, {value: 'chapter-1'}))).resolves.toBeUndefined();
+    await expect(firstValueFrom(service.showAnnotation(view, '1'))).resolves.toBeUndefined();
+    await expect(firstValueFrom(service.showAnnotation(view, 'chapter-1'))).resolves.toBeUndefined();
+    await expect(firstValueFrom(service.deleteAnnotation(view, '1'))).resolves.toBeUndefined();
+    await expect(firstValueFrom(service.deleteAnnotation(view, 'chapter-1'))).resolves.toBeUndefined();
+
+    service.addAnnotations(view, [{value: '2'}, {value: 'chapter-2'}]);
+
+    expect(view.addAnnotation).not.toHaveBeenCalled();
+    expect(view.showAnnotation).not.toHaveBeenCalled();
+    expect(view.deleteAnnotation).not.toHaveBeenCalled();
+    expect(service.getAllAnnotations()).toEqual([]);
+  });
+
   it('deletes annotations only when a view exists and showAnnotation stays lazy', async () => {
     service.addAnnotations(undefined, [{
       value: 'epubcfi(/6/8!/4/2:0)',

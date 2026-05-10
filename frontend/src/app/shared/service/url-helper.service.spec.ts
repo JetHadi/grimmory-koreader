@@ -106,6 +106,20 @@ describe('UrlHelperService', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith('Unsupported book type:', undefined);
   });
 
+  it('builds a pdf reader url that can jump directly to a page', () => {
+    expect(service.getPdfReaderUrl(77, 12)).toEqual({
+      commands: ['/pdf-reader/book', 77],
+      extras: {queryParams: {page: 12}},
+    });
+  });
+
+  it('builds an ebook reader url that can jump directly to a cfi', () => {
+    expect(service.getEbookReaderUrl(77, 'epubcfi(/6/2)')).toEqual({
+      commands: ['/ebook-reader/book', 77],
+      extras: {queryParams: {cfi: 'epubcfi(/6/2)'}},
+    });
+  });
+
   it('builds series and generic book filters with the expected router shape', () => {
     expect(service.filterBooksBy('series', 'The Wheel of Time')).toEqual({
       commands: ['/series', 'The Wheel of Time'],

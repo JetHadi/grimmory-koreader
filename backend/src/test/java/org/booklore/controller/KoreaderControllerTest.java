@@ -1,5 +1,7 @@
 package org.booklore.controller;
 
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncRequest;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncResponse;
 import org.booklore.model.dto.progress.KoreaderProgress;
 import org.booklore.service.koreader.KoreaderService;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,10 +27,7 @@ class KoreaderControllerTest {
 
     @BeforeEach
     void setUp() {
-        try (AutoCloseable mocks = MockitoAnnotations.openMocks(this)) {
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
@@ -76,5 +76,30 @@ class KoreaderControllerTest {
         ResponseEntity<?> resp = controller.updateProgress(progress);
         assertEquals(HttpStatus.OK, resp.getStatusCode());
         assertEquals("progress updated", ((Map<?, ?>) resp.getBody()).get("status"));
+    }
+
+    @Test
+    void syncAnnotations_returnsStructuredResponse() {
+        KoreaderAnnotationSyncRequest req = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .device("KOReader")
+                .annotations(List.of())
+                .build();
+        KoreaderAnnotationSyncResponse expected = KoreaderAnnotationSyncResponse.builder()
+                .bookId(42L)
+                .matchedBook(true)
+                .matchedBy("hash")
+                .created(2)
+                .updated(1)
+                .skippedDuplicates(3)
+                .rejected(0)
+                .build();
+
+        when(koreaderService.syncAnnotations(req)).thenReturn(expected);
+
+        ResponseEntity<KoreaderAnnotationSyncResponse> resp = controller.syncAnnotations(req);
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, resp.getHeaders().getContentType());
+        assertEquals(expected, resp.getBody());
     }
 }

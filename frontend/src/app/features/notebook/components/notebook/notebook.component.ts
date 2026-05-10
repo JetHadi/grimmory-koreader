@@ -1,16 +1,18 @@
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {of, Subject} from 'rxjs';
-import {debounceTime, switchMap} from 'rxjs/operators';
+import {debounceTime, finalize, switchMap} from 'rxjs/operators';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {InputText} from 'primeng/inputtext';
 import {Select} from 'primeng/select';
 import {Button} from 'primeng/button';
 import {Tooltip} from 'primeng/tooltip';
 import {Paginator} from 'primeng/paginator';
+import {ConfirmationService, MessageService} from 'primeng/api';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
+import {Router} from '@angular/router';
 import {NotebookService} from '../../service/notebook.service';
-import {NotebookEntry, NotebookPage} from '../../model/notebook.model';
+import {NotebookBookOption, NotebookEntry, NotebookPage} from '../../model/notebook.model';
 import {UrlHelperService} from '../../../../shared/service/url-helper.service';
 import {CoverPlaceholderComponent} from '../../../../shared/components/cover-generator/cover-generator.component';
 import {PageTitleService} from '../../../../shared/service/page-title.service';
@@ -55,15 +57,19 @@ export class NotebookComponent implements OnInit {
   private readonly searchSubject = new Subject<void>();
   private readonly loadTrigger$ = new Subject<void>();
   private readonly bookFilterSubject = new Subject<string>();
+  private readonly router = inject(Router);
   private readonly notebookService = inject(NotebookService);
   private readonly urlHelper = inject(UrlHelperService);
   private readonly pageTitle = inject(PageTitleService);
   private readonly t = inject(TranslocoService);
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly messageService = inject(MessageService);
 
   filteredGroups: BookGroup[] = [];
   totalEntries = 0;
   loading = signal(true);
   exporting = false;
+  deletingEntryKey: string | null = null;
 
   searchQuery = '';
   showHighlights = true;
@@ -95,7 +101,7 @@ export class NotebookComponent implements OnInit {
         );
       }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(result => {
+    ).subscribe((result: NotebookPage) => {
       this.totalEntries = result.page.totalElements;
       this.groupEntries(result.content);
       this.loading.set(false);
@@ -112,10 +118,10 @@ export class NotebookComponent implements OnInit {
 
     this.bookFilterSubject.pipe(
       debounceTime(300),
-      switchMap(filter => this.notebookService.getBooksWithAnnotations(filter || undefined)),
+      switchMap((filter: string) => this.notebookService.getBooksWithAnnotations(filter || undefined)),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(books => {
-      this.updateBookOptions(books.map(b => ({label: b.bookTitle, value: b.bookId})));
+    ).subscribe((books: NotebookBookOption[]) => {
+      this.updateBookOptions(books.map((b: NotebookBookOption) => ({label: b.bookTitle, value: b.bookId})));
     });
 
     this.loadBooks();
@@ -158,8 +164,8 @@ export class NotebookComponent implements OnInit {
   private loadBooks(): void {
     this.notebookService.getBooksWithAnnotations()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(books => {
-        this.bookOptions = books.map(b => ({label: b.bookTitle, value: b.bookId}));
+      .subscribe((books: NotebookBookOption[]) => {
+        this.bookOptions = books.map((b: NotebookBookOption) => ({label: b.bookTitle, value: b.bookId}));
       });
   }
 
@@ -229,6 +235,75 @@ export class NotebookComponent implements OnInit {
     }
   }
 
+  entryKey(entry: NotebookEntry): string {
+    return `${entry.type}-${entry.id}`;
+  }
+
+  openBookmark(entry: NotebookEntry, event?: Event): void {
+    if (entry.pageNumber == null && !entry.cfi) {
+      return;
+    }
+
+    event?.stopPropagation();
+    if (event instanceof KeyboardEvent) {
+      event.preventDefault();
+    }
+
+    if (entry.pageNumber != null) {
+      this.router.navigateByUrl(this.urlHelper.getPdfReaderUrl(entry.bookId, entry.pageNumber));
+      return;
+    }
+
+    if (entry.cfi) {
+      this.router.navigateByUrl(this.urlHelper.getEbookReaderUrl(entry.bookId, entry.cfi));
+    }
+  }
+
+  confirmDeleteEntry(entry: NotebookEntry, event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.confirmationService.confirm({
+      message: this.t.translate('notebook.deleteConfirmMessage', {type: this.getTypeLabel(entry.type).toLowerCase()}),
+      header: this.t.translate('notebook.deleteConfirmTitle'),
+      icon: 'pi pi-exclamation-triangle',
+      acceptIcon: 'pi pi-trash',
+      rejectIcon: 'pi pi-times',
+      acceptLabel: this.t.translate('common.delete'),
+      rejectLabel: this.t.translate('common.cancel'),
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-outlined',
+      accept: () => this.deleteEntry(entry),
+    });
+  }
+
+  private deleteEntry(entry: NotebookEntry): void {
+    const key = this.entryKey(entry);
+    this.deletingEntryKey = key;
+    this.notebookService.deleteNotebookEntry(entry.id, entry.type)
+      .pipe(
+        finalize(() => {
+          this.deletingEntryKey = null;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.messageService.add({
+            severity: 'success',
+            summary: this.t.translate('common.success'),
+            detail: this.t.translate('notebook.deleteSuccess'),
+          });
+          this.loadTrigger$.next();
+        },
+        error: () => {
+          this.messageService.add({
+            severity: 'error',
+            summary: this.t.translate('common.error'),
+            detail: this.t.translate('notebook.deleteError'),
+          });
+        }
+      });
+  }
+
   exportMarkdown(): void {
     const types = this.activeTypes;
     if (types.length === 0) return;
@@ -236,7 +311,7 @@ export class NotebookComponent implements OnInit {
     this.exporting = true;
     this.notebookService.getExportEntries(
       types, this.selectedBookId, this.searchQuery, this.sortDirection
-    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(entries => {
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((entries: NotebookEntry[]) => {
       this.generateMarkdownDownload(entries);
       this.exporting = false;
     });

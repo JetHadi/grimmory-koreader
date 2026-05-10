@@ -12,31 +12,31 @@ import java.util.Optional;
 
 public interface BookNoteV2Repository extends JpaRepository<BookNoteV2Entity, Long> {
 
-    Optional<BookNoteV2Entity> findByIdAndUserId(Long id, Long userId);
+        Optional<BookNoteV2Entity> findByIdAndUserId(Long id, Long userId);
 
-    @Query("SELECT n FROM BookNoteV2Entity n WHERE n.bookId = :bookId AND n.userId = :userId ORDER BY n.createdAt DESC")
-    List<BookNoteV2Entity> findByBookIdAndUserIdOrderByCreatedAtDesc(
-            @Param("bookId") Long bookId,
-            @Param("userId") Long userId
-    );
+        Optional<BookNoteV2Entity> findByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
 
-    boolean existsByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
+        @Query("SELECT n FROM BookNoteV2Entity n WHERE n.bookId = :bookId AND n.userId = :userId ORDER BY n.createdAt DESC")
+        List<BookNoteV2Entity> findByBookIdAndUserIdOrderByCreatedAtDesc(
+                        @Param("bookId") Long bookId,
+                        @Param("userId") Long userId);
 
-    @Query("SELECT COUNT(n) > 0 FROM BookNoteV2Entity n WHERE n.cfi = :cfi AND n.bookId = :bookId AND n.userId = :userId AND n.id != :excludeId")
-    boolean existsByCfiAndBookIdAndUserIdExcludeId(
-            @Param("cfi") String cfi,
-            @Param("bookId") Long bookId,
-            @Param("userId") Long userId,
-            @Param("excludeId") Long excludeId
-    );
+        boolean existsByCfiAndBookIdAndUserId(String cfi, Long bookId, Long userId);
 
-    long countByBookIdAndUserId(Long bookId, Long userId);
+        @Query("SELECT COUNT(n) > 0 FROM BookNoteV2Entity n WHERE n.cfi = :cfi AND n.bookId = :bookId AND n.userId = :userId AND n.id != :excludeId")
+        boolean existsByCfiAndBookIdAndUserIdExcludeId(
+                        @Param("cfi") String cfi,
+                        @Param("bookId") Long bookId,
+                        @Param("userId") Long userId,
+                        @Param("excludeId") Long excludeId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Transactional
-    @Query("DELETE FROM BookNoteV2Entity n WHERE n.bookId = :bookId AND n.userId = :userId")
-    void deleteByBookIdAndUserId(@Param("bookId") Long bookId, @Param("userId") Long userId);
+        long countByBookIdAndUserId(Long bookId, Long userId);
 
-    @Query("SELECT n FROM BookNoteV2Entity n JOIN FETCH n.book b JOIN FETCH b.metadata WHERE n.userId = :userId ORDER BY n.createdAt DESC")
-    List<BookNoteV2Entity> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Transactional
+        @Query("DELETE FROM BookNoteV2Entity n WHERE n.bookId = :bookId AND n.userId = :userId")
+        void deleteByBookIdAndUserId(@Param("bookId") Long bookId, @Param("userId") Long userId);
+
+        @Query("SELECT n FROM BookNoteV2Entity n JOIN FETCH n.book b JOIN FETCH b.metadata WHERE n.userId = :userId ORDER BY n.createdAt DESC")
+        List<BookNoteV2Entity> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
 }

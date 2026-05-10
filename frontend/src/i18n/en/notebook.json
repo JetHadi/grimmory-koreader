@@ -19,6 +19,11 @@
   "highlight": "Highlight",
   "note": "Note",
   "bookmark": "Bookmark",
+  "deleteEntry": "Delete entry",
+  "deleteConfirmTitle": "Delete entry",
+  "deleteConfirmMessage": "Delete this {{type}} from Grimmory?",
+  "deleteSuccess": "Entry deleted.",
+  "deleteError": "Could not delete entry.",
   "annotation": "annotation",
   "annotations": "annotations"
 }

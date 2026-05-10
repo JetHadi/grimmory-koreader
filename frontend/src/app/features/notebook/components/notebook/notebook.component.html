@@ -1,13 +1,12 @@
 <ng-container *transloco="let t">
   <div class="main-container">
-
     <!-- Page Header -->
     <div class="settings-header">
       <h2 class="settings-title">
         <i class="pi pi-pencil"></i>
-        {{ t('notebook.pageTitle') }}
+        {{ t("notebook.pageTitle") }}
       </h2>
-      <p class="settings-description">{{ t('notebook.pageDescription') }}</p>
+      <p class="settings-description">{{ t("notebook.pageDescription") }}</p>
     </div>
 
     <!-- Filters Card -->
@@ -41,7 +40,7 @@
             (ngModelChange)="onFilterChange()"
             (onFilter)="onBookFilter($event)"
             [placeholder]="t('notebook.filterByBook')"
-            [panelStyle]="{'min-width': '300px'}"
+            [panelStyle]="{ 'min-width': '300px' }"
             class="book-select"
           />
         </div>
@@ -54,7 +53,9 @@
               (click)="showHighlights = !showHighlights; onFilterChange()"
             >
               <i class="pi pi-highlighter"></i>
-              <span class="option-text">{{ t('notebook.filterHighlights') }}</span>
+              <span class="option-text">{{
+                t("notebook.filterHighlights")
+              }}</span>
             </button>
             <button
               class="option-button"
@@ -62,7 +63,7 @@
               (click)="showNotes = !showNotes; onFilterChange()"
             >
               <i class="pi pi-file-edit"></i>
-              <span class="option-text">{{ t('notebook.filterNotes') }}</span>
+              <span class="option-text">{{ t("notebook.filterNotes") }}</span>
             </button>
             <button
               class="option-button"
@@ -70,13 +71,19 @@
               (click)="showBookmarks = !showBookmarks; onFilterChange()"
             >
               <i class="pi pi-bookmark"></i>
-              <span class="option-text">{{ t('notebook.filterBookmarks') }}</span>
+              <span class="option-text">{{
+                t("notebook.filterBookmarks")
+              }}</span>
             </button>
           </div>
 
           <p-button
-            [icon]="sortNewest ? 'pi pi-sort-amount-down' : 'pi pi-sort-amount-up'"
-            [pTooltip]="sortNewest ? t('notebook.sortNewest') : t('notebook.sortOldest')"
+            [icon]="
+              sortNewest ? 'pi pi-sort-amount-down' : 'pi pi-sort-amount-up'
+            "
+            [pTooltip]="
+              sortNewest ? t('notebook.sortNewest') : t('notebook.sortOldest')
+            "
             tooltipPosition="bottom"
             [outlined]="true"
             size="small"
@@ -108,26 +115,42 @@
       }
 
       <!-- Empty State: No annotations at all -->
-      @if (!loading() && totalEntries === 0 && !searchQuery.trim() && selectedBookId === null && showHighlights && showNotes && showBookmarks) {
+      @if (
+        !loading() &&
+        totalEntries === 0 &&
+        !searchQuery.trim() &&
+        selectedBookId === null &&
+        showHighlights &&
+        showNotes &&
+        showBookmarks
+      ) {
         <div class="settings-card">
           <div class="state-container">
             <div class="state-icon">
               <i class="pi pi-pencil"></i>
             </div>
-            <p class="state-title">{{ t('notebook.noEntries') }}</p>
-            <p class="state-hint">{{ t('notebook.noEntriesHint') }}</p>
+            <p class="state-title">{{ t("notebook.noEntries") }}</p>
+            <p class="state-hint">{{ t("notebook.noEntriesHint") }}</p>
           </div>
         </div>
       }
 
       <!-- Empty State: No results match filters -->
-      @if (!loading() && totalEntries === 0 && (searchQuery.trim() || selectedBookId !== null || !showHighlights || !showNotes || !showBookmarks)) {
+      @if (
+        !loading() &&
+        totalEntries === 0 &&
+        (searchQuery.trim() ||
+          selectedBookId !== null ||
+          !showHighlights ||
+          !showNotes ||
+          !showBookmarks)
+      ) {
         <div class="settings-card">
           <div class="state-container">
             <div class="state-icon warn">
               <i class="pi pi-filter-slash"></i>
             </div>
-            <p class="state-title">{{ t('notebook.noResults') }}</p>
+            <p class="state-title">{{ t("notebook.noResults") }}</p>
           </div>
         </div>
       }
@@ -137,31 +160,81 @@
         @for (group of filteredGroups; track group.bookId) {
           <div class="settings-card book-group-card">
             <!-- Book Header -->
-            <div class="book-group-header" role="button" tabindex="0" (click)="toggleGroup(group.bookId)" (keydown.enter)="toggleGroup(group.bookId)">
+            <div
+              class="book-group-header"
+              role="button"
+              tabindex="0"
+              (click)="toggleGroup(group.bookId)"
+              (keydown.enter)="toggleGroup(group.bookId)"
+            >
               @if (group.thumbnailUrl) {
-                <img [src]="group.thumbnailUrl" [alt]="group.bookTitle" class="book-thumbnail" />
+                <img
+                  [src]="group.thumbnailUrl"
+                  [alt]="group.bookTitle"
+                  class="book-thumbnail"
+                />
               } @else {
-                <app-cover-placeholder class="book-thumbnail" [title]="group.bookTitle" size="sm" />
+                <app-cover-placeholder
+                  class="book-thumbnail"
+                  [title]="group.bookTitle"
+                  size="sm"
+                />
               }
               <div class="book-info">
                 <span class="book-title">{{ group.bookTitle }}</span>
                 <span class="book-entry-count">
-                  {{ group.entries.length }} {{ group.entries.length === 1 ? t('notebook.annotation') : t('notebook.annotations') }}
+                  {{ group.entries.length }}
+                  {{
+                    group.entries.length === 1
+                      ? t("notebook.annotation")
+                      : t("notebook.annotations")
+                  }}
                 </span>
               </div>
-              <i class="pi toggle-icon" [class.pi-chevron-down]="!isGroupCollapsed(group.bookId)" [class.pi-chevron-right]="isGroupCollapsed(group.bookId)"></i>
+              <i
+                class="pi toggle-icon"
+                [class.pi-chevron-down]="!isGroupCollapsed(group.bookId)"
+                [class.pi-chevron-right]="isGroupCollapsed(group.bookId)"
+              ></i>
             </div>
 
             <!-- Entries -->
             @if (!isGroupCollapsed(group.bookId)) {
               <div class="entries-list">
-                @for (entry of group.entries; track entry.id + '-' + entry.type) {
+                @for (
+                  entry of group.entries;
+                  track entry.id + "-" + entry.type
+                ) {
                   <div
                     class="entry-item"
-                    [style.border-left-color]="entry.color || 'var(--p-primary-color)'"
+                    [class.bookmark-entry]="
+                      entry.type === 'BOOKMARK' &&
+                      (entry.pageNumber != null || entry.cfi)
+                    "
+                    [style.border-left-color]="
+                      entry.color || 'var(--p-primary-color)'
+                    "
+                    [attr.role]="
+                      entry.type === 'BOOKMARK' &&
+                      (entry.pageNumber != null || entry.cfi)
+                        ? 'button'
+                        : null
+                    "
+                    [attr.tabindex]="
+                      entry.type === 'BOOKMARK' &&
+                      (entry.pageNumber != null || entry.cfi)
+                        ? 0
+                        : null
+                    "
+                    (click)="openBookmark(entry)"
+                    (keydown.enter)="openBookmark(entry, $event)"
+                    (keydown.space)="openBookmark(entry, $event)"
                   >
                     <div class="entry-top-row">
-                      <div class="entry-type-badge" [class]="'type-' + entry.type.toLowerCase()">
+                      <div
+                        class="entry-type-badge"
+                        [class]="'type-' + entry.type.toLowerCase()"
+                      >
                         <i [class]="getTypeIcon(entry.type)"></i>
                         <span>{{ getTypeLabel(entry.type) }}</span>
                       </div>
@@ -171,7 +244,30 @@
                           {{ entry.chapterTitle }}
                         </span>
                       }
-                      <span class="entry-date">{{ entry.createdAt | date:'mediumDate' }}</span>
+                      @if (
+                        entry.type === "BOOKMARK" && entry.pageNumber != null
+                      ) {
+                        <span class="entry-bookmark-page">
+                          <i class="pi pi-arrow-right"></i>
+                          <span>#{{ entry.pageNumber }}</span>
+                        </span>
+                      }
+                      <span class="entry-date">{{
+                        entry.createdAt | date: "medium"
+                      }}</span>
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        size="small"
+                        styleClass="entry-delete-button"
+                        [pTooltip]="t('notebook.deleteEntry')"
+                        tooltipPosition="left"
+                        [disabled]="deletingEntryKey === entryKey(entry)"
+                        [loading]="deletingEntryKey === entryKey(entry)"
+                        (onClick)="confirmDeleteEntry(entry, $event)"
+                      />
                     </div>
                     @if (entry.text) {
                       <div class="entry-text">{{ entry.text }}</div>

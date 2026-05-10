@@ -56,4 +56,9 @@ export class NotebookService {
     }
     return this.http.get<NotebookBookOption[]>(`${this.url}/books`, {params});
   }
+
+  deleteNotebookEntry(entryId: number, type: NotebookEntry['type']): Observable<void> {
+    const params = new HttpParams().set('type', type);
+    return this.http.delete<void>(`${this.url}/entries/${entryId}`, {params});
+  }
 }

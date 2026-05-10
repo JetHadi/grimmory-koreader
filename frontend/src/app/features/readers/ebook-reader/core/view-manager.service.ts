@@ -77,6 +77,7 @@ interface FoliateViewElement extends HTMLElement {
   renderer?: FoliateRenderer | null;
   book?: FoliateBook;
   open(target: File | object): Promise<void>;
+  init(options: { lastLocation?: string | number | { fraction: number }; showTextStart?: boolean }): Promise<void>;
   goTo(target: string | number): Promise<void>;
   goToFraction(fraction: number): Promise<void>;
   prev(): void;
@@ -196,6 +197,17 @@ export class ReaderViewManagerService {
     return defer(() =>
       from(view.goTo(resolvedTarget) as Promise<void>)
     ).pipe(
+      map(() => undefined)
+    );
+  }
+
+  initializeAt(target?: string | number | { fraction: number } | null): Observable<void> {
+    if (!this.view) {
+      return of(undefined);
+    }
+
+    const view = this.view;
+    return defer(() => from(view.init(target == null ? {} : {lastLocation: target}) as Promise<void>)).pipe(
       map(() => undefined)
     );
   }

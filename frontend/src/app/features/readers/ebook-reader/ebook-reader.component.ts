@@ -79,6 +79,7 @@ interface PendingInitialChapterRestore {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EbookReaderComponent implements OnInit {
+  private static readonly EPUB_CFI_PATTERN = /^epubcfi\(/i;
   private readonly destroyRef = inject(DestroyRef);
   private static readonly MAX_CHAPTER_PROGRESS_PERCENT = 99.9;
   private static readonly INITIAL_CHAPTER_RESTORE_RETRY_MS = 100;
@@ -206,6 +207,7 @@ export class EbookReaderComponent implements OnInit {
 
     this.bookId = +this.route.snapshot.paramMap.get('bookId')!;
     this.altBookType = this.route.snapshot.queryParamMap.get('bookType') ?? undefined;
+    const bookmarkedCfi = this.getInitialCfiTarget();
 
     // Parallelize Foliate script loading and initial book detail fetch
     forkJoin([
@@ -261,6 +263,9 @@ export class EbookReaderComponent implements OnInit {
           switchMap(() => {
             if (!this.hasLoadedOnce) {
               this.hasLoadedOnce = true;
+              if (bookmarkedCfi) {
+                return this.viewManager.initializeAt(bookmarkedCfi);
+              }
               return this.restoreSavedPosition(book);
             }
             return of(undefined);
@@ -276,6 +281,19 @@ export class EbookReaderComponent implements OnInit {
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
+  }
+
+  private getInitialCfiTarget(): string | null {
+    const cfi = this.route.snapshot.queryParamMap.get('cfi')?.trim();
+    if (!this.isValidEpubCfi(cfi)) {
+      return null;
+    }
+
+    return cfi;
+  }
+
+  private isValidEpubCfi(cfi: string | null | undefined): cfi is string {
+    return !!cfi && EbookReaderComponent.EPUB_CFI_PATTERN.test(cfi);
   }
 
   private initializeFoliate(): Observable<void> {
@@ -394,8 +412,8 @@ export class EbookReaderComponent implements OnInit {
 
     const progress = book.epubProgress;
 
-    if (progress?.cfi) {
-      return this.viewManager.goTo(progress.cfi);
+    if (this.isValidEpubCfi(progress?.cfi)) {
+      return this.viewManager.initializeAt(progress.cfi);
     }
 
     if (progress?.href) {
@@ -407,7 +425,7 @@ export class EbookReaderComponent implements OnInit {
           attempts: 0
         };
       }
-      return this.viewManager.goTo(progress.href);
+      return this.viewManager.initializeAt(progress.href);
     }
 
     if (progress?.percentage && progress.percentage > 0) {

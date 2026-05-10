@@ -2,16 +2,21 @@ package org.booklore.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import org.booklore.config.security.userdetails.KoreaderUserDetails;
 import org.booklore.exception.APIException;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncItem;
+import org.booklore.model.dto.koreader.KoreaderAnnotationSyncRequest;
 import org.booklore.model.dto.progress.KoreaderProgress;
+import org.booklore.model.entity.AnnotationEntity;
 import org.booklore.model.entity.BookEntity;
 import org.booklore.model.entity.BookLoreUserEntity;
 import org.booklore.model.entity.KoreaderUserEntity;
 import org.booklore.model.entity.UserBookProgressEntity;
 import org.booklore.model.enums.ReadStatus;
+import org.booklore.repository.AnnotationRepository;
 import org.booklore.repository.BookRepository;
 import org.booklore.repository.UserBookProgressRepository;
 import org.booklore.repository.UserRepository;
@@ -30,6 +35,7 @@ import org.springframework.security.core.context.*;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,6 +45,8 @@ class KoreaderServiceTest {
 
     @Mock
     UserBookProgressRepository progressRepo;
+    @Mock
+    AnnotationRepository annotationRepository;
     @Mock
     BookRepository bookRepo;
     @Mock
@@ -70,7 +78,6 @@ class KoreaderServiceTest {
     void clearContext() {
         SecurityContextHolder.clearContext();
     }
-
 
     @Test
     void authorizeUser_success() {
@@ -270,9 +277,150 @@ class KoreaderServiceTest {
         Method method = KoreaderService.class.getDeclaredMethod("normalizeProgressPercent", Float.class);
         method.setAccessible(true);
 
-        assertNull(method.invoke(service, new Object[]{null}));
+        assertNull(method.invoke(service, new Object[] { null }));
         assertEquals(50.0f, (Float) method.invoke(service, 0.5f));
         assertEquals(100.0f, (Float) method.invoke(service, 1.0f));
         assertEquals(42.0f, (Float) method.invoke(service, 42.0f));
+    }
+
+    @Test
+    void syncAnnotations_createsNewEntries() {
+        when(details.isSyncEnabled()).thenReturn(true);
+
+        var book = new BookEntity();
+        book.setId(77L);
+        when(bookRepo.findByCurrentHash("hash")).thenReturn(Optional.of(book));
+
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+
+        var item = KoreaderAnnotationSyncItem.builder()
+                .location("epubcfi(/6/2)")
+                .selectedText("quoted")
+                .noteContent("note")
+                .chapterTitle("Chapter 1")
+                .color("#FFFF00")
+                .build();
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .device("KOReader")
+                .annotations(List.of(item))
+                .build();
+
+        when(annotationRepository.findByCfiAndBookIdAndUserId("epubcfi(/6/2)", 77L, 42L))
+                .thenReturn(Optional.empty());
+
+        var response = service.syncAnnotations(request);
+
+        assertTrue(response.isMatchedBook());
+        assertEquals(77L, response.getBookId());
+        assertEquals(1, response.getCreated());
+        assertEquals(0, response.getUpdated());
+        assertEquals(0, response.getSkippedDuplicates());
+        assertEquals(0, response.getRejected());
+        verify(annotationRepository).save(any(AnnotationEntity.class));
+    }
+
+    @Test
+    void syncAnnotations_updatesWhenExistingDiffers() {
+        when(details.isSyncEnabled()).thenReturn(true);
+
+        var book = new BookEntity();
+        book.setId(78L);
+        when(bookRepo.findByCurrentHash("hash")).thenReturn(Optional.of(book));
+
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+
+        var existing = new AnnotationEntity();
+        existing.setBook(book);
+        existing.setUser(user);
+        existing.setCfi("loc");
+        existing.setText("old");
+        existing.setColor("#FFFF00");
+
+        when(annotationRepository.findByCfiAndBookIdAndUserId("loc", 78L, 42L))
+                .thenReturn(Optional.of(existing));
+
+        var item = KoreaderAnnotationSyncItem.builder()
+                .location("loc")
+                .selectedText("new")
+                .noteContent("note")
+                .build();
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .annotations(List.of(item))
+                .build();
+
+        var response = service.syncAnnotations(request);
+
+        assertEquals(0, response.getCreated());
+        assertEquals(1, response.getUpdated());
+        assertEquals(0, response.getSkippedDuplicates());
+        verify(annotationRepository).save(eq(existing));
+    }
+
+    @Test
+    void syncAnnotations_skipsExactDuplicates() {
+        when(details.isSyncEnabled()).thenReturn(true);
+
+        var book = new BookEntity();
+        book.setId(79L);
+        when(bookRepo.findByCurrentHash("hash")).thenReturn(Optional.of(book));
+
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+
+        var existing = new AnnotationEntity();
+        existing.setBook(book);
+        existing.setUser(user);
+        existing.setCfi("loc");
+        existing.setText("same");
+        existing.setNote("same-note");
+        existing.setColor("#FFFF00");
+        existing.setStyle("highlight");
+
+        when(annotationRepository.findByCfiAndBookIdAndUserId("loc", 79L, 42L))
+                .thenReturn(Optional.of(existing));
+
+        var item = KoreaderAnnotationSyncItem.builder()
+                .location("loc")
+                .selectedText("same")
+                .noteContent("same-note")
+                .build();
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .annotations(List.of(item))
+                .build();
+
+        var response = service.syncAnnotations(request);
+
+        assertEquals(0, response.getCreated());
+        assertEquals(0, response.getUpdated());
+        assertEquals(1, response.getSkippedDuplicates());
+        verify(annotationRepository, never()).save(any(AnnotationEntity.class));
+    }
+
+    @Test
+    void syncAnnotations_returnsMatchedBookFalseWhenHashUnknown() {
+        when(details.isSyncEnabled()).thenReturn(true);
+        when(bookRepo.findByCurrentHash("missing")).thenReturn(Optional.empty());
+
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("missing")
+                .annotations(List.of(
+                        KoreaderAnnotationSyncItem.builder().location("a").selectedText("one").build(),
+                        KoreaderAnnotationSyncItem.builder().location("b").selectedText("two").build()))
+                .build();
+
+        var response = service.syncAnnotations(request);
+
+        assertFalse(response.isMatchedBook());
+        assertNull(response.getBookId());
+        assertEquals(2, response.getRejected());
+        assertEquals("book_not_found_for_hash", response.getRejectionReasons().get(0).getReason());
     }
 }
