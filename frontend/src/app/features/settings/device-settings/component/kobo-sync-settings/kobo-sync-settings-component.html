@@ -61,8 +61,8 @@
                   <strong>{{ t('kobo.twoWaySyncNote') }}</strong>
                 </p>
                 @if (syncForm.controls.twoWayProgressSync.value && !koboSettings.convertToKepub) {
-                  <p class="setting-warning" role="status" aria-live="polite" aria-atomic="true">
-                    <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                  <p class="setting-warning border-l-red-700 dark:border-l-red-300" role="status" aria-live="polite" aria-atomic="true">
+                    <i class="pi pi-exclamation-triangle text-red-700 dark:text-red-300" aria-hidden="true"></i>
                     @if (isAdmin) {
                       {{ t('kobo.twoWaySyncKepubWarningAdmin') }}
                     } @else {
@@ -85,6 +85,7 @@
                       id="koboToken"
                       formControlName="token"
                       [type]="showToken ? 'text' : 'password'"
+                      aria-label="{{ t('kobo.token') }}"
                       readonly
                       class="token-input"
                     />
@@ -116,6 +117,37 @@
                 </div>
                 <p class="setting-description">
                   {{ t('kobo.tokenDesc') }}
+                </p>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <div class="setting-label-row">
+                  <span class="setting-label">{{ t('kobo.apiPath') }}</span>
+                  <div class="token-input-group">
+                    <input
+                      pInputText
+                      id="koboApiPath"
+                      [value]="koboApiPath"
+                      [type]="showToken ? 'text' : 'password'"
+                      aria-label="{{ t('kobo.apiPath') }}"
+                      readonly
+                      class="token-input"
+                    />
+                    <p-button
+                      icon="pi pi-copy"
+                      outlined="true"
+                      severity="info"
+                      size="small"
+                      [ariaLabel]="t('kobo.apiPath')"
+                      (onClick)="copyText(koboApiPath, t('kobo.apiPath'))"
+                      [disabled]="!koboApiPath">
+                    </p-button>
+                  </div>
+                </div>
+                <p class="setting-description">
+                  {{ t('kobo.apiPathDesc') }}
                 </p>
               </div>
             </div>

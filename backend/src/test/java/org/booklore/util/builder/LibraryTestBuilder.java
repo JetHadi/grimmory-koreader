@@ -22,13 +22,16 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+import java.time.Instant;
 
 /**
  * Test builder for creating Library-related test objects.
@@ -196,9 +199,9 @@ public class LibraryTestBuilder {
                 .id(id)
                 .library(getLibraryEntity())
                 .libraryPath(getLibraryEntity().getLibraryPaths().getLast())
-                .addedOn(java.time.Instant.now())
+                .addedOn(Instant.now())
                 .metadata(metadata)
-                .bookFiles(new ArrayList<>())
+                .bookFiles(new HashSet<>())
                 .build();
 
         BookFileEntity primaryFile = BookFileEntity.builder()
@@ -210,7 +213,7 @@ public class LibraryTestBuilder {
                 .fileSizeKb(1024L)
                 .initialHash(hash)
                 .currentHash(hash)
-                .addedOn(java.time.Instant.now())
+                .addedOn(Instant.now())
                 .build();
         bookEntity.getBookFiles().add(primaryFile);
 
@@ -300,9 +303,9 @@ public class LibraryTestBuilder {
                 .id(id) // Simple ID generation based on index
                 .library(libraryFile.getLibraryPathEntity().getLibrary())
                 .libraryPath(libraryFile.getLibraryPathEntity())
-                .addedOn(java.time.Instant.now())
+                .addedOn(Instant.now())
                 .metadata(metadata)
-                .bookFiles(new ArrayList<>())
+                .bookFiles(Set.of())
                 .build();
 
         BookFileEntity primaryFile = BookFileEntity.builder()
@@ -314,7 +317,7 @@ public class LibraryTestBuilder {
                 .fileSizeKb(1024L)
                 .initialHash(hash)
                 .currentHash(hash)
-                .addedOn(java.time.Instant.now())
+                .addedOn(Instant.now())
                 .build();
         bookEntity.getBookFiles().add(primaryFile);
 

@@ -1,9 +1,9 @@
 package org.booklore.config.security.oidc;
 
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.booklore.exception.ApiError;
 import org.booklore.model.dto.settings.OidcProviderDetails;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,14 +14,23 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import org.springframework.web.client.RestClientException;
 
 @Slf4j
 @Service
-@AllArgsConstructor
 public class OidcTokenClient {
 
     private final OidcDiscoveryService discoveryService;
     private final RestTemplate oidcRestTemplate;
+
+    public OidcTokenClient(
+            OidcDiscoveryService discoveryService,
+            @Qualifier("oidc")
+            RestTemplate oidcRestTemplate
+    ) {
+        this.discoveryService = discoveryService;
+        this.oidcRestTemplate = oidcRestTemplate;
+    }
 
     public record TokenResponse(
             String accessToken,
@@ -31,7 +40,7 @@ public class OidcTokenClient {
             Integer expiresIn
     ) {}
 
-    public TokenResponse exchangeAuthorizationCode(String code, String codeVerifier, String redirectUri, OidcProviderDetails providerDetails) {
+    public TokenResponse exchangeAuthorizationCode(String code, String codeVerifier, String redirectUri, OidcProviderDetails providerDetails, String providerClientSecret) {
         var discovery = discoveryService.discover(providerDetails.getIssuerUri());
         String tokenEndpoint = discovery.tokenEndpoint();
 
@@ -42,8 +51,8 @@ public class OidcTokenClient {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "authorization_code");
         body.add("client_id", providerDetails.getClientId());
-        if (providerDetails.getClientSecret() != null && !providerDetails.getClientSecret().isBlank()) {
-            body.add("client_secret", providerDetails.getClientSecret());
+        if (providerClientSecret != null && !providerClientSecret.isBlank()) {
+            body.add("client_secret", providerClientSecret);
         }
         body.add("code", code);
         body.add("redirect_uri", redirectUri);
@@ -75,7 +84,7 @@ public class OidcTokenClient {
                     (String) response.get("token_type"),
                     response.get("expires_in") instanceof Number n ? n.intValue() : null
             );
-        } catch (org.springframework.web.client.RestClientException e) {
+        } catch (RestClientException e) {
             log.error("OIDC token exchange failed: {}", e.getMessage());
             throw ApiError.OIDC_PROVIDER_UNREACHABLE.createException(e.getMessage());
         }
@@ -99,7 +108,7 @@ public class OidcTokenClient {
                     .exchange(userinfoEndpoint, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
 
             return response.getBody() != null ? response.getBody() : Map.of();
-        } catch (org.springframework.web.client.RestClientException e) {
+        } catch (RestClientException e) {
             log.warn("Failed to fetch userinfo: {}", e.getMessage());
             return Map.of();
         }

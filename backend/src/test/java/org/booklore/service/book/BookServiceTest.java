@@ -1,5 +1,6 @@
 package org.booklore.service.book;
 
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.booklore.config.security.service.AuthenticationService;
@@ -20,6 +21,7 @@ import org.booklore.util.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -27,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -75,6 +78,8 @@ class BookServiceTest {
     private BookUpdateService bookUpdateService;
     @Mock
     private AuditService auditService;
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private BookService bookService;
@@ -118,7 +123,7 @@ class BookServiceTest {
         BookFileEntity primaryFile = new BookFileEntity();
         primaryFile.setBook(entity);
         primaryFile.setBookType(BookFileType.EPUB);
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
         LibraryPathEntity libPath = new LibraryPathEntity();
         libPath.setPath("/tmp/library");
         LibraryEntity library = new LibraryEntity();
@@ -146,7 +151,7 @@ class BookServiceTest {
         BookFileEntity primaryFile = new BookFileEntity();
         primaryFile.setBook(entity);
         primaryFile.setBookType(BookFileType.PDF);
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
         LibraryPathEntity libPath = new LibraryPathEntity();
         libPath.setPath("/tmp/library");
         LibraryEntity library = new LibraryEntity();
@@ -181,7 +186,7 @@ class BookServiceTest {
         primaryFile.setId(1L);
         primaryFile.setBook(entity);
         primaryFile.setBookType(BookFileType.EPUB);
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
         when(bookRepository.findByIdWithBookFiles(4L)).thenReturn(Optional.of(entity));
         EbookViewerPreferenceEntity epubPref = new EbookViewerPreferenceEntity();
         epubPref.setFontFamily("Arial");
@@ -222,7 +227,7 @@ class BookServiceTest {
         primaryFile.setId(1L);
         primaryFile.setBook(entity);
         primaryFile.setBookType(null);
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
         when(bookRepository.findByIdWithBookFiles(5L)).thenReturn(Optional.of(entity));
         when(authenticationService.getAuthenticatedUser()).thenReturn(testUser);
         assertThrows(APIException.class, () -> bookService.getBookViewerSetting(5L, 1L));
@@ -305,10 +310,10 @@ class BookServiceTest {
     }
 
     @Test
-    void getBookCover_fileMissing_returnsByteArrayResource() {
+    void getBookCover_fileMissing_returnsNull() {
         when(fileService.getCoverFile(1L)).thenReturn("/tmp/nonexistent2.jpg");
         Resource res = bookService.getBookCover(1L);
-        assertTrue(res instanceof ByteArrayResource);
+        assertNull(res);
     }
 
     @Test
@@ -319,10 +324,10 @@ class BookServiceTest {
 
     @Test
     void downloadBook_delegatesToDownloadService() {
-        ResponseEntity<Resource> response = ResponseEntity.ok(mock(Resource.class));
+        ResponseEntity<StreamingResponseBody> response = ResponseEntity.ok(mock(StreamingResponseBody.class));
         when(bookDownloadService.downloadBook(1L)).thenReturn(response);
 
-        ResponseEntity<Resource> result = bookService.downloadBook(1L);
+        ResponseEntity<StreamingResponseBody> result = bookService.downloadBook(1L);
 
         assertEquals(response, result);
     }
@@ -362,6 +367,44 @@ class BookServiceTest {
     }
 
     @Test
+    void deleteBooks_clearsEntityManager() throws Exception {
+        BookEntity entity = new BookEntity();
+        entity.setId(11L);
+        LibraryEntity library = new LibraryEntity();
+        library.setId(42L);
+        LibraryPathEntity libPath = new LibraryPathEntity();
+        libPath.setPath("/tmp");
+        library.setLibraryPaths(List.of(libPath));
+        entity.setLibrary(library);
+        entity.setLibraryPath(libPath);
+        BookFileEntity primaryFile = new BookFileEntity();
+        primaryFile.setBook(entity);
+        primaryFile.setFileSubPath("");
+        primaryFile.setFileName("bookfile.txt");
+        entity.setBookFiles(Set.of(primaryFile));
+
+        Path filePath = Paths.get("/tmp/bookfile.txt");
+        Files.createDirectories(filePath.getParent());
+        Files.write(filePath, "abc".getBytes());
+
+        doNothing().when(bookRepository).deleteAllInBatch(anyList());
+        when(bookQueryService.findAllWithMetadataByIds(Set.of(11L))).thenReturn(List.of(entity));
+        when(authenticationService.getAuthenticatedUser()).thenReturn(testUser);
+
+        bookService.deleteBooks(Set.of(11L)).getBody();
+
+        InOrder order = inOrder(entityManager, bookRepository);
+
+        // The order of the calls is important - we MUST flush, then clear, and
+        // only then can we delete.  If we change the order then we end up with errors.
+        order.verify(entityManager).flush();
+        order.verify(entityManager).clear();
+        order.verify(bookRepository).deleteAllInBatch(anyList());
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
     void deleteBooks_deletesFilesAndEntities() throws Exception {
         BookEntity entity = new BookEntity();
         entity.setId(11L);
@@ -376,7 +419,7 @@ class BookServiceTest {
         primaryFile.setBook(entity);
         primaryFile.setFileSubPath("");
         primaryFile.setFileName("bookfile.txt");
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
 
         Path filePath = Paths.get("/tmp/bookfile.txt");
         Files.createDirectories(filePath.getParent());
@@ -409,7 +452,7 @@ class BookServiceTest {
         primaryFile.setBook(entity);
         primaryFile.setFileSubPath("");
         primaryFile.setFileName("nonexistentfile.txt");
-        entity.setBookFiles(List.of(primaryFile));
+        entity.setBookFiles(Set.of(primaryFile));
 
         when(bookQueryService.findAllWithMetadataByIds(Set.of(13L))).thenReturn(List.of(entity));
         when(authenticationService.getAuthenticatedUser()).thenReturn(testUser);

@@ -1,34 +1,34 @@
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { ErrorHandler, inject, isDevMode, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
-import { DialogService } from 'primeng/dynamicdialog';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { DialogService } from '@openng/optimus-ui/dynamicdialog';
+import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 import { RxStompService } from './app/shared/websocket/rx-stomp.service';
 import { rxStompServiceFactory } from './app/shared/websocket/rx-stomp-service-factory';
 import { provideRouter, RouteReuseStrategy } from '@angular/router';
 import { CustomReuseStrategy } from './app/core/custom-reuse-strategy';
-import { providePrimeNG } from 'primeng/config';
+import { provideOptimus } from '@openng/optimus-ui/config';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
-import Aura from './app/shared/layout/theme-palette-extend';
+import Aura from './app/shared/layout/theme/theme-palette-extend';
 import { routes } from './app/app.routes';
 import { AuthInterceptorService } from './app/core/security/auth-interceptor.service';
-import { AuthService, websocketInitializer } from './app/shared/service/auth.service';
+import { AuthService } from './app/shared/service/auth.service';
 import { GlobalErrorHandler } from './app/core/errors/global-error-handler';
 import { PwaUpdateService } from './app/core/services/pwa-update.service';
 import { initializeAuthFactory } from './app/core/security/auth-initializer';
 import { StartupService } from './app/shared/service/startup.service';
-import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTransloco } from '@jsverse/transloco';
 import { AVAILABLE_LANGS, TranslocoInlineLoader } from './app/core/config/transloco-loader';
-import { initializeLanguage } from './app/core/config/language-initializer';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { provideLucideConfig } from '@lucide/angular';
+
+document.addEventListener('touchstart', () => undefined, { passive: true });
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    provideCharts(withDefaultRegisterables(), ChartDataLabels),
+    provideLucideConfig({ size: '1em', strokeWidth: 2 }),
     provideTanStackQuery(new QueryClient({
       defaultOptions: {
         queries: {
@@ -39,15 +39,11 @@ bootstrapApplication(AppComponent, {
       },
     })),
     provideAppInitializer(() => {
-      const authService = inject(AuthService);
-      return websocketInitializer(authService)();
-    }),
-    provideAppInitializer(() => {
+      const initializeAuth = initializeAuthFactory();
       const startup = inject(StartupService);
-      return startup.load();
+      return Promise.resolve(initializeAuth()).then(() => startup.load());
     }),
-    provideHttpClient(withInterceptors([AuthInterceptorService])),
-    provideAppInitializer(initializeAuthFactory()),
+    provideHttpClient(withXhr(), withInterceptors([AuthInterceptorService])),
     provideRouter(routes),
     DialogService,
     MessageService,
@@ -71,12 +67,12 @@ bootstrapApplication(AppComponent, {
       },
       loader: TranslocoInlineLoader,
     }),
-    provideAppInitializer(initializeLanguage()),
-    providePrimeNG({
+    provideOptimus({
       theme: {
         preset: Aura,
         options: {
-          darkModeSelector: '.p-dark'
+          darkModeSelector: '.dark',
+          cssLayer: { name: 'optimus', order: 'theme, base, optimus, components, utilities' }
         }
       }
     }), provideServiceWorker('ngsw-worker.js', {

@@ -4,7 +4,7 @@ import {describe, expect, it, vi} from 'vitest';
 
 import {ReaderPreferencesService} from './reader-preferences.service';
 import {User, UserService, UserSettings} from '../user-management/user.service';
-import {MessageService} from 'primeng/api';
+import {MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
 
 describe('ReaderPreferencesService', () => {
@@ -64,6 +64,10 @@ describe('ReaderPreferencesService', () => {
       username: 'reader',
       name: 'Reader',
       email: 'reader@example.test',
+      locale: 'en',
+      theme: 'grimmory',
+      themeAccent: null,
+      themeSyncEnabled: true,
       assignedLibraries: [],
     } as unknown as User);
     const updateUserSetting = vi.fn();
@@ -148,6 +152,10 @@ describe('ReaderPreferencesService', () => {
       username: 'reader',
       name: 'Reader',
       email: 'reader@example.test',
+      locale: 'en',
+      theme: 'grimmory',
+      themeAccent: null,
+      themeSyncEnabled: true,
       assignedLibraries: [],
     } as unknown as User);
     const updateUserSetting = vi.fn();

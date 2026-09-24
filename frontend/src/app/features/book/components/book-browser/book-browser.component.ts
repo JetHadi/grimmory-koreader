@@ -1,39 +1,41 @@
-import {AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, computed, effect, inject, signal, viewChild} from '@angular/core';
+import {AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, computed, effect, inject, signal, untracked, viewChild} from '@angular/core';
 import {takeUntilDestroyed, toObservable, toSignal} from '@angular/core/rxjs-interop';
 import {ActivatedRoute} from '@angular/router';
-import {ConfirmationService, MenuItem, MessageService} from 'primeng/api';
+import {ConfirmationService, MenuItem, MessageService} from '@openng/optimus-ui/api';
 import {PageTitleService} from '../../../../shared/service/page-title.service';
 import {BookService} from '../../service/book.service';
 import {BookMetadataManageService} from '../../service/book-metadata-manage.service';
 import {debounceTime, distinctUntilChanged, filter, map, skip, take} from 'rxjs/operators';
 import {combineLatest, finalize} from 'rxjs';
-import {DynamicDialogRef} from 'primeng/dynamicdialog';
+import {DynamicDialogRef} from '@openng/optimus-ui/dynamicdialog';
 import {Library} from '../../model/library.model';
 import {SortDirection, SortOption} from '../../model/sort.model';
 import {Book} from '../../model/book.model';
-import {LibraryShelfMenuService} from '../../service/library-shelf-menu.service';
+import {
+  LibraryShelfMenuComponent,
+  type LibraryShelfMenuTarget,
+} from '../library-shelf-menu/library-shelf-menu.component';
 import {BookTableComponent} from './book-table/book-table.component';
-import {Button} from 'primeng/button';
+import {Button, ButtonDirective} from '@openng/optimus-ui/button';
 import {NgClass} from '@angular/common';
 import {BookCardComponent} from './book-card/book-card.component';
 
-import {Menu} from 'primeng/menu';
-import {InputText} from 'primeng/inputtext';
+import {InputText} from '@openng/optimus-ui/inputtext';
 import {FormsModule} from '@angular/forms';
 import {BookFilterComponent} from './book-filter/book-filter.component';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {BookFilterMode, DEFAULT_VISIBLE_SORT_FIELDS, EntityViewPreferences, SortCriterion, UserService} from '../../../settings/user-management/user.service';
 import {SeriesCollapseFilter} from './filters/SeriesCollapseFilter';
 import {CoverScalePreferenceService} from './cover-scale-preference.service';
 import {BookSorter} from './sorting/BookSorter';
 import {BookDialogHelperService} from './book-dialog-helper.service';
-import {Checkbox} from 'primeng/checkbox';
-import {Popover} from 'primeng/popover';
-import {Divider} from 'primeng/divider';
-import {MultiSelect} from 'primeng/multiselect';
+import {Checkbox} from '@openng/optimus-ui/checkbox';
+import {Popover} from '@openng/optimus-ui/popover';
+import {Divider} from '@openng/optimus-ui/divider';
+import {MultiSelect} from '@openng/optimus-ui/multiselect';
 import {TableColumnPreferenceService} from './table-column-preference.service';
-import {TieredMenu} from 'primeng/tieredmenu';
-import {Badge} from 'primeng/badge';
+import {TieredMenu} from '@openng/optimus-ui/tieredmenu';
+import {Badge} from '@openng/optimus-ui/badge';
 import {BookMenuService} from '../../service/book-menu.service';
 import {SidebarFilterTogglePrefService} from './filters/sidebar-filter-toggle-pref.service';
 import {MetadataRefreshType} from '../../../metadata/model/request/metadata-refresh-type.enum';
@@ -41,6 +43,7 @@ import {TaskHelperService} from '../../../settings/task-management/task-helper.s
 import {FilterLabelHelper} from './filter-label.helper';
 import {LoadingService} from '../../../../core/services/loading.service';
 import {LocalStorageService} from '../../../../shared/service/local-storage.service';
+import {LanguageResolverService} from '../../../../shared/service/language-resolver.service';
 import {BookNavigationService} from '../../service/book-navigation.service';
 import {BookCardOverlayPreferenceService} from './book-card-overlay-preference.service';
 import {BookSelectionService, CheckboxClickEvent} from './book-selection.service';
@@ -49,13 +52,17 @@ import {BookBrowserEntityService, EntityInfo} from './book-browser-entity.servic
 import {RouteScrollPositionService} from '../../../../shared/service/route-scroll-position.service';
 import {AppSettingsService} from '../../../../shared/service/app-settings.service';
 import {MultiSortPopoverComponent} from './sorting/multi-sort-popover/multi-sort-popover.component';
-import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
+import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 
 import {SortService} from '../../service/sort.service';
-import {AppBooksApiService} from '../../service/app-books-api.service';
-import {AppBookFilters} from '../../model/app-book.model';
-import {createVirtualGrid, scaleForGridColumns} from '../../../../shared/util/virtual-grid.util';
-import {GridDensityButtonsComponent} from '../../../../shared/components/grid-density-buttons/grid-density-buttons.component';
+import {createVirtualGrid, type VirtualGridMetrics} from '../../../../shared/util/virtual-grid.util';
+import {GridDensityButtonsComponent, type GridDensityDirection} from '../../../../shared/components/grid-density-buttons/grid-density-buttons.component';
+import {filterBooksBySearchTerm} from './filters/HeaderFilter';
+import {filterBooksByFilters} from './filters/sidebar-filter';
+import {LayoutService} from '../../../../shared/layout/layout.service';
+import {createGridDensity} from '../../../../shared/util/grid-density.util';
+import {DeferredRenderState} from './deferred-render-state';
+import {AppMenuTriggerDirective} from '../../../../shared/ui/menu/app-menu-trigger.directive';
 
 export enum EntityType {
   LIBRARY = 'Library',
@@ -65,6 +72,12 @@ export enum EntityType {
   UNSHELVED = 'Unshelved Books',
 }
 
+const INITIAL_LOADING_ROW_COUNT = 24;
+const DEFAULT_MOBILE_GRID_COLUMNS = 3;
+const MIN_MOBILE_GRID_COLUMNS = 2;
+const MAX_MOBILE_GRID_COLUMNS = 4;
+const MOBILE_COLUMNS_STORAGE_KEY = 'mobileColumnsPreference';
+
 @Component({
   selector: 'app-book-browser',
   standalone: true,
@@ -72,14 +85,14 @@ export enum EntityType {
   styleUrls: ['./book-browser.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    Button, BookCardComponent, Menu, InputText, FormsModule,
+    Button, ButtonDirective, BookCardComponent, InputText, FormsModule,
     BookTableComponent, BookFilterComponent, Tooltip, NgClass, Popover,
-    Checkbox, Divider, MultiSelect, TieredMenu, Badge, MultiSortPopoverComponent, TranslocoDirective, GridDensityButtonsComponent,
+    Checkbox, Divider, MultiSelect, TieredMenu, Badge, MultiSortPopoverComponent, TranslocoDirective, TranslocoPipe, GridDensityButtonsComponent,
+    LibraryShelfMenuComponent, AppMenuTriggerDirective,
   ],
   providers: [SeriesCollapseFilter],
 })
 export class BookBrowserComponent implements AfterViewInit {
-
   protected userService = inject(UserService);
   protected coverScalePreferenceService = inject(CoverScalePreferenceService);
   protected columnPreferenceService = inject(TableColumnPreferenceService);
@@ -97,27 +110,27 @@ export class BookBrowserComponent implements AfterViewInit {
   private bookMetadataManageService = inject(BookMetadataManageService);
   private dialogHelperService = inject(BookDialogHelperService);
   private bookMenuService = inject(BookMenuService);
-  private libraryShelfMenuService = inject(LibraryShelfMenuService);
   private pageTitle = inject(PageTitleService);
   private loadingService = inject(LoadingService);
   private bookNavigationService = inject(BookNavigationService);
   private queryParamsService = inject(BookBrowserQueryParamsService);
   private entityService = inject(BookBrowserEntityService);
   private sortService = inject(SortService);
-  private appBooksApi = inject(AppBooksApiService);
   private localStorageService = inject(LocalStorageService);
   private scrollService = inject(RouteScrollPositionService);
+  private layoutService = inject(LayoutService);
   private readonly t = inject(TranslocoService);
+  private readonly languageResolver = inject(LanguageResolverService);
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
-    this.loadMobileColumnsPreference();
     this.setupRouteChangeHandlers();
     this.setupQueryParamSubscription();
     this.scrollService.trackRoute({
       scrollElement: this.scrollElement,
       route: this.activatedRoute,
       destroyRef: this.destroyRef,
+      keySuffix: 'grid',
       dismissOverlaysBeforeSave: true,
     });
     this.destroyRef.onDestroy(() => this.bookSelectionService.deselectAll());
@@ -159,7 +172,6 @@ export class BookBrowserComponent implements AfterViewInit {
   readonly visibleSortOptions = signal<SortOption[]>([]);
   readonly currentFilterLabel = signal<string | null>(null);
   readonly rawFilterParamFromUrl = signal<string | null>(null);
-  readonly mobileColumnCount = signal(3);
   private readonly seriesCollapsed = this.seriesCollapseFilter.seriesCollapsed;
   readonly selectedBooks = this.bookSelectionService.selectedBooks;
   readonly selectedCount = this.bookSelectionService.selectedCount;
@@ -180,156 +192,153 @@ export class BookBrowserComponent implements AfterViewInit {
     const {entityId, entityType} = this.entityInfo();
     return this.entityService.getEntity(entityId, entityType);
   });
-  readonly entityOptions = computed<MenuItem[]>(() => {
+  readonly entityMenuTarget = computed<LibraryShelfMenuTarget | null>(() => {
     const entity = this.entity();
-    if (!entity) {
-      return [];
+    if (entity?.id == null) return null;
+
+    if (this.entityService.isLibrary(entity)) {
+      return {type: 'library', entity: {...entity, id: entity.id}};
     }
-
-    const actions = this.entityService.isLibrary(entity)
-      ? this.libraryShelfMenuService.initializeLibraryMenuItems(entity)
-      : this.entityService.isMagicShelf(entity)
-        ? this.libraryShelfMenuService.initializeMagicShelfMenuItems(entity)
-        : this.libraryShelfMenuService.initializeShelfMenuItems(entity);
-
-    return actions;
+    if (this.entityService.isMagicShelf(entity)) {
+      return {type: 'magicShelf', entity: {...entity, id: entity.id}};
+    }
+    return {type: 'shelf', entity: {...entity, id: entity.id}};
   });
-  // --- Server-side data pipeline: delegates filtering, sorting, searching to the API ---
+  // Deferred pipeline: heavy filter/sort runs in a setTimeout so the page chrome
+  // and skeletons paint first, then real books replace them on the next task.
   private readonly forceExpandSeries = computed(() =>
     this.queryParamsService.shouldForceExpandSeries(this.queryParamMap())
   );
-
-  /** Sync entity scope, filters, search, and sort to the API service. */
-  private readonly syncApiStateEffect = effect(() => {
+  private readonly booksContextKey = computed(() => {
     const {entityId, entityType} = this.entityInfo();
-    const search = this.debouncedSearchTerm();
-    const sidebarFilters = this.selectedFilter();
+    return Number.isNaN(entityId) ? entityType : `${entityType}:${entityId}`;
+  });
+  private lastBooksContextKey: string | null = null;
+  private readonly booksRenderState = new DeferredRenderState<Book[]>();
+  readonly books = computed(() => this.booksRenderState.value() ?? []);
+  readonly hasRenderedBooks = this.booksRenderState.hasValue;
+  readonly isBooksRefreshing = this.booksRenderState.isRefreshing;
+
+  private readonly computeBooksEffect = effect((onCleanup) => {
+    const contextKey = this.booksContextKey();
+    const allBooks = this.bookService.books();
+    const {entityId, entityType} = this.entityInfo();
+    const searchTerm = this.debouncedSearchTerm();
+    const filters = this.selectedFilter();
+    const filterMode = this.selectedFilterMode();
+    const collapsedFlag = this.seriesCollapsed();
+    const forceExpand = this.forceExpandSeries();
     const sortCriteria = this.sortCriteria();
 
-    const scopeFilters: AppBookFilters = {};
-    switch (entityType) {
-      case EntityType.LIBRARY:
-        if (!Number.isNaN(entityId)) scopeFilters.libraryId = entityId;
-        break;
-      case EntityType.SHELF:
-        if (!Number.isNaN(entityId)) scopeFilters.shelfId = entityId;
-        break;
-      case EntityType.MAGIC_SHELF:
-        if (!Number.isNaN(entityId)) scopeFilters.magicShelfId = entityId;
-        break;
-      case EntityType.UNSHELVED:
-        scopeFilters.unshelved = true;
-        break;
-    }
+    const sameContext = contextKey === this.lastBooksContextKey;
+    const shouldRefresh = sameContext && untracked(() => this.hasRenderedBooks());
+    const requestId = this.booksRenderState.begin(shouldRefresh ? 'refresh' : 'reset');
+    this.lastBooksContextKey = contextKey;
 
-    if (sidebarFilters) {
-      for (const [type, values] of Object.entries(sidebarFilters)) {
-        if (!values || values.length === 0) continue;
-        const strValues = values.map(String);
-        switch (type) {
-          case 'author': scopeFilters.authors = strValues; break;
-          case 'category': scopeFilters.category = strValues; break;
-          case 'series': scopeFilters.series = strValues; break;
-          case 'publisher': scopeFilters.publisher = strValues; break;
-          case 'tag': scopeFilters.tag = strValues; break;
-          case 'mood': scopeFilters.mood = strValues; break;
-          case 'narrator': scopeFilters.narrator = strValues; break;
-          case 'language': scopeFilters.language = strValues; break;
-          case 'readStatus': scopeFilters.status = strValues; break;
-          case 'bookType': scopeFilters.fileType = strValues; break;
-          case 'ageRating': scopeFilters.ageRating = strValues; break;
-          case 'contentRating': scopeFilters.contentRating = strValues; break;
-          case 'matchScore': scopeFilters.matchScore = strValues; break;
-          case 'publishedDate': scopeFilters.publishedDate = strValues; break;
-          case 'fileSize': scopeFilters.fileSize = strValues; break;
-          case 'personalRating': scopeFilters.personalRating = strValues; break;
-          case 'amazonRating': scopeFilters.amazonRating = strValues; break;
-          case 'goodreadsRating': scopeFilters.goodreadsRating = strValues; break;
-          case 'hardcoverRating': scopeFilters.hardcoverRating = strValues; break;
-          case 'pageCount': scopeFilters.pageCount = strValues; break;
-          case 'shelfStatus':
-            scopeFilters.shelfStatus = strValues;
-            break;
-          case 'comicCharacter': scopeFilters.comicCharacter = strValues; break;
-          case 'comicTeam': scopeFilters.comicTeam = strValues; break;
-          case 'comicLocation': scopeFilters.comicLocation = strValues; break;
-          case 'comicCreator': scopeFilters.comicCreator = strValues; break;
-          case 'shelf': scopeFilters.shelves = strValues; break;
-          case 'library': scopeFilters.libraries = strValues; break;
-        }
-      }
-      const mode = this.selectedFilterMode();
-      scopeFilters.filterMode = mode === 'single' ? 'or' : mode;
-    }
+    const timeoutId = globalThis.setTimeout(() => {
+      const entityBooks = this.entityService.getBooksByEntity(allBooks, entityId, entityType);
+      const searched = filterBooksBySearchTerm(entityBooks, searchTerm);
+      const filtered = filterBooksByFilters(searched, filters, filterMode);
+      const collapsed = this.seriesCollapseFilter.collapseBooks(filtered, forceExpand, collapsedFlag);
+      const sorted = this.sortService.applyMultiSort(collapsed, sortCriteria);
+      this.booksRenderState.commit(requestId, sorted);
+    });
 
-    this.appBooksApi.setFilters(scopeFilters);
-    this.appBooksApi.setSearch(search);
-
-    if (sortCriteria.length > 0) {
-      const primary = sortCriteria[0];
-      const dir = primary.direction === SortDirection.ASCENDING ? 'asc' as const : 'desc' as const;
-      this.appBooksApi.setSort({field: primary.field, dir});
-    }
+    onCleanup(() => {
+      globalThis.clearTimeout(timeoutId);
+      this.booksRenderState.cancel(requestId);
+    });
   });
 
-  readonly books = computed(() => {
-    const books = this.appBooksApi.books();
-    return this.seriesCollapseFilter.collapseBooks(books, this.forceExpandSeries());
-  });
-
-  readonly isBooksLoading = computed(() => this.appBooksApi.isLoading());
-  readonly booksError = this.appBooksApi.error;
+  readonly isBooksLoading = this.bookService.isBooksLoading;
+  readonly booksError = this.bookService.booksError;
 
   private readonly GRID_GAP = 21;
-  private readonly MOBILE_BREAKPOINT = 768;
   private readonly CARD_ASPECT_RATIO = 7 / 5;
-  private readonly MOBILE_GAP = 8;
-  private readonly MOBILE_PADDING = 48;
   private readonly MOBILE_TITLE_BAR_HEIGHT = 32;
-  private readonly MOBILE_COLUMNS_STORAGE_KEY = 'mobileColumnsPreference';
   private readonly DESKTOP_CARD_BASE_WIDTH = 135;
   private readonly DESKTOP_CARD_BASE_HEIGHT = 220;
   private readonly DESKTOP_MIN_SCALE = 0.5;
   private readonly DESKTOP_MAX_SCALE = 1.5;
   private readonly AUDIOBOOK_TITLE_BAR_HEIGHT = 31;
   private readonly scrollElement = viewChild<ElementRef<HTMLElement>>('scrollElement');
-  private readonly initialScrollOffset = () => this.scrollService.getPosition(this.scrollService.keyFor(this.activatedRoute)) ?? 0;
-  private readonly gridBooks = this.books;
+  private readonly initialScrollOffset = () => this.scrollService.getPosition(this.scrollService.keyFor(this.activatedRoute, 'grid')) ?? 0;
+  readonly isMobile = computed(() => !this.layoutService.isDesktop());
   private readonly desktopBaseCardWidth = computed(() =>
     this.isAudiobookOnlyLibrary()
       ? this.DESKTOP_CARD_BASE_WIDTH * 1.1
       : this.DESKTOP_CARD_BASE_WIDTH
   );
+  private readonly gridDensity = createGridDensity(this.localStorageService, {
+    useFixedColumns: this.isMobile,
+    screenWidth: this.screenWidth,
+    storageKey: MOBILE_COLUMNS_STORAGE_KEY,
+    defaultColumns: DEFAULT_MOBILE_GRID_COLUMNS,
+    minColumns: MIN_MOBILE_GRID_COLUMNS,
+    maxColumns: MAX_MOBILE_GRID_COLUMNS,
+    scale: this.coverScalePreferenceService.scaleFactor,
+    minScale: this.DESKTOP_MIN_SCALE,
+    maxScale: this.DESKTOP_MAX_SCALE,
+    gap: this.GRID_GAP,
+    baseWidth: this.desktopBaseCardWidth,
+    setScale: scale => this.coverScalePreferenceService.setScale(scale),
+  });
   private readonly minCardWidth = computed(() =>
     this.isMobile()
       ? 1
       : Math.round(this.desktopBaseCardWidth() * this.coverScalePreferenceService.scaleFactor())
   );
-  private readonly virtualGridGap = computed(() => this.isMobile() ? this.MOBILE_GAP : this.GRID_GAP);
-  private readonly virtualGridColumns = computed(() => this.isMobile() ? this.mobileColumnCount() : undefined);
-  private readonly virtualBookCount = computed(() => {
-    const renderedBookCount = this.gridBooks().length;
-    return this.appBooksApi.hasNextPage()
-      ? Math.max(this.appBooksApi.totalElements(), renderedBookCount)
-      : renderedBookCount;
-  });
+  readonly virtualRowCount = computed(() => this.bookCountIncludingUnloadedPages(this.books().length));
+  private readonly hasUnloadedBooks = computed(() => this.books().length < this.virtualRowCount());
+  readonly loadedBookCount = computed(() => this.books().length);
   readonly virtualGrid = createVirtualGrid({
-    items: this.gridBooks,
+    items: this.books,
     scrollElement: this.scrollElement,
     minItemWidth: this.minCardWidth,
-    gap: this.virtualGridGap,
-    columns: this.virtualGridColumns,
-    count: this.virtualBookCount,
+    gap: this.gridDensity.gap,
+    columns: this.gridDensity.columns,
+    count: this.virtualRowCount,
+    minimumCount: metrics => this.minimumLoadingGridItemCount(metrics),
     initialOffset: this.initialScrollOffset,
     fillItemWidth: true,
+    deferViewportUpdates: this.layoutService.sidebarTransitioning,
     estimateItemHeight: itemWidth => this.isMobile()
       ? this.mobileCardSizeForWidth(itemWidth).height
       : this.cardSizeForWidth(itemWidth).height,
   });
+  readonly bookQueryToken = computed(() => ({
+    entity: this.entityInfo(),
+    search: this.debouncedSearchTerm(),
+    filter: this.selectedFilter(),
+    filterMode: this.selectedFilterMode(),
+    sort: this.sortCriteria(),
+  }));
+  private gridLastLoadRequestLoadedBookCount: number | undefined;
+  private gridLastSeenQueryToken: unknown;
+  private readonly gridPaginatorEffect = effect(() => {
+    if (this.currentViewMode() !== VIEW_MODES.GRID) return;
 
-  skeletonSlots = Array.from({length: 24}, (_, index) => index);
-  readonly tableSkeletonRows = Array.from({length: 8}, (_, index) => index);
-  readonly tableSkeletonColumns = Array.from({length: 5}, (_, index) => index);
+    const queryToken = this.bookQueryToken();
+    if (queryToken !== this.gridLastSeenQueryToken) {
+      this.gridLastLoadRequestLoadedBookCount = undefined;
+      this.gridLastSeenQueryToken = queryToken;
+    }
+
+    const items = this.books();
+    const loadedBookCount = this.loadedBookCount();
+    const lastVirtualItem = this.virtualGrid.virtualizer.getVirtualItems().at(-1);
+    if (!lastVirtualItem || items.length === 0) return;
+    if (lastVirtualItem.index < items.length - 1) return;
+    if (!this.hasUnloadedBooks()) return;
+    if (this.gridLastLoadRequestLoadedBookCount === loadedBookCount) {
+      this.gridLastLoadRequestLoadedBookCount = undefined;
+      return;
+    }
+
+    this.gridLastLoadRequestLoadedBookCount = loadedBookCount;
+  });
+  readonly isFetchingNextBooksPage = this.bookService.isBooksLoading;
+
   parsedFilters: Record<string, string[]> = {};
   dynamicDialogRef: DynamicDialogRef | undefined | null;
   EntityType = EntityType;
@@ -352,7 +361,9 @@ export class BookBrowserComponent implements AfterViewInit {
       const filterName = FilterLabelHelper.getFilterTypeName(filterType);
 
       if (values.length === 1) {
-        const displayValue = FilterLabelHelper.getFilterDisplayValue(filterType, values[0]);
+        const displayValue = filterType === 'language'
+          ? this.languageResolver.displayName(String(values[0]))
+          : FilterLabelHelper.getFilterDisplayValue(filterType, values[0]);
         return `${filterName}: ${displayValue}`;
       }
 
@@ -433,24 +444,6 @@ export class BookBrowserComponent implements AfterViewInit {
     );
   });
 
-  private readonly fetchNextPageEffect = effect(() => {
-    if (this.currentViewMode() !== VIEW_MODES.GRID) return;
-
-    const virtualItems = this.virtualGrid.virtualizer.getVirtualItems();
-    const loadedBookCount = this.gridBooks().length;
-    const lastItem = virtualItems.at(-1);
-
-    if (
-      lastItem &&
-      loadedBookCount > 0 &&
-      lastItem.index >= loadedBookCount - 1 &&
-      this.appBooksApi.hasNextPage() &&
-      !this.appBooksApi.isFetchingNextPage()
-    ) {
-      this.appBooksApi.fetchNextPage();
-    }
-  });
-
   private readonly bookTableComponent = viewChild(BookTableComponent);
   private readonly bookFilterComponent = viewChild(BookFilterComponent);
 
@@ -459,31 +452,8 @@ export class BookBrowserComponent implements AfterViewInit {
     this.screenWidth.set(window.innerWidth);
   }
 
-  readonly isMobile = computed(() => this.screenWidth() < this.MOBILE_BREAKPOINT);
-
-  readonly mobileCardSize = computed(() => {
-    const columns = this.mobileColumnCount();
-    const totalGaps = (columns - 1) * this.MOBILE_GAP;
-    const availableWidth = this.screenWidth() - totalGaps - this.MOBILE_PADDING;
-    const cardWidth = Math.floor(availableWidth / columns);
-    const coverHeight = this.isAudiobookOnlyLibrary() ? cardWidth : Math.floor(cardWidth * this.CARD_ASPECT_RATIO);
-    const cardHeight = coverHeight + this.MOBILE_TITLE_BAR_HEIGHT;
-    return {width: cardWidth, height: cardHeight};
-  });
-
-  readonly currentCardSize = computed<{width: number; height: number}>(() => {
-    if (this.isMobile()) {
-      const width = this.virtualGrid.viewportWidth() > 0
-        ? this.virtualGrid.itemWidth()
-        : this.mobileCardSize().width;
-      return this.mobileCardSizeForWidth(width);
-    }
-    return this.cardSizeForWidth(this.virtualGrid.itemWidth());
-  });
-
-  readonly skeletonMinCardWidth = computed(() =>
-    `${this.isMobile() ? this.mobileCardSize().width : this.minCardWidth()}px`
-  );
+  readonly gridDensitySmallerDisabled = this.gridDensity.smallerDisabled;
+  readonly gridDensityLargerDisabled = this.gridDensity.largerDisabled;
 
   private cardSizeForWidth(width: number): { width: number; height: number } {
     const cardWidth = Math.round(width);
@@ -505,16 +475,31 @@ export class BookBrowserComponent implements AfterViewInit {
   }
 
   readonly showBooksLoadingPlaceholder = computed(() =>
-    !this.booksError() && this.isBooksLoading() && this.books().length === 0
+    !this.booksError() && (!this.hasRenderedBooks() || (this.isBooksLoading() && this.books().length === 0))
   );
 
   readonly showTableLoadingPlaceholder = computed(() =>
     this.showBooksLoadingPlaceholder() && this.currentViewMode() === VIEW_MODES.TABLE
   );
 
-  readonly showGridLoadingPlaceholder = computed(() =>
-    this.showBooksLoadingPlaceholder() && this.currentViewMode() === VIEW_MODES.GRID
-  );
+  private bookCountIncludingUnloadedPages(renderedBookCount: number): number {
+    if (this.showBooksLoadingPlaceholder()) {
+      return INITIAL_LOADING_ROW_COUNT;
+    }
+    return renderedBookCount;
+  }
+
+  private minimumLoadingGridItemCount({viewportHeight, columns, itemHeight, gap}: VirtualGridMetrics): number {
+    if (!this.showBooksLoadingPlaceholder() || this.currentViewMode() !== VIEW_MODES.GRID) {
+      return 0;
+    }
+    if (viewportHeight <= 0 || itemHeight <= 0) {
+      return INITIAL_LOADING_ROW_COUNT;
+    }
+
+    const visibleRows = Math.ceil((viewportHeight + gap) / (itemHeight + gap));
+    return Math.max(INITIAL_LOADING_ROW_COUNT, (visibleRows + 1) * columns);
+  }
 
   readonly viewIcon = computed(() =>
     this.currentViewMode() === VIEW_MODES.TABLE ? 'pi pi-table' : 'pi pi-objects-column'
@@ -578,6 +563,7 @@ export class BookBrowserComponent implements AfterViewInit {
       scrollElement.scrollTop = 0;
     }
     this.bookTableComponent()?.scrollToTop();
+    this.virtualGrid.virtualizer.scrollToOffset(0);
   }
 
   private readonly syncMetadataMenuEffect = effect(() => {
@@ -693,10 +679,7 @@ export class BookBrowserComponent implements AfterViewInit {
   }
 
   onVisibleColumnsChange(selected: { field: string; header: string }[]): void {
-    const bookTableComponent = this.bookTableComponent();
-    if (!bookTableComponent) return;
-
-    const allFields = bookTableComponent.allColumns.map(col => col.field);
+    const allFields = this.columnPreferenceService.allColumns.map(column => column.field);
     this.visibleColumns.set(selected.sort(
       (a, b) => allFields.indexOf(a.field) - allFields.indexOf(b.field)
     ));
@@ -710,24 +693,23 @@ export class BookBrowserComponent implements AfterViewInit {
     this.bookSelectionService.handleBookSelection(book, selected);
   }
 
-  onSelectedBooksChange(selectedBookIds: Set<number>): void {
-    this.bookSelectionService.setSelectedBooks(selectedBookIds);
+  selectAllBooks(): void {
+    const {entityId, entityType} = this.entityInfo();
+    const entityBooks = this.entityService.getBooksByEntity(
+      this.bookService.books(), entityId, entityType
+    );
+    const searched = filterBooksBySearchTerm(entityBooks, this.debouncedSearchTerm());
+    const filtered = filterBooksByFilters(searched, this.selectedFilter(), this.selectedFilterMode());
+    this.bookSelectionService.selectAll(filtered.map(b => b.id));
   }
 
-  selectAllBooks(): void {
-    this.appBooksApi.fetchAllBookIds().pipe(take(1)).subscribe({
-      next: (allIds) => {
-        this.bookSelectionService.selectAll(allIds);
-      },
-      error: () => {
-        this.bookSelectionService.selectAll();
-      }
-    });
+  loadNextBooksPage(): void {
+    // This function is temporarily a no-op while a long term plan is being considered.
+    return;
   }
 
   deselectAllBooks(): void {
     this.bookSelectionService.deselectAll();
-    this.bookTableComponent()?.clearSelectedBooks();
   }
 
   confirmDeleteBooks(): void {
@@ -918,8 +900,8 @@ export class BookBrowserComponent implements AfterViewInit {
       });
   }
 
-  openShelfAssigner(): void {
-    this.dynamicDialogRef = this.dialogHelperService.openShelfAssignerDialog(null, this.selectedBooks());
+  async openShelfAssigner() {
+    this.dynamicDialogRef = await this.dialogHelperService.openShelfAssignerDialog(null, this.selectedBooks());
     if (this.dynamicDialogRef) {
       this.dynamicDialogRef.onClose.pipe(take(1)).subscribe(result => {
         if (result?.assigned) {
@@ -929,8 +911,8 @@ export class BookBrowserComponent implements AfterViewInit {
     }
   }
 
-  lockUnlockMetadata(): void {
-    this.dynamicDialogRef = this.dialogHelperService.openLockUnlockMetadataDialog(this.selectedBooks());
+  async lockUnlockMetadata() {
+    this.dynamicDialogRef = await this.dialogHelperService.openLockUnlockMetadataDialog(this.selectedBooks());
     if (this.dynamicDialogRef) {
       this.dynamicDialogRef.onClose.pipe(take(1)).subscribe(() => {
         this.bookSelectionService.deselectAll();
@@ -947,12 +929,12 @@ export class BookBrowserComponent implements AfterViewInit {
     }).subscribe();
   }
 
-  fetchMetadata(): void {
-    this.dialogHelperService.openMetadataRefreshDialog(this.selectedBooks());
+  async fetchMetadata() {
+    await this.dialogHelperService.openMetadataRefreshDialog(this.selectedBooks());
   }
 
-  bulkEditMetadata(): void {
-    this.dynamicDialogRef = this.dialogHelperService.openBulkMetadataEditDialog(this.selectedBooks());
+  async bulkEditMetadata() {
+    this.dynamicDialogRef = await this.dialogHelperService.openBulkMetadataEditDialog(this.selectedBooks());
     if (this.dynamicDialogRef) {
       this.dynamicDialogRef.onClose.pipe(take(1)).subscribe(() => {
         this.bookSelectionService.deselectAll();
@@ -960,8 +942,8 @@ export class BookBrowserComponent implements AfterViewInit {
     }
   }
 
-  multiBookEditMetadata(): void {
-    this.dynamicDialogRef = this.dialogHelperService.openMultibookMetadataEditorDialog(this.selectedBooks());
+  async multiBookEditMetadata() {
+    this.dynamicDialogRef = await this.dialogHelperService.openMultibookMetadataEditorDialog(this.selectedBooks());
     if (this.dynamicDialogRef) {
       this.dynamicDialogRef.onClose.pipe(take(1)).subscribe(() => {
         this.bookSelectionService.deselectAll();
@@ -1051,11 +1033,11 @@ export class BookBrowserComponent implements AfterViewInit {
     });
   }
 
-  moveFiles(): void {
-    this.dialogHelperService.openFileMoverDialog(this.selectedBooks());
+  async moveFiles() {
+    await this.dialogHelperService.openFileMoverDialog(this.selectedBooks());
   }
 
-  attachFilesToBook(): void {
+  async attachFilesToBook() {
     const selectedBookIds = Array.from(this.selectedBooks());
     const sourceBooks = this.books().filter(book =>
       selectedBookIds.includes(book.id)
@@ -1081,7 +1063,7 @@ export class BookBrowserComponent implements AfterViewInit {
       return;
     }
 
-    this.dynamicDialogRef = this.dialogHelperService.openBulkBookFileAttacherDialog(sourceBooks);
+    this.dynamicDialogRef = await this.dialogHelperService.openBulkBookFileAttacherDialog(sourceBooks);
     if (this.dynamicDialogRef) {
       this.dynamicDialogRef.onClose.pipe(take(1)).subscribe(result => {
         if (result?.success) {
@@ -1105,33 +1087,7 @@ export class BookBrowserComponent implements AfterViewInit {
     return libraryIds.size === 1;
   }
 
-  setMobileColumns(columns: number): void {
-    this.mobileColumnCount.set(columns);
-    this.localStorageService.set(this.MOBILE_COLUMNS_STORAGE_KEY, columns);
-  }
-
-  adjustDesktopGridDensity(direction: 'smaller' | 'larger'): void {
-    const currentColumns = this.virtualGrid.gridColumns();
-    const columns = Math.max(1, direction === 'smaller'
-      ? currentColumns + 1
-      : currentColumns - 1);
-    const viewportWidth = this.virtualGrid.viewportWidth() || this.screenWidth();
-    this.virtualGrid.updatePreservingScrollPosition(() => {
-      this.coverScalePreferenceService.setScale(scaleForGridColumns(
-        viewportWidth,
-        this.GRID_GAP,
-        columns,
-        this.desktopBaseCardWidth(),
-        this.DESKTOP_MIN_SCALE,
-        this.DESKTOP_MAX_SCALE
-      ));
-    });
-  }
-
-  private loadMobileColumnsPreference(): void {
-    const saved = this.localStorageService.get<number>(this.MOBILE_COLUMNS_STORAGE_KEY);
-    if (saved !== null && [2, 3, 4].includes(saved)) {
-      this.mobileColumnCount.set(saved);
-    }
+  adjustGridDensity(direction: GridDensityDirection): void {
+    this.gridDensity.adjust(direction, this.virtualGrid);
   }
 }

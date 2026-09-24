@@ -5,10 +5,6 @@ import org.booklore.util.epub.EpubContentReader;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
-import org.grimmory.epub4j.cfi.CfiExpression;
-import org.grimmory.epub4j.cfi.CfiConverter;
-import org.grimmory.epub4j.cfi.CfiParser;
-import org.grimmory.epub4j.cfi.XPointerResult;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -23,11 +19,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 public class EpubCfiService {
 
+    private static final Pattern CFI_CLEANER_PATTERN = Pattern.compile("!/4(?=/)");
     private final Cache<String, Document> documentCache;
 
     public EpubCfiService() {
@@ -193,7 +191,7 @@ public class EpubCfiService {
         if (cfi == null) {
             return null;
         }
-        return cfi.replaceFirst("!/4(?=/)", "!");
+        return CFI_CLEANER_PATTERN.matcher(cfi).replaceFirst("!");
     }
 
     private Integer resolveSourceOffset(Document document, CfiExpression expression) {
@@ -288,7 +286,7 @@ public class EpubCfiService {
     }
 
     private Float clampPercent(float percent) {
-        return Math.max(0f, Math.min(percent, 100f));
+        return Math.clamp(percent, 0f, 100f);
     }
 
     public record CfiLocation(String href, Float contentSourceProgressPercent) {

@@ -1,9 +1,9 @@
-import {Component, computed, inject, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CdkDragDrop, DragDropModule} from '@angular/cdk/drag-drop';
-import {Dialog} from 'primeng/dialog';
-import {Button} from 'primeng/button';
+import {Dialog} from '@openng/optimus-ui/dialog';
+import {Button} from '@openng/optimus-ui/button';
 import {UserService} from '../../../settings/user-management/user.service';
-import {TranslocoDirective} from '@jsverse/transloco';
+import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
 import {PeakHoursChartComponent} from './charts/peak-hours-chart/peak-hours-chart.component';
 import {FavoriteDaysChartComponent} from './charts/favorite-days-chart/favorite-days-chart.component';
 import {ReadingDNAChartComponent} from './charts/reading-dna-chart/reading-dna-chart.component';
@@ -28,6 +28,9 @@ import {ReadingDebtChartComponent} from './charts/reading-debt-chart/reading-deb
 import {PublicationEraChartComponent} from './charts/publication-era-chart/publication-era-chart.component';
 import {SessionArchetypesChartComponent} from './charts/session-archetypes-chart/session-archetypes-chart.component';
 import {UserChartConfig, UserChartConfigService} from './service/user-chart-config.service';
+import {StatsChartThemeService} from '../shared/stats-chart-theme.service';
+import {provideCharts, withDefaultRegisterables} from 'ng2-charts';
+import {PageTitleService} from '../../../../shared/service/page-title.service';
 
 @Component({
   selector: 'app-user-stats',
@@ -61,12 +64,16 @@ import {UserChartConfig, UserChartConfigService} from './service/user-chart-conf
     SessionArchetypesChartComponent,
     TranslocoDirective
   ],
+  providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './user-stats.component.html',
   styleUrls: ['./user-stats.component.scss']
 })
-export class UserStatsComponent {
+export class UserStatsComponent implements OnInit {
   private userService = inject(UserService);
   private chartConfigService = inject(UserChartConfigService);
+  private readonly chartTheme = inject(StatsChartThemeService);
+  private readonly pageTitle = inject(PageTitleService);
+  private readonly t = inject(TranslocoService);
 
   public currentYear = new Date().getFullYear();
   public readonly userName = computed(() => {
@@ -76,6 +83,14 @@ export class UserStatsComponent {
   public readonly showConfigPanel = signal(false);
   public readonly charts = this.chartConfigService.charts;
   public readonly visibleCharts = this.chartConfigService.visibleCharts;
+
+  constructor() {
+    this.chartTheme.activate();
+  }
+
+  ngOnInit(): void {
+    this.pageTitle.setPageTitle(this.t.translate('statsUser.main.titleBarTitle'))
+  }
 
   toggleChart(chartId: string): void {
     this.chartConfigService.toggleChart(chartId);

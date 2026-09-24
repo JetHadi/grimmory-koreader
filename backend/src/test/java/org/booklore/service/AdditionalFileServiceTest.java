@@ -16,7 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.io.Resource;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,10 +25,11 @@ import org.springframework.http.ResponseEntity;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -74,7 +75,7 @@ class AdditionalFileServiceTest {
         fileEntity.setFileName("test-file.pdf");
         fileEntity.setFileSubPath(".");
         fileEntity.setBookFormat(true);
-        bookEntity.setBookFiles(new ArrayList<>(List.of(fileEntity)));
+        bookEntity.setBookFiles(Set.of(fileEntity));
 
         additionalFile = mock(BookFile.class);
     }
@@ -167,8 +168,8 @@ class AdditionalFileServiceTest {
         Long bookId = 100L;
         Long fileId = 1L;
         Path parentPath = fileEntity.getFullFilePath().getParent();
-        BookFileEntity primaryFile = createBookFile(2L, "primary.epub");
-        bookEntity.setBookFiles(new ArrayList<>(List.of(primaryFile, fileEntity)));
+        BookFileEntity primaryFile = createBookFile(0L, "primary.epub");
+        bookEntity.setBookFiles(new HashSet<>(Set.of(primaryFile, fileEntity)));
 
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(fileEntity));
 
@@ -189,8 +190,8 @@ class AdditionalFileServiceTest {
         Long bookId = 100L;
         Long fileId = 1L;
         Path parentPath = fileEntity.getFullFilePath().getParent();
-        BookFileEntity primaryFile = createBookFile(2L, "primary.epub");
-        bookEntity.setBookFiles(new ArrayList<>(List.of(primaryFile, fileEntity)));
+        BookFileEntity primaryFile = createBookFile(0L, "primary.epub");
+        bookEntity.setBookFiles(new HashSet<>(Set.of(primaryFile, fileEntity)));
 
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(fileEntity));
 
@@ -231,7 +232,7 @@ class AdditionalFileServiceTest {
         Long fileId = 1L;
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.empty());
 
-        ResponseEntity<Resource> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
+        ResponseEntity<StreamingResponseBody> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
 
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
         assertNull(result.getBody());
@@ -248,8 +249,8 @@ class AdditionalFileServiceTest {
         entityWithNonExistentFile.setBook(bookEntity);
         entityWithNonExistentFile.setFileName("non-existent.pdf");
         entityWithNonExistentFile.setFileSubPath(".");
-        BookFileEntity primaryFile = createBookFile(2L, "primary.epub");
-        bookEntity.setBookFiles(new ArrayList<>(List.of(primaryFile, entityWithNonExistentFile)));
+        BookFileEntity primaryFile = createBookFile(0L, "primary.epub");
+        bookEntity.setBookFiles(Set.of(primaryFile, entityWithNonExistentFile));
 
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(entityWithNonExistentFile));
 
@@ -257,7 +258,7 @@ class AdditionalFileServiceTest {
             Path actualPath = entityWithNonExistentFile.getFullFilePath();
             filesMock.when(() -> Files.exists(actualPath)).thenReturn(false);
 
-            ResponseEntity<Resource> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
+            ResponseEntity<StreamingResponseBody> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
 
             assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
             assertNull(result.getBody());
@@ -270,14 +271,14 @@ class AdditionalFileServiceTest {
     void downloadAdditionalFile_WhenFileExists_ShouldReturnFileResource() throws Exception {
         Long bookId = 100L;
         Long fileId = 1L;
-        BookFileEntity primaryFile = createBookFile(2L, "primary.epub");
-        bookEntity.setBookFiles(new ArrayList<>(List.of(primaryFile, fileEntity)));
+        BookFileEntity primaryFile = createBookFile(0L, "primary.epub");
+        bookEntity.setBookFiles(Set.of(primaryFile, fileEntity));
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(fileEntity));
 
         try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
             filesMock.when(() -> Files.exists(fileEntity.getFullFilePath())).thenReturn(true);
 
-            ResponseEntity<Resource> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
+            ResponseEntity<StreamingResponseBody> result = additionalFileService.downloadAdditionalFile(bookId, fileId);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             assertNotNull(result.getBody());
@@ -311,7 +312,7 @@ class AdditionalFileServiceTest {
     void deleteAdditionalFile_WhenFileIsPrimaryBookFile_ShouldThrowException() {
         Long bookId = 100L;
         Long fileId = 1L;
-        bookEntity.setBookFiles(new ArrayList<>(List.of(fileEntity)));
+        bookEntity.setBookFiles(Set.of(fileEntity));
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(fileEntity));
 
         IllegalArgumentException exception = assertThrows(
@@ -328,7 +329,7 @@ class AdditionalFileServiceTest {
     void downloadAdditionalFile_WhenFileIsPrimaryBookFile_ShouldThrowException() {
         Long bookId = 100L;
         Long fileId = 1L;
-        bookEntity.setBookFiles(new ArrayList<>(List.of(fileEntity)));
+        bookEntity.setBookFiles(Set.of(fileEntity));
         when(additionalFileRepository.findByIdAndBookIdWithBookAndLibraryPath(fileId, bookId)).thenReturn(Optional.of(fileEntity));
 
         IllegalArgumentException exception = assertThrows(

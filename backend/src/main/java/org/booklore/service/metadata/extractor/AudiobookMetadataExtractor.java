@@ -32,12 +32,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 @AllArgsConstructor
 public class AudiobookMetadataExtractor implements FileMetadataExtractor {
 
+    private static final Pattern CHAPTER_PATTERN = Pattern.compile("(?i)^(chp?|chapter)?\\d+$");
+    private static final Pattern NON_DIGIT_PATTERN = Pattern.compile("[^0-9]");
+    private final ObjectMapper mapper;
     private final FfprobeService ffprobeService;
 
     static {
@@ -115,7 +119,7 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
                     if (yearInt >= 1 && yearInt <= 9999) {
                         builder.publishedDate(LocalDate.of(yearInt, 1, 1));
                     }
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                 }
             }
 
@@ -141,7 +145,7 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
                 try {
                     String trackNum = trackNo.contains("/") ? trackNo.split("/")[0] : trackNo;
                     builder.seriesNumber((float) Integer.parseInt(trackNum.trim()));
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                 }
             }
 
@@ -149,7 +153,7 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
             if (StringUtils.isNotBlank(trackTotal)) {
                 try {
                     builder.seriesTotal(Integer.parseInt(trackTotal.trim()));
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                 }
             }
 
@@ -163,12 +167,27 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
         }
     }
 
+    public Long extractDurationMillis(File audioFile) {
+        try {
+            AudioHeader header = AudioFileIO.read(audioFile).getAudioHeader();
+            if (header == null) {
+                return null;
+            }
+
+            long durationMillis = Math.round(header.getPreciseTrackLength() * 1000);
+            return durationMillis > 0 ? durationMillis : null;
+        } catch (Exception e) {
+            log.warn("Failed to read duration from audio file {}: {}", audioFile.getName(), e.getMessage());
+            return null;
+        }
+    }
+
     private void extractAudioHeaderInfo(AudiobookMetadata.AudiobookMetadataBuilder builder, AudioHeader header) {
         if (header == null) {
             return;
         }
 
-        long durationSeconds = (long) header.getPreciseTrackLength();
+        long durationSeconds = Math.round(header.getPreciseTrackLength());
         if (durationSeconds > 0) {
             builder.durationSeconds(durationSeconds);
         }
@@ -210,7 +229,7 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
             return 6;
         }
         try {
-            return Integer.parseInt(channels.replaceAll("[^0-9]", ""));
+            return Integer.parseInt(NON_DIGIT_PATTERN.matcher(channels).replaceAll(""));
         } catch (NumberFormatException e) {
             return null;
         }
@@ -324,11 +343,11 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
         try {
             Object elementId = chapBody.getObjectValue("ElementID");
             if (elementId instanceof String str && StringUtils.isNotBlank(str)) {
-                if (!str.matches("(?i)^(chp?|chapter)?\\d+$")) {
+                if (!CHAPTER_PATTERN.matcher(str).matches()) {
                     return str;
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception _) {
         }
 
         return "Chapter " + (index + 1);
@@ -374,7 +393,6 @@ public class AudiobookMetadataExtractor implements FileMetadataExtractor {
                 return null;
             }
 
-            ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(jsonOutput);
             JsonNode chaptersNode = root.get("chapters");
 

@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -375,6 +376,34 @@ class LibraryFileHelperTest {
     }
 
     @Test
+    void bookPerFile_collapsesMultiFileAudiobookSubfolder() throws IOException {
+        Path audioDir = Files.createDirectories(tempDir.resolve("Chaptered Audiobook"));
+        Files.write(audioDir.resolve("Chaptered Audiobook - 1 - Chapter One.mp3"), new byte[]{1});
+        Files.write(audioDir.resolve("Chaptered Audiobook - 2 - Chapter Two.mp3"), new byte[]{1});
+
+        List<LibraryFile> files = libraryFileHelper.getLibraryFiles(createLibraryWithMode(tempDir, LibraryOrganizationMode.BOOK_PER_FILE));
+
+        assertThat(files).hasSize(1);
+        assertThat(files.getFirst().isFolderBased()).isTrue();
+        assertThat(files.getFirst().getFileName()).isEqualTo("Chaptered Audiobook");
+        assertThat(files.getFirst().getBookFileType()).isEqualTo(BookFileType.AUDIOBOOK);
+    }
+
+    @Test
+    void bookPerFolder_collapsesMultiFileAudiobookSubfolder() throws IOException {
+        Path audioDir = Files.createDirectories(tempDir.resolve("Chaptered Audiobook"));
+        Files.write(audioDir.resolve("Chaptered Audiobook - 1 - Chapter One.mp3"), new byte[]{1});
+        Files.write(audioDir.resolve("Chaptered Audiobook - 2 - Chapter Two.mp3"), new byte[]{1});
+
+        List<LibraryFile> files = libraryFileHelper.getLibraryFiles(createLibraryWithMode(tempDir, LibraryOrganizationMode.BOOK_PER_FOLDER));
+
+        assertThat(files).hasSize(1);
+        assertThat(files.getFirst().isFolderBased()).isTrue();
+        assertThat(files.getFirst().getFileName()).isEqualTo("Chaptered Audiobook");
+        assertThat(files.getFirst().getBookFileType()).isEqualTo(BookFileType.AUDIOBOOK);
+    }
+
+    @Test
     void autoDetect_singleAudioFileStaysIndividual() throws IOException {
         Path dir = Files.createDirectories(tempDir.resolve("Book"));
         Files.write(dir.resolve("book.m4b"), new byte[]{1});
@@ -401,7 +430,7 @@ class LibraryFileHelperTest {
     void detectDeletedBookIds_shouldIgnoreBooksWithoutFiles() {
         BookEntity book = BookEntity.builder()
                 .id(1L)
-                .bookFiles(Collections.emptyList())
+                .bookFiles(Collections.emptySet())
                 .build();
 
         List<Long> actual = libraryFileHelper.detectDeletedBookIds(Collections.emptyList(), List.of(book));
@@ -413,7 +442,7 @@ class LibraryFileHelperTest {
     void detectDeletedBookIds_shouldIgnoreDeletedBooks() {
         BookEntity book = BookEntity.builder()
                 .id(1L)
-                .bookFiles(List.of(BookFileEntity.builder().build()))
+                .bookFiles(Set.of(BookFileEntity.builder().build()))
                 .deleted(true)
                 .build();
 
@@ -444,7 +473,7 @@ class LibraryFileHelperTest {
         BookEntity book = BookEntity.builder()
                 .id(1L)
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(existing))
+                .bookFiles(Set.of(existing))
                 .build();
 
         existing.setBook(book);
@@ -477,7 +506,7 @@ class LibraryFileHelperTest {
         BookEntity book = BookEntity.builder()
                 .id(1L)
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(existing))
+                .bookFiles(Set.of(existing))
                 .build();
 
         existing.setBook(book);
@@ -490,7 +519,7 @@ class LibraryFileHelperTest {
         BookEntity expectedMissingBook = BookEntity.builder()
                 .id(2L)
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(expectedMissingBookFileEntity))
+                .bookFiles(Set.of(expectedMissingBookFileEntity))
                 .build();
 
         expectedMissingBookFileEntity.setBook(expectedMissingBook);
@@ -553,7 +582,7 @@ class LibraryFileHelperTest {
 
         BookEntity book = BookEntity.builder()
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(bookFile))
+                .bookFiles(Set.of(bookFile))
                 .build();
 
         bookFile.setBook(book);
@@ -594,7 +623,7 @@ class LibraryFileHelperTest {
 
         BookEntity audiobook = BookEntity.builder()
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(audiobookFolder))
+                .bookFiles(Set.of(audiobookFolder))
                 .build();
 
         audiobookFolder.setBook(audiobook);
@@ -638,7 +667,7 @@ class LibraryFileHelperTest {
 
         BookEntity book = BookEntity.builder()
                 .libraryPath(libraryPathEntity)
-                .bookFiles(List.of(bookFile))
+                .bookFiles(Set.of(bookFile))
                 .build();
 
         bookFile.setBook(book);

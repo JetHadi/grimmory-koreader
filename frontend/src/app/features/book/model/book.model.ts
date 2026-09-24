@@ -2,7 +2,8 @@ import {Shelf} from './shelf.model';
 import {CbxBackgroundColor, CbxFitMode, CbxPageSpread, CbxPageSplitOption, CbxPageViewMode, CbxScrollMode, NewPdfReaderSetting} from '../../settings/user-management/user.service';
 import {BookReview} from '../components/book-reviews/book-review-service';
 
-export type BookType = "PDF" | "EPUB" | "CBX" | "FB2" | "MOBI" | "AZW3" | "AUDIOBOOK";
+export const BOOK_TYPES = ['PDF', 'EPUB', 'CBX', 'FB2', 'MOBI', 'AZW3', 'AUDIOBOOK'] as const;
+export type BookType = typeof BOOK_TYPES[number];
 
 export enum AdditionalFileType {
   ALTERNATIVE_FORMAT = 'ALTERNATIVE_FORMAT',
@@ -166,11 +167,13 @@ export interface BookMetadata {
   seriesTotal?: number | null;
   isbn13?: string;
   isbn10?: string;
+  openlibraryId?: string;
   asin?: string;
   goodreadsId?: string;
   comicvineId?: string;
   hardcoverId?: string;
-  hardcoverBookId?: number | null;
+  hardcoverBookId?: string | null;
+  doubanId?: string;
   googleId?: string;
   pageCount?: number | null;
   language?: string;
@@ -181,6 +184,8 @@ export interface BookMetadata {
   goodreadsRating?: number | null;
   goodreadsReviewCount?: number | null;
   hardcoverReviewCount?: number | null;
+  doubanRating?: number | null;
+  doubanReviewCount?: number | null;
   lubimyczytacId?: string;
   lubimyczytacRating?: number | null;
   ranobedbId?: string;
@@ -189,6 +194,9 @@ export interface BookMetadata {
   audibleId?: string;
   audibleRating?: number | null;
   audibleReviewCount?: number | null;
+  applebooksId?: string;
+  applebooksRating?: number | null;
+  applebooksReviewCount?: number | null;
   narrator?: string;
   abridged?: boolean | null;
   narratorLocked?: boolean;
@@ -216,11 +224,13 @@ export interface BookMetadata {
   seriesTotalLocked?: boolean;
   isbn13Locked?: boolean;
   isbn10Locked?: boolean;
+  openlibraryIdLocked?: boolean;
   asinLocked?: boolean;
   comicvineIdLocked?: boolean;
   goodreadsIdLocked?: boolean;
   hardcoverIdLocked?: boolean;
   hardcoverBookIdLocked?: boolean;
+  doubanIdLocked?: boolean;
   googleIdLocked?: boolean;
   pageCountLocked?: boolean;
   languageLocked?: boolean;
@@ -230,6 +240,8 @@ export interface BookMetadata {
   goodreadsReviewCountLocked?: boolean;
   hardcoverRatingLocked?: boolean;
   hardcoverReviewCountLocked?: boolean;
+  doubanRatingLocked?: boolean;
+  doubanReviewCountLocked?: boolean;
   lubimyczytacIdLocked?: boolean;
   lubimyczytacRatingLocked?: boolean;
   ranobedbIdLocked?: boolean;
@@ -237,6 +249,9 @@ export interface BookMetadata {
   audibleIdLocked?: boolean;
   audibleRatingLocked?: boolean;
   audibleReviewCountLocked?: boolean;
+  applebooksIdLocked?: boolean;
+  applebooksRatingLocked?: boolean;
+  applebooksReviewCountLocked?: boolean;
   coverUpdatedOnLocked?: boolean;
   authorsLocked?: boolean;
   categoriesLocked?: boolean;
@@ -265,6 +280,7 @@ export interface MetadataClearFlags {
   seriesTotal?: boolean;
   isbn13?: boolean;
   isbn10?: boolean;
+  openlibraryId?: boolean;
   asin?: boolean;
   goodreadsId?: boolean;
   comicvineId?: boolean;
@@ -286,6 +302,9 @@ export interface MetadataClearFlags {
   audibleId?: boolean;
   audibleRating?: boolean;
   audibleReviewCount?: boolean;
+  applebooksId?: boolean;
+  applebooksRating?: boolean;
+  applebooksReviewCount?: boolean;
   narrator?: boolean;
   abridged?: boolean;
   authors?: boolean;
@@ -306,6 +325,7 @@ export interface MetadataUpdateWrapper {
 export interface PdfViewerSetting {
   zoom: string;
   spread: 'none' | 'even' | 'odd';
+  scrollLayout?: 'vertical' | 'horizontal';
   isDarkTheme?: boolean;
 }
 
@@ -333,6 +353,7 @@ export interface EbookViewerSetting {
   fontFamily: string | null;
   isDark: boolean;
   flow: 'paginated' | 'scrolled';
+  tapToTurnPage?: boolean;
 }
 
 export interface CbxViewerSetting {

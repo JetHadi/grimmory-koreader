@@ -596,7 +596,7 @@ public class CoverImageGenerator {
     }
 
     private static Color alpha(Color c, int a) {
-        return new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.min(255, Math.max(0, a)));
+        return new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.clamp(a, 0, 255));
     }
 
     private static Color darken(Color c, float f) {
@@ -864,13 +864,13 @@ public class CoverImageGenerator {
             throw new RuntimeException("JPEG encoding failed", e);
         } finally {
             if (writer != null) writer.dispose();
-            if (ios != null) try { ios.close(); } catch (IOException ignored) {}
+            if (ios != null) try { ios.close(); } catch (IOException _) {}
         }
     }
 
     private void cleanup(Graphics2D g, BufferedImage... images) {
-        if (g != null) try { g.dispose(); } catch (Exception ignored) {}
+        if (g != null) try { g.dispose(); } catch (Exception _) {}
         for (BufferedImage img : images)
-            if (img != null) try { img.flush(); } catch (Exception ignored) {}
+            if (img != null) try { img.flush(); } catch (Exception _) {}
     }
 }

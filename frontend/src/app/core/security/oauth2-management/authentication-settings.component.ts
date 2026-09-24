@@ -1,23 +1,25 @@
-import {Component, effect, inject} from '@angular/core';
-import {FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {InputText} from 'primeng/inputtext';
-import {Button} from 'primeng/button';
-import {Checkbox} from 'primeng/checkbox';
-import {ToggleSwitch} from 'primeng/toggleswitch';
-import {InputNumber} from 'primeng/inputnumber';
-import {MessageService} from 'primeng/api';
+import {HttpErrorResponse} from '@angular/common/http';
+import {Component, effect, inject, signal, WritableSignal} from '@angular/core';
+import {FormsModule} from '@angular/forms';
+import {InputText} from '@openng/optimus-ui/inputtext';
+import {Button} from '@openng/optimus-ui/button';
+import {Checkbox} from '@openng/optimus-ui/checkbox';
+import {ToggleSwitch} from '@openng/optimus-ui/toggleswitch';
+import {InputNumber} from '@openng/optimus-ui/inputnumber';
+import {MessageService} from '@openng/optimus-ui/api';
 import {AppSettingsService} from '../../../shared/service/app-settings.service';
 import {AppSettingKey, AppSettings, OidcProviderDetails, OidcTestResult} from '../../../shared/model/app-settings.model';
-import {MultiSelect} from 'primeng/multiselect';
+import {MultiSelect} from '@openng/optimus-ui/multiselect';
 import {LibraryService} from '../../../features/book/service/library.service';
 import {ExternalDocLinkComponent} from '../../../shared/components/external-doc-link/external-doc-link.component';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 import {OidcGroupMapping} from '../../../shared/model/oidc-group-mapping.model';
 import {OidcGroupMappingService} from '../../../shared/service/oidc-group-mapping.service';
-import {Select} from 'primeng/select';
-import {TableModule} from 'primeng/table';
-import {Dialog} from 'primeng/dialog';
+import {Select} from '@openng/optimus-ui/select';
+import {TableModule} from '@openng/optimus-ui/table';
+import {Dialog} from '@openng/optimus-ui/dialog';
 import {TagComponent} from '../../../shared/components/tag/tag.component';
+import {Chip} from '@openng/optimus-ui/chip';
 
 @Component({
   selector: 'app-authentication-settings',
@@ -31,18 +33,20 @@ import {TagComponent} from '../../../shared/components/tag/tag.component';
     Button,
     MultiSelect,
     InputNumber,
-    ReactiveFormsModule,
     ExternalDocLinkComponent,
     TranslocoDirective,
     TranslocoPipe,
     Select,
     TableModule,
     Dialog,
-    TagComponent
+    TagComponent,
+    Chip
   ],
   styleUrls: ['./authentication-settings.component.scss']
 })
 export class AuthenticationSettingsComponent {
+  readonly defaultMobileRedirectUri = 'grimmory://oauth2-callback';
+  readonly wildcardMobileRedirectUri = '*';
   availablePermissions = [
     {label: 'Upload Books', value: 'permissionUpload', selected: false, translationKey: 'perms.uploadBooks'},
     {label: 'Download Books', value: 'permissionDownload', selected: false, translationKey: 'perms.downloadBooks'},
@@ -82,6 +86,8 @@ export class AuthenticationSettingsComponent {
   sessionDurationHours: number | null = null;
   backchannelLogoutUri = `${window.location.origin}/api/v1/auth/oidc/backchannel-logout`;
   oidcForceOnlyMode = false;
+  mobileRedirectUris: string[] = [this.defaultMobileRedirectUri];
+  mobileRedirectUriInput = '';
 
   infoItems = [
     {labelKey: 'infoPanel.redirectUri', value: `${window.location.origin}/oauth2-callback`},
@@ -93,27 +99,25 @@ export class AuthenticationSettingsComponent {
   ];
 
   // Test connection
-  isTestingConnection = false;
-  testConnectionResult: OidcTestResult | null = null;
-  showTestDetails = false;
+  readonly isTestingConnection = signal(false);
+  readonly testConnectionResult: WritableSignal<OidcTestResult | null> = signal(null);
+  readonly showTestDetails = signal(false);
 
   // Group mapping
-  groupSyncMode: string = 'DISABLED';
+  readonly groupSyncMode = signal('DISABLED');
   groupSyncModeOptions = [
     {label: 'Disabled', value: 'DISABLED'},
     {label: 'On Login (Replace)', value: 'ON_LOGIN'},
     {label: 'On Login (Additive)', value: 'ON_LOGIN_ADDITIVE'}
   ];
-  groupMappings: OidcGroupMapping[] = [];
-  showGroupMappingDialog = false;
-  editingGroupMapping: OidcGroupMapping = this.emptyGroupMapping();
-  editingGroupMappingPerms: {label: string; value: string; selected: boolean; translationKey: string}[] = [];
-  editingGroupMappingLibraryIds: number[] = [];
+  readonly groupMappings = signal<OidcGroupMapping[]>([]);
+  readonly groupMappingDraft = signal<OidcGroupMapping | null>(null);
+
+  oidcProviderClientSecret: string = '';
 
   oidcProvider: OidcProviderDetails = {
     providerName: '',
     clientId: '',
-    clientSecret: '',
     issuerUri: '',
     scopes: '',
     claimMapping: {
@@ -156,16 +160,22 @@ export class AuthenticationSettingsComponent {
     };
 
     this.sessionDurationHours = settings.oidcSessionDurationHours ?? null;
-    this.groupSyncMode = settings.oidcGroupSyncMode ?? 'DISABLED';
+    this.groupSyncMode.set(settings.oidcGroupSyncMode ?? 'DISABLED');
     this.oidcForceOnlyMode = settings.oidcForceOnlyMode ?? false;
+    this.mobileRedirectUris = settings.oidcRedirectUris?.length
+      ? [...settings.oidcRedirectUris]
+      : [this.defaultMobileRedirectUri];
+    this.mobileRedirectUriInput = '';
 
     this.oidcProvider = {
       providerName: settings.oidcProviderDetails?.providerName || '',
       clientId: settings.oidcProviderDetails?.clientId || '',
       issuerUri: settings.oidcProviderDetails?.issuerUri || '',
       scopes: settings.oidcProviderDetails?.scopes || '',
-      claimMapping: settings.oidcProviderDetails?.claimMapping || defaultClaimMapping
+      claimMapping: settings.oidcProviderDetails?.claimMapping || defaultClaimMapping,
     };
+
+    this.oidcProviderClientSecret = settings.oidcProviderClientSecret || '';
 
     this.availablePermissions.forEach(perm => {
       perm.selected = this.selectedPermissions.includes(perm.value);
@@ -198,10 +208,20 @@ export class AuthenticationSettingsComponent {
   }
 
   saveOidcProvider(): void {
+    this.addMobileRedirectUriFromInput();
+
     const payload: {key: AppSettingKey; newValue: unknown}[] = [
       {
         key: AppSettingKey.OIDC_PROVIDER_DETAILS,
         newValue: this.oidcProvider
+      },
+      {
+        key: AppSettingKey.OIDC_REDIRECT_URIS,
+        newValue: this.mobileRedirectUris
+      },
+      {
+        key: AppSettingKey.OIDC_PROVIDER_CLIENT_SECRET,
+        newValue: this.oidcProviderClientSecret
       }
     ];
     if (this.oidcEnabled) {
@@ -216,10 +236,10 @@ export class AuthenticationSettingsComponent {
         summary: this.t.translate('settingsAuth.toast.saved'),
         detail: this.t.translate('settingsAuth.toast.providerSaved')
       }),
-      error: () => this.messageService.add({
+      error: (error: HttpErrorResponse) => this.messageService.add({
         severity: 'error',
         summary: this.t.translate('common.error'),
-        detail: this.t.translate('settingsAuth.toast.providerError')
+        detail: error?.error?.message || this.t.translate('settingsAuth.toast.providerError')
       })
     });
   }
@@ -259,6 +279,36 @@ export class AuthenticationSettingsComponent {
     });
   }
 
+  addMobileRedirectUriFromInput(): void {
+    const value = this.mobileRedirectUriInput.trim();
+    if (!value) {
+      this.mobileRedirectUriInput = '';
+      return;
+    }
+
+    this.mobileRedirectUris = [...this.mobileRedirectUris, value];
+    this.mobileRedirectUriInput = '';
+  }
+
+  removeMobileRedirectUri(index: number): void {
+    this.mobileRedirectUris = this.mobileRedirectUris.filter((_, currentIndex) => currentIndex !== index);
+  }
+
+  onMobileRedirectUriKeydown(event: KeyboardEvent): void {
+    if ((event.key === 'Enter' || event.key === ',') && this.mobileRedirectUriInput.trim()) {
+      event.preventDefault();
+      this.addMobileRedirectUriFromInput();
+      return;
+    }
+
+    if ((event.key === 'Backspace' || event.key === 'Delete')
+      && !this.mobileRedirectUriInput
+      && this.mobileRedirectUris.length > 0) {
+      event.preventDefault();
+      this.removeMobileRedirectUri(this.mobileRedirectUris.length - 1);
+    }
+  }
+
   saveOidcAutoProvisionSettings(): void {
     const provisionDetails = {
       enableAutoProvisioning: this.autoUserProvisioningEnabled,
@@ -293,14 +343,14 @@ export class AuthenticationSettingsComponent {
 
   // Group mapping methods
   loadGroupMappings(): void {
-    this.groupMappingService.getAll().subscribe(mappings => this.groupMappings = mappings);
+    this.groupMappingService.getAll().subscribe(mappings => this.groupMappings.set(mappings));
   }
 
   saveGroupSyncMode(): void {
     const payload = [
       {
         key: AppSettingKey.OIDC_GROUP_SYNC_MODE,
-        newValue: this.groupSyncMode
+        newValue: this.groupSyncMode()
       }
     ];
     this.appSettingsService.saveSettings(payload).subscribe({
@@ -318,34 +368,48 @@ export class AuthenticationSettingsComponent {
   }
 
   openNewGroupMapping(): void {
-    this.editingGroupMapping = this.emptyGroupMapping();
-    this.initGroupMappingPerms([]);
-    this.editingGroupMappingLibraryIds = [];
-    this.showGroupMappingDialog = true;
+    this.groupMappingDraft.set(this.emptyGroupMapping());
   }
 
   openEditGroupMapping(mapping: OidcGroupMapping): void {
-    this.editingGroupMapping = {...mapping};
-    this.initGroupMappingPerms(mapping.permissions);
-    this.editingGroupMappingLibraryIds = [...mapping.libraryIds];
-    this.showGroupMappingDialog = true;
+    this.groupMappingDraft.set({
+      ...mapping,
+      permissions: mapping.permissions.filter(permission => permission !== 'permissionRead'),
+      libraryIds: [...mapping.libraryIds],
+    });
   }
 
-  private initGroupMappingPerms(selectedPerms: string[]): void {
-    this.editingGroupMappingPerms = this.availablePermissions.map(p => ({
-      ...p,
-      selected: selectedPerms.includes(p.value)
-    }));
+  updateGroupMappingDraft(patch: Partial<OidcGroupMapping>): void {
+    this.groupMappingDraft.update(draft => draft ? {...draft, ...patch} : draft);
+  }
+
+  setGroupMappingAdmin(isAdmin: boolean): void {
+    this.updateGroupMappingDraft(isAdmin
+      ? {isAdmin, permissions: this.availablePermissions.map(p => p.value)}
+      : {isAdmin});
+  }
+
+  setGroupMappingPermission(permission: string, selected: boolean): void {
+    this.groupMappingDraft.update(draft => {
+      if (!draft) return draft;
+
+      const permissions = selected
+        ? [...draft.permissions, permission]
+        : draft.permissions.filter(value => value !== permission);
+      return {...draft, permissions: [...new Set(permissions)]};
+    });
   }
 
   saveGroupMapping(): void {
+    const draft = this.groupMappingDraft();
+    if (!draft) return;
+
     const mapping: OidcGroupMapping = {
-      ...this.editingGroupMapping,
+      ...draft,
       permissions: [
         'permissionRead',
-        ...this.editingGroupMappingPerms.filter(p => p.selected).map(p => p.value)
-      ],
-      libraryIds: this.editingGroupMappingLibraryIds
+        ...draft.permissions
+      ]
     };
 
     const obs = mapping.id
@@ -354,7 +418,7 @@ export class AuthenticationSettingsComponent {
 
     obs.subscribe({
       next: () => {
-        this.showGroupMappingDialog = false;
+        this.groupMappingDraft.set(null);
         this.loadGroupMappings();
         this.messageService.add({
           severity: 'success',
@@ -393,14 +457,18 @@ export class AuthenticationSettingsComponent {
     return this.allLibraries.find(l => l.id === id)?.name ?? `#${id}`;
   }
 
+  toggleTestDetails(): void {
+    this.showTestDetails.update(s => !s)
+  }
+
   testConnection(): void {
-    this.isTestingConnection = true;
-    this.testConnectionResult = null;
+    this.isTestingConnection.set(true);
+    this.testConnectionResult.set(null);
     this.appSettingsService.testOidcConnection(this.oidcProvider).subscribe({
       next: (result) => {
-        this.testConnectionResult = result;
-        this.showTestDetails = true;
-        this.isTestingConnection = false;
+        this.testConnectionResult.set(result);
+        this.showTestDetails.set(true);
+        this.isTestingConnection.set(false);
       },
       error: () => {
         this.messageService.add({
@@ -408,7 +476,7 @@ export class AuthenticationSettingsComponent {
           summary: this.t.translate('common.error'),
           detail: this.t.translate('settingsAuth.testConnection.error')
         });
-        this.isTestingConnection = false;
+        this.isTestingConnection.set(false);
       }
     });
   }
@@ -435,15 +503,6 @@ export class AuthenticationSettingsComponent {
         });
       }
     });
-  }
-
-  onAdminCheckboxChange(): void {
-    if (this.editingGroupMapping.isAdmin) {
-      this.editingGroupMappingPerms = this.availablePermissions.map(p => ({
-        ...p,
-        selected: true,
-      }));
-    }
   }
 
   private emptyGroupMapping(): OidcGroupMapping {

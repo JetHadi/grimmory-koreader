@@ -55,10 +55,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     List<BookEntity> findAllForSummaryByIds(@Param("bookIds") Collection<Long> bookIds);
 
     @EntityGraph(attributePaths = {"bookFiles", "metadata", "library", "libraryPath"})
-    @Query("SELECT b FROM BookEntity b JOIN b.bookFiles bf WHERE bf.currentHash = :currentHash AND bf.isBookFormat = true AND (b.deleted IS NULL OR b.deleted = false)")
+    @Query("SELECT b FROM BookEntity b JOIN b.bookFiles bf WHERE bf.currentHash = :currentHash AND bf.isBookFormat = true AND (b.deleted IS NULL OR b.deleted = false) ORDER BY b.id DESC LIMIT 1")
     Optional<BookEntity> findByCurrentHash(@Param("currentHash") String currentHash);
 
-    @Query("SELECT b FROM BookEntity b JOIN FETCH b.bookFiles bf WHERE bf.currentHash = :currentHash AND bf.isBookFormat = true AND (b.deleted IS NULL OR b.deleted = false OR b.deletedAt > :cutoff)")
+    @Query("SELECT b FROM BookEntity b JOIN b.bookFiles bf WHERE bf.currentHash = :currentHash AND bf.isBookFormat = true AND (b.deleted IS NULL OR b.deleted = false OR b.deletedAt > :cutoff) ORDER BY b.id DESC LIMIT 1")
     Optional<BookEntity> findByCurrentHashIncludingRecentlyDeleted(@Param("currentHash") String currentHash, @Param("cutoff") Instant cutoff);
 
     Optional<BookEntity> findByBookCoverHash(String bookCoverHash);
@@ -85,12 +85,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     @Query("SELECT b FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadata();
 
-    @EntityGraph(attributePaths = {
-        "metadata", "metadata.comicMetadata",
-        "metadata.comicMetadata.characters", "metadata.comicMetadata.teams", "metadata.comicMetadata.locations", "metadata.comicMetadata.creatorMappings",
-        "metadata.authors", "metadata.categories", "metadata.moods", "metadata.tags",
-        "shelves", "libraryPath", "library", "bookFiles"
-    })
+    // Only ToOne paths in EntityGraph; collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
+    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "libraryPath", "library"})
     @Query("SELECT b FROM BookEntity b WHERE b.id IN :bookIds AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadataByIds(@Param("bookIds") Set<Long> bookIds);
 
@@ -142,6 +138,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata"})
     @Query("SELECT b FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllFullBooks();
+
+    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "library", "bookFiles"})
+    @Query("SELECT b FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false)")
+    List<BookEntity> findAllFullBooksWithFiles();
 
     @Query("SELECT b FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false) AND b.id > :afterId ORDER BY b.id")
     List<BookEntity> findBooksForMigrationBatch(@Param("afterId") long afterId, Pageable pageable);

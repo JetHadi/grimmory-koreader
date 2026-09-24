@@ -115,35 +115,57 @@ public interface BookOpdsRepository extends JpaRepository<BookEntity, Long>, Jpa
             LEFT JOIN b.metadata m
             JOIN b.shelves s
             WHERE (b.deleted IS NULL OR b.deleted = false)
+              AND b.library.id IN :libraryIds
               AND s.id IN :shelfIds
               AND (
                   m.searchText LIKE CONCAT('%', :text, '%')
               )
             ORDER BY b.addedOn DESC
-            """)
-    Page<Long> findBookIdsByMetadataSearchAndShelfIds(@Param("text") String text, @Param("shelfIds") Collection<Long> shelfIds, Pageable pageable);
+    """)
+    Page<Long> findBookIdsByMetadataSearchAndShelfIds(@Param("text") String text, @Param("libraryIds") Collection<Long> libraryIds, @Param("shelfIds") Collection<Long> shelfIds, Pageable pageable);
 
     @EntityGraph(attributePaths = {"metadata", "metadata.authors", "metadata.categories", "bookFiles", "shelves"})
-    @Query("SELECT DISTINCT b FROM BookEntity b JOIN b.shelves s WHERE b.id IN :ids AND s.id IN :shelfIds AND (b.deleted IS NULL OR b.deleted = false)")
-    List<BookEntity> findAllWithFullMetadataByIdsAndShelfIds(@Param("ids") Collection<Long> ids, @Param("shelfIds") Collection<Long> shelfIds);
+    @Query("""
+            SELECT DISTINCT b FROM BookEntity b
+            JOIN b.shelves s
+            WHERE
+                b.id IN :ids
+                AND b.library.id IN :libraryIds
+                AND s.id IN :shelfIds
+                AND (b.deleted IS NULL OR b.deleted = false)
+    """)
+    List<BookEntity> findAllWithFullMetadataByIdsAndShelfIds(@Param("ids") Collection<Long> ids, @Param("libraryIds") Collection<Long> libraryIds, @Param("shelfIds") Collection<Long> shelfIds);
 
     // ============================================
     // BOOKS BY SHELF IDs - Two Query Pattern
     // ============================================
 
-    @Query("SELECT DISTINCT b.id FROM BookEntity b JOIN b.shelves s WHERE s.id IN :shelfIds AND (b.deleted IS NULL OR b.deleted = false) ORDER BY b.addedOn DESC")
-    Page<Long> findBookIdsByShelfIds(@Param("shelfIds") Collection<Long> shelfIds, Pageable pageable);
+    @Query("""
+            SELECT DISTINCT b.id FROM BookEntity b
+            JOIN b.shelves s
+            WHERE
+                b.library.id IN :libraryIds
+                AND s.id IN :shelfIds
+                AND (b.deleted IS NULL OR b.deleted = false)
+            ORDER BY b.addedOn DESC
+    """)
+    Page<Long> findBookIdsByShelfIds(@Param("libraryIds") Collection<Long> libraryIds, @Param("shelfIds") Collection<Long> shelfIds, Pageable pageable);
 
     @EntityGraph(attributePaths = {"metadata", "bookFiles", "shelves"})
-    @Query("SELECT DISTINCT b FROM BookEntity b JOIN b.shelves s WHERE b.id IN :ids AND s.id IN :shelfIds AND (b.deleted IS NULL OR b.deleted = false)")
-    List<BookEntity> findAllWithMetadataByIdsAndShelfIds(@Param("ids") Collection<Long> ids, @Param("shelfIds") Collection<Long> shelfIds);
+    @Query("""
+            SELECT DISTINCT b FROM BookEntity b
+            JOIN b.shelves s
+            WHERE
+                b.id IN :ids
+                AND b.library.id IN :libraryIds
+                AND s.id IN :shelfIds
+                AND (b.deleted IS NULL OR b.deleted = false)
+    """)
+    List<BookEntity> findAllWithMetadataByIdsAndShelfIds(@Param("ids") Collection<Long> ids, @Param("libraryIds") Collection<Long> libraryIds, @Param("shelfIds") Collection<Long> shelfIds);
 
     // ============================================
     // RANDOM BOOKS - "Surprise Me" Feed
     // ============================================
-
-    @Query("SELECT b.id FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false) ORDER BY function('RAND')")
-    List<Long> findRandomBookIds(Pageable pageable);
 
     @Query("SELECT b.id FROM BookEntity b WHERE b.library.id IN :libraryIds AND (b.deleted IS NULL OR b.deleted = false) ORDER BY function('RAND')")
     List<Long> findRandomBookIdsByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds, Pageable pageable);
@@ -153,23 +175,27 @@ public interface BookOpdsRepository extends JpaRepository<BookEntity, Long>, Jpa
     // ============================================
 
     @Query("""
-            SELECT DISTINCT a FROM AuthorEntity a
+            SELECT DISTINCT a.name
+            FROM AuthorEntity a
             JOIN a.bookMetadataEntityList m
             JOIN m.book b
             WHERE (b.deleted IS NULL OR b.deleted = false)
+              AND a.name IS NOT NULL
             ORDER BY a.name
             """)
-    List<AuthorEntity> findDistinctAuthors();
+    Page<String> findDistinctAuthorNames(Pageable pageable);
 
     @Query("""
-            SELECT DISTINCT a FROM AuthorEntity a
+            SELECT DISTINCT a.name
+            FROM AuthorEntity a
             JOIN a.bookMetadataEntityList m
             JOIN m.book b
             WHERE (b.deleted IS NULL OR b.deleted = false)
               AND b.library.id IN :libraryIds
+              AND a.name IS NOT NULL
             ORDER BY a.name
             """)
-    List<AuthorEntity> findDistinctAuthorsByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds);
+    Page<String> findDistinctAuthorNamesByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds, Pageable pageable);
 
     // ============================================
     // BOOKS BY AUTHOR - Two Query Pattern
@@ -208,7 +234,7 @@ public interface BookOpdsRepository extends JpaRepository<BookEntity, Long>, Jpa
               AND m.seriesName != ''
             ORDER BY m.seriesName
             """)
-    List<String> findDistinctSeries();
+    Page<String> findDistinctSeries(Pageable pageable);
 
     @Query("""
             SELECT DISTINCT m.seriesName FROM BookMetadataEntity m
@@ -219,7 +245,7 @@ public interface BookOpdsRepository extends JpaRepository<BookEntity, Long>, Jpa
               AND m.seriesName != ''
             ORDER BY m.seriesName
             """)
-    List<String> findDistinctSeriesByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds);
+    Page<String> findDistinctSeriesByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds, Pageable pageable);
 
     // ============================================
     // BOOKS BY SERIES - Two Query Pattern (sorted by series number)

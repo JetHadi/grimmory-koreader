@@ -2,27 +2,36 @@ package org.booklore.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.booklore.config.JacksonConfig;
 import org.booklore.config.security.service.AuthenticationService;
 import org.booklore.config.security.userdetails.OpdsUserDetails;
+import org.booklore.exception.ApiError;
+import org.booklore.exception.ErrorResponse;
 import org.booklore.mapper.komga.KomgaMapper;
+import org.booklore.model.dto.BookLoreUser;
 import org.booklore.model.dto.komga.KomgaBookDto;
 import org.booklore.model.dto.komga.KomgaLibraryDto;
 import org.booklore.model.dto.komga.KomgaPageableDto;
 import org.booklore.model.dto.komga.KomgaSeriesDto;
+import org.booklore.model.entity.BookEntity;
+import org.booklore.model.entity.BookLoreUserEntity;
 import org.booklore.service.book.BookService;
 import org.booklore.service.komga.KomgaService;
-import org.booklore.service.opds.OpdsBookService;
 import org.booklore.service.opds.OpdsUserV2Service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -39,7 +48,6 @@ public class KomgaController {
 
     private final KomgaService komgaService;
     private final BookService bookService;
-    private final OpdsBookService opdsBookService;
     private final AuthenticationService authenticationService;
     private final OpdsUserV2Service opdsUserV2Service;
     private final KomgaMapper komgaMapper;
@@ -55,6 +63,18 @@ public class KomgaController {
         } catch (Exception e) {
             log.error("Failed to serialize Komga response", e);
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    private void validateBookContentAccess(Long bookId) {
+        BookLoreUser user = authenticationService.getAuthenticatedUser();
+
+        if (user == null) {
+            throw ApiError.FORBIDDEN.createException("Authentication required");
+        }
+
+        if (!komgaService.validateBookContentAccess(user, bookId)) {
+            throw ApiError.BOOK_NOT_FOUND.createException(bookId);
         }
     }
 
@@ -113,8 +133,11 @@ public class KomgaController {
             return ResponseEntity.notFound().build();
         }
         
-        Long firstBookId = Long.parseLong(books.getContent().get(0).getId());
+        Long firstBookId = Long.parseLong(books.getContent().getFirst().getId());
         Resource coverImage = bookService.getBookThumbnail(firstBookId);
+        if (coverImage == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok()
                 .header("Content-Type", "image/jpeg")
                 .body(coverImage);
@@ -152,7 +175,8 @@ public class KomgaController {
             @Parameter(description = "Book ID") @PathVariable Long bookId,
             @Parameter(description = "Page number") @PathVariable Integer pageNumber,
             @Parameter(description = "Convert image format (e.g., 'png')") @RequestParam(required = false) String convert) {
-        opdsBookService.validateBookContentAccess(bookId, getOpdsUserId());
+        validateBookContentAccess(bookId);
+
         try {
             boolean convertToPng = "png".equalsIgnoreCase(convert);
             Resource pageImage = komgaService.getBookPageImage(bookId, pageNumber, convertToPng);
@@ -170,9 +194,10 @@ public class KomgaController {
 
     @Operation(summary = "Download book file")
     @GetMapping("/v1/books/{bookId}/file")
-    public ResponseEntity<Resource> downloadBook(
+    public ResponseEntity<StreamingResponseBody> downloadBook(
             @Parameter(description = "Book ID") @PathVariable Long bookId) {
-        opdsBookService.validateBookContentAccess(bookId, getOpdsUserId());
+        validateBookContentAccess(bookId);
+
         return bookService.downloadBook(bookId);
     }
 
@@ -180,8 +205,12 @@ public class KomgaController {
     @GetMapping("/v1/books/{bookId}/thumbnail")
     public ResponseEntity<Resource> getBookThumbnail(
             @Parameter(description = "Book ID") @PathVariable Long bookId) {
-        opdsBookService.validateBookContentAccess(bookId, getOpdsUserId());
+        validateBookContentAccess(bookId);
+
         Resource coverImage = bookService.getBookThumbnail(bookId);
+        if (coverImage == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok()
                 .header("Content-Type", "image/jpeg")
                 .body(coverImage);
@@ -217,10 +246,44 @@ public class KomgaController {
         return writeJson(komgaService.getCollections(page, size, unpaged));
     }
 
-    private Long getOpdsUserId() {
-        OpdsUserDetails details = authenticationService.getOpdsUser();
-        return details != null && details.getOpdsUserV2() != null
-                ? details.getOpdsUserV2().getUserId()
-                : null;
+    @Operation(summary = "Unimplemented Komga API Endpoints")
+    @ApiResponse(responseCode = "501", description = "Not Implemented")
+    @RequestMapping(
+            value={
+                    "/v1/readlists",
+                    "/v1/series/new",
+                    "/v1/series/updated",
+                    "/v1/series/list",
+                    "/v1/series/genres",
+                    "/v1/books/ondeck",
+                    "/v1/books/list",
+                    "/v1/books/*/readlists",
+                    "/v1/books/*/manifest",
+            },
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH}
+    )
+    public ResponseEntity<ErrorResponse> notImplemented() {
+        return ResponseEntity
+                .status(HttpStatus.NOT_IMPLEMENTED)
+                .body(
+                        new ErrorResponse(
+                            HttpStatus.NOT_IMPLEMENTED.value(),
+                            "Not Implemented"
+                        )
+                );
+    }
+
+    @Operation(summary = "Catch-all for Komga API", description = "Catch-all endpoint for unhandled Komga API requests.")
+    @ApiResponse(responseCode = "404", description = "Not Found")
+    @RequestMapping(value = "/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
+    public ResponseEntity<?> catchAll() {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(
+                        new ErrorResponse(
+                                HttpStatus.NOT_FOUND.value(),
+                                "Not Found"
+                        )
+                );
     }
 }

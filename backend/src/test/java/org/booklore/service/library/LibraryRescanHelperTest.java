@@ -35,6 +35,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -136,7 +137,7 @@ class LibraryRescanHelperTest {
     @Test
     void handleRescanOptions_shouldSkipNullBooks() {
         BookEntity book1 = createBookEntity(1L, "book1.epub", BookFileType.EPUB);
-        java.util.List<BookEntity> books = new ArrayList<>();
+        List<BookEntity> books = new ArrayList<>();
         books.add(book1);
         books.add(null);
 
@@ -387,7 +388,7 @@ class LibraryRescanHelperTest {
         primaryFile.setFileName(fileName);
         primaryFile.setFileSubPath("");
         primaryFile.setBookType(bookType);
-        book.setBookFiles(List.of(primaryFile));
+        book.setBookFiles(Set.of(primaryFile));
         return book;
     }
 }

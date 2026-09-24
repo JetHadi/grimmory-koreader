@@ -1,8 +1,9 @@
-import { Component, ElementRef, inject, Injector, NgZone, OnDestroy, OnInit, afterNextRender, viewChild, DestroyRef, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, inject, Injector, NgZone, OnDestroy, OnInit, afterNextRender, viewChild, DestroyRef, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PageTitleService } from "../../../shared/service/page-title.service";
 import { BookService } from '../../book/service/book.service';
-import { forkJoin, from, Observable, of, Subject, Subscription } from "rxjs";
+import { forkJoin, from, Observable, of, Subject } from "rxjs";
 import { debounceTime, filter, map, switchMap, take } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookSetting } from '../../book/model/book.model';
@@ -12,14 +13,14 @@ import { API_CONFIG } from '../../../core/config/api-config';
 import { PdfAnnotationService } from '../../../shared/service/pdf-annotation.service';
 import { ReaderIconComponent } from '../../readers/ebook-reader/shared/icon.component';
 import { BookMark } from '../../../shared/service/book-mark.service';
-import { EmbedPdfBookService, PdfOutlineItem } from './services/embedpdf-book.service';
+import { EmbedPdfBookService, PdfOutlineItem, PdfScrollLayout } from './services/embedpdf-book.service';
 import type { AnnotationTransferItem } from '@embedpdf/snippet';
 import { PdfBookmarkService } from './services/pdf-bookmark.service';
 import { PdfSidebarComponent, PdfAnnotationListItem } from './components/pdf-sidebar.component';
 import { parseStoredAnnotations, serializeAnnotations } from './utils/annotation-converter';
 
-import { ProgressSpinner } from 'primeng/progressspinner';
-import { MessageService } from 'primeng/api';
+import { ProgressSpinner } from '@openng/optimus-ui/progressspinner';
+import { MessageService } from '@openng/optimus-ui/api';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { CacheStorageService } from '../../../shared/service/cache-storage.service'
 import { LocalSettingsService } from '../../../shared/service/local-settings.service';
@@ -39,10 +40,11 @@ type EmbedPdfMessage =
 @Component({
   selector: 'app-pdf-reader',
   standalone: true,
-  imports: [ProgressSpinner, TranslocoPipe, ReaderIconComponent, FormsModule, PdfSidebarComponent],
+  imports: [CommonModule, ProgressSpinner, TranslocoPipe, ReaderIconComponent, FormsModule, PdfSidebarComponent],
   providers: [EmbedPdfBookService, PdfBookmarkService],
   templateUrl: './pdf-reader.component.html',
   styleUrl: './pdf-reader.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PdfReaderComponent implements OnInit, OnDestroy {
 
@@ -67,6 +69,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   readonly isZoomMenuOpen = signal(false);
   readonly activeAnnotationTool = signal<string | null>(null);
   readonly spreadMode = signal<'none' | 'odd' | 'even'>('none');
+  readonly scrollLayout = signal<PdfScrollLayout>('vertical');
   readonly goToPageInput = signal<number | null>(null);
   readonly outline = signal<PdfOutlineItem[]>([]);
   readonly pdfBookmarks = signal<BookMark[]>([]);
@@ -115,13 +118,19 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   private embedPdfMessageHandler?: (e: MessageEvent) => void;
   private embedPdfSaveResolve?: (buffer: ArrayBuffer | null) => void;
   private embedPdfSaveTimer?: ReturnType<typeof setTimeout>;
+  private embedPdfSavePromise?: Promise<boolean>;
   private embedPdfInitTime = 0;
   private pendingPdfBuffer?: ArrayBuffer;
   private initTimeout?: ReturnType<typeof setTimeout>;
   private isInitializingBookViewer = false;
   private pdfFetchAbortController?: AbortController;
-  private cachedPdfBuffer: ArrayBuffer | null = null;
   private suppressProgressSave = false;
+  private initialPage = 1;
+  private pendingDocTargetPage: number | null = null;
+  private docProgressReleaseTimer?: ReturnType<typeof setTimeout>;
+  private closeReaderPromise: Promise<void> | null = null;
+  readonly isClosingReader = signal(false);
+  readonly isSavingDocument = signal(false);
 
   // Book mode state
   private bookViewerInitialized = false;
@@ -157,11 +166,8 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   private dbAnnotationIds = new Set<string>();
 
   private altBookType?: string;
-  private appSettingsSubscription!: Subscription;
   private annotationSaveSubject = new Subject<void>();
   private annotationCacheSubject = new Subject<void>();
-  private annotationSaveSubscription!: Subscription;
-  private annotationCacheSubscription!: Subscription;
   private annotationsLoaded = false;
   private isImportingAnnotations = false;
   private lastAnnotationData: string | null = null;
@@ -258,8 +264,10 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       // Intercept 'x' key to prevent EmbedPDF from reloading the page;
       // instead close the reader via SPA navigation.
       const keydownHandler = (e: KeyboardEvent) => {
-        const tag = (e.target as HTMLElement)?.tagName;
-        const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+        const isEditing = e.composedPath().some((target) => {
+          const el = target as HTMLElement;
+          return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+        });
 
         if (e.key === 'x' || e.key === 'X') {
           if (isEditing) return;
@@ -318,8 +326,11 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       };
     });
 
-    this.annotationSaveSubscription = this.annotationSaveSubject
-      .pipe(debounceTime(1500))
+    this.annotationSaveSubject
+      .pipe(
+        debounceTime(1500),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(() => this.persistAnnotations());
 
     // Debounced search
@@ -335,8 +346,11 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
 
     // Keep lastAnnotationData warm so persistAnnotationsSync() always has fresh data
 
-    this.annotationCacheSubscription = this.annotationCacheSubject
-      .pipe(debounceTime(500))
+    this.annotationCacheSubject
+      .pipe(
+        debounceTime(500),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(() => this.cacheAnnotationData());
 
     this.route.paramMap.pipe(
@@ -382,19 +396,26 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         const globalOrIndividual = myself.userSettings.perBookSetting.pdf;
         let zoomVal: string;
         let spreadVal: 'none' | 'even' | 'odd';
+        let scrollLayoutVal: PdfScrollLayout;
         if (globalOrIndividual === 'Global') {
           zoomVal = myself.userSettings.pdfReaderSetting.pageZoom || 'page-fit';
           spreadVal = (myself.userSettings.pdfReaderSetting.pageSpread || 'none') === 'off' ? 'none' : (myself.userSettings.pdfReaderSetting.pageSpread as 'none' | 'even' | 'odd') || 'none';
+          scrollLayoutVal = myself.userSettings.pdfReaderSetting.scrollLayout || 'vertical';
         } else {
           zoomVal = pdfPrefs.pdfSettings?.zoom || myself.userSettings.pdfReaderSetting.pageZoom || 'page-fit';
           const rawSpread = pdfPrefs.pdfSettings?.spread || myself.userSettings.pdfReaderSetting.pageSpread || 'none';
           spreadVal = rawSpread === 'off' ? 'none' : rawSpread as 'none' | 'even' | 'odd';
+          scrollLayoutVal = pdfPrefs.pdfSettings?.scrollLayout
+            || myself.userSettings.pdfReaderSetting.scrollLayout
+            || 'vertical';
           this.isDarkTheme.set(pdfPrefs.pdfSettings?.isDarkTheme ?? true);
         }
         this.spread = spreadVal;
         this.spreadMode.set(spreadVal);
+        this.scrollLayout.set(scrollLayoutVal);
         this.canPrint = myself.permissions.canDownload || myself.permissions.admin;
-        this.page.set(pdfMeta.pdfProgress?.page || 1);
+        this.initialPage = pdfMeta.pdfProgress?.page || 1;
+        this.page.set(this.initialPage);
         this.zoom.set(this.normalizeZoom(zoomVal));
         this.bookData = bookData;
         this.isInitialScrollDone.set(false);
@@ -454,6 +475,8 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.suppressProgressSave = true;
+
       await this.embedPdfBook.init(
         targetEl,
         pdfUrl,
@@ -461,19 +484,10 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.t.getActiveLang()
       );
       this.bookViewerInitialized = true;
+      this.embedPdfBook.setScrollLayout(this.scrollLayout());
 
       if (this.isPanActive()) {
         this.embedPdfBook.setPanMode(true);
-      }
-
-      // Cache the raw PDF bytes so the doc-viewer switch never needs a network request
-      if (!this.cachedPdfBuffer) {
-        const blobSrc = this.pdfBlobUrl || (this.bookData.startsWith('blob:') ? this.bookData : null);
-        if (blobSrc) {
-          fetch(blobSrc).then(r => r.arrayBuffer()).then(buf => {
-            this.cachedPdfBuffer = buf;
-          }).catch(() => { /* caching is best-effort */ });
-        }
       }
 
       // Initialize bookmark service early so toggleBookmark works before documentOpened$
@@ -542,6 +556,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
           this.embedPdfBook.setSpreadMode(this.spread);
           this.spreadMode.set(this.spread);
         }
+        this.embedPdfBook.setScrollLayout(this.scrollLayout());
       });
 
       // Use onLayoutReady for initial page scroll (fires when document layout is calculated)
@@ -549,7 +564,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         takeUntilDestroyed(this.destroyRef),
         take(1)
       ).subscribe(() => {
-        const currentPage = this.page();
+        const currentPage = this.initialPage;
         if (currentPage > 1) {
           this.embedPdfBook.scrollToPage(currentPage, 'instant');
 
@@ -560,17 +575,24 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
             filter(ev => ev.pageNumber >= currentPage - 1),
             take(1)
           ).subscribe(() => {
-            this.ngZone.run(() => this.isInitialScrollDone.set(true));
+            this.ngZone.run(() => {
+              this.isInitialScrollDone.set(true);
+              this.releaseProgressPersistence();
+            });
           });
           // Fallback in case pageChange$ doesn't fire (e.g. single-page PDF)
           setTimeout(() => {
             if (!this.isInitialScrollDone()) {
               scrollSub.unsubscribe();
-              this.ngZone.run(() => this.isInitialScrollDone.set(true));
+              this.ngZone.run(() => {
+                this.isInitialScrollDone.set(true);
+                this.releaseProgressPersistence();
+              });
             }
           }, 800);
         } else {
           this.isInitialScrollDone.set(true);
+          this.releaseProgressPersistence();
         }
 
         // Load outline, bookmarks, and annotations after layout is ready and settled
@@ -581,6 +603,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
 
     } catch (err) {
       console.error('[BookViewer] Init failed:', err);
+      this.suppressProgressSave = false;
       this.messageService.add({
         severity: 'error',
         summary: this.t.translate('common.error'),
@@ -727,6 +750,9 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     if (this.bookViewerInitialized) {
       this.embedPdfBook.setPanMode(active);
     }
+    if (this.viewerMode() === 'document' && this.embedPdfIframe?.contentWindow) {
+      this.embedPdfIframe.contentWindow.postMessage({ type: 'setPanMode', enable: active }, location.origin);
+    }
   }
 
 
@@ -772,6 +798,26 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     this.embedPdfBook.stopSearch();
   }
 
+  performAction(id: string): void {
+    switch (id) {
+      case 'sidebar': this.toggleSidebar(); break;
+      case 'search': this.toggleSearch(); break;
+      case 'highlight': this.toggleAnnotationTool('highlight'); break;
+      case 'freeText': this.toggleAnnotationTool('freeText'); break;
+      case 'ink': this.toggleAnnotationTool('ink'); break;
+      case 'pan': this.togglePanMode(); break;
+      case 'bookmark': this.toggleBookmark(); break;
+      case 'zoomOut': this.embedPdfBook.zoomOut(); break;
+      case 'zoomIn': this.embedPdfBook.zoomIn(); break;
+      case 'spreadMode': this.cycleSpreadMode(); break;
+      case 'scrollLayout': this.cycleScrollLayout(); break;
+      case 'rotate': this.rotateClockwise(); break;
+      case 'theme': this.toggleDarkTheme(); break;
+      case 'fullscreen': this.toggleFullscreen(); break;
+      case 'overflow': this.toggleToolbarOverflow(); break;
+    }
+  }
+
   onSearchQueryChange(value: string): void {
     this.searchQuery.set(value);
     this.searchQuery$.next(value);
@@ -807,6 +853,17 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     this.spreadMode.set(next);
     this.spread = next;
     this.embedPdfBook.setSpreadMode(next);
+    this.updateViewerSetting();
+  }
+
+  cycleScrollLayout(): void {
+    const nextLayout: PdfScrollLayout = this.scrollLayout() === 'vertical' ? 'horizontal' : 'vertical';
+    this.scrollLayout.set(nextLayout);
+    if (this.viewerMode() === 'book') {
+      this.embedPdfBook.setScrollLayout(nextLayout);
+    } else if (this.embedPdfIframe?.contentWindow) {
+      this.embedPdfIframe.contentWindow.postMessage({ type: 'setScrollLayout', layout: nextLayout }, location.origin);
+    }
     this.updateViewerSetting();
   }
 
@@ -867,13 +924,18 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   async setViewerMode(mode: 'book' | 'document') {
     if (mode === this.viewerMode()) return;
 
+    this.persistProgress(true);
+
     this.docViewerReady.set(false);
     if (this.initTimeout) {
       clearTimeout(this.initTimeout);
       this.initTimeout = undefined;
     }
+    this.clearDocProgressReleaseTimer();
 
     if (mode === 'document') {
+      this.initialPage = this.page();
+      this.pendingDocTargetPage = this.initialPage > 1 ? this.initialPage : null;
       this.suppressProgressSave = true;
       // Ensure annotations are captured before destroying the book viewer
       await this.persistAnnotations();
@@ -884,6 +946,8 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.initDocViewerIframe();
       }, 100);
     } else {
+      this.initialPage = this.page();
+      this.pendingDocTargetPage = null;
       // Switching from doc to book — save in background, don't block the switch
       if (this.embedPdfIframe) {
         this.saveEmbedPdfDocument().finally(() => this.destroyDocViewerIframe());
@@ -908,24 +972,21 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     try {
       let pdfBuffer: ArrayBuffer;
 
-      if (this.cachedPdfBuffer) {
-        // Use the in-memory cache — completely network-free
-        pdfBuffer = this.cachedPdfBuffer.slice(0);
+      const source = this.pdfBlobUrl || this.bookData;
+      if (source.startsWith('blob:')) {
+        const res = await fetch(source);
+        pdfBuffer = await res.arrayBuffer();
       } else {
-        const source = this.pdfBlobUrl || this.bookData;
-        if (source.startsWith('blob:')) {
-          const res = await fetch(source);
-          pdfBuffer = await res.arrayBuffer();
-        } else {
-          const headers: Record<string, string> = {};
-          const token = this.authService.getInternalAccessToken();
-          if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-          }
-          const response = await fetch(source, { headers, credentials: 'include' });
-          if (!response.ok) throw new Error(`PDF fetch failed: ${response.status}`);
-          pdfBuffer = await response.arrayBuffer();
+        const headers: Record<string, string> = {};
+        const token = this.authService.getInternalAccessToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
+        const response = await fetch(source, {headers, credentials: 'include'});
+        if (!response.ok) {
+          throw new Error(`PDF fetch failed: ${response.status}`);
+        }
+        pdfBuffer = await response.arrayBuffer();
       }
 
       if (this.viewerMode() !== 'document') return;
@@ -985,14 +1046,17 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         }
         break;
       case 'documentOpened':
-        // Scroll to the page the user was on in book mode and re-enable progress saving
-        if (this.embedPdfIframe?.contentWindow && this.page() > 1) {
+        // Scroll to the page the user was on in book mode and release progress saving when navigation settles
+        if (typeof msg.pageCount === 'number' && msg.pageCount > 0) {
+          this.totalPages.set(msg.pageCount);
+        }
+        if (this.embedPdfIframe?.contentWindow && this.initialPage > 1) {
           this.embedPdfIframe.contentWindow.postMessage(
-            { type: 'scrollToPage', pageNumber: this.page() },
+            { type: 'scrollToPage', pageNumber: this.initialPage },
             location.origin
           );
         }
-        setTimeout(() => { this.suppressProgressSave = false; }, 500);
+        this.startDocProgressReleaseFallback();
         break;
       case 'documentError':
         console.error('[EmbedPDF] Document error:', msg.error);
@@ -1007,14 +1071,32 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.embedPdfSaveResolve = undefined;
         break;
       case 'pageChange':
+        if (this.viewerMode() === 'document' && this.suppressProgressSave) {
+          const shouldRelease = this.pendingDocTargetPage == null || msg.pageNumber >= this.pendingDocTargetPage - 1;
+          if (shouldRelease) {
+            this.pendingDocTargetPage = null;
+            this.releaseProgressPersistence();
+          }
+        }
         this.onPageChange(msg.pageNumber);
         this.totalPages.set(msg.totalPages);
         break;
     }
   }
 
-  private async saveEmbedPdfDocument(): Promise<void> {
-    if (!this.embedPdfIframe?.contentWindow) return;
+  private async saveEmbedPdfDocument(): Promise<boolean> {
+    if (this.embedPdfSavePromise) return this.embedPdfSavePromise;
+    this.embedPdfSavePromise = this.performEmbedPdfSave();
+
+    try {
+      return await this.embedPdfSavePromise;
+    } finally {
+      this.embedPdfSavePromise = undefined;
+    }
+  }
+
+  private async performEmbedPdfSave(): Promise<boolean> {
+    if (!this.embedPdfIframe?.contentWindow) return false;
 
     try {
       const buffer: ArrayBuffer | null = await new Promise((resolve) => {
@@ -1034,7 +1116,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
         this.embedPdfSaveTimer = undefined;
       }
 
-      if (!buffer) return;
+      if (!buffer) return false;
 
       const headers: Record<string, string> = { 'Content-Type': 'application/pdf' };
       const uploadToken = this.authService.getInternalAccessToken();
@@ -1054,9 +1136,48 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       });
       if (!uploadResponse.ok) {
         console.error('[EmbedPDF] Upload failed:', uploadResponse.status);
+        return false;
       }
+      this.updateSavedPdfCache(buffer);
+      await this.cacheStorageService.delete(url);
+      return true;
     } catch (err) {
       console.error('[EmbedPDF] Failed to save document:', err);
+      return false;
+    }
+  }
+
+  private updateSavedPdfCache(buffer: ArrayBuffer): void {
+    const savedBuffer = buffer.slice(0);
+    this.revokePdfBlobUrl();
+    this.pdfBlobUrl = URL.createObjectURL(new Blob([savedBuffer], { type: 'application/pdf' }));
+  }
+
+  async saveDocument(): Promise<void> {
+    if (this.viewerMode() !== 'document' || !this.embedPdfIframe) return;
+    if (this.isSavingDocument()) return;
+
+    this.isSavingDocument.set(true);
+    try {
+      const saved = await this.saveEmbedPdfDocument();
+      this.messageService.add(saved ? {
+        severity: 'success',
+        summary: this.t.translate('common.success'),
+        detail: this.t.translate('readerPdf.docViewer.changesSaved') || 'Changes saved successfully.'
+      } : {
+        severity: 'error',
+        summary: this.t.translate('common.error'),
+        detail: this.t.translate('readerPdf.docViewer.saveFailed') || 'Failed to save changes.'
+      });
+    } catch (err) {
+      console.error('[PDF Reader] Manually saving document failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: this.t.translate('common.error'),
+        detail: this.t.translate('readerPdf.docViewer.saveFailed') || 'Failed to save changes.'
+      });
+    } finally {
+      this.isSavingDocument.set(false);
     }
   }
 
@@ -1085,7 +1206,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   // --- Common viewer methods ---
 
   onPageChange(page: number | undefined): void {
-    if (page == null || page === this.page()) {
+    if (page == null || page === this.page() || !this.isInitialScrollDone()) {
       return;
     }
     this.page.set(page);
@@ -1115,6 +1236,7 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       pdfSettings: {
         spread: this.spread,
         zoom: this.zoom(),
+        scrollLayout: this.scrollLayout(),
         isDarkTheme: this.isDarkTheme(),
       }
     }
@@ -1122,15 +1244,42 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   }
 
   updateProgress(): void {
-    if (this.suppressProgressSave) return;
+    this.persistProgress();
+  }
+
+  private persistProgress(force = false): void {
+    if (this.suppressProgressSave && !force) return;
     const currentPage = this.page();
     const total = this.totalPages();
     const percentage = total > 0 ? Math.round((currentPage / total) * 1000) / 10 : 0;
     this.bookService.savePdfProgress(this.bookId, currentPage, percentage, this.bookFileId).subscribe();
   }
 
+  private releaseProgressPersistence(): void {
+    this.clearDocProgressReleaseTimer();
+    this.suppressProgressSave = false;
+    this.persistProgress(true);
+  }
+
+  private startDocProgressReleaseFallback(): void {
+    this.clearDocProgressReleaseTimer();
+    this.docProgressReleaseTimer = setTimeout(() => {
+      if (this.viewerMode() !== 'document') return;
+      if (this.suppressProgressSave) {
+        this.releaseProgressPersistence();
+      }
+    }, 1500);
+  }
+
+  private clearDocProgressReleaseTimer(): void {
+    if (!this.docProgressReleaseTimer) return;
+    clearTimeout(this.docProgressReleaseTimer);
+    this.docProgressReleaseTimer = undefined;
+  }
+
   ngOnDestroy(): void {
     if (this.initTimeout) clearTimeout(this.initTimeout);
+    this.clearDocProgressReleaseTimer();
     if (this.pdfFetchAbortController) this.pdfFetchAbortController.abort();
     this.wakeLockService.disable();
     if (this.chromeAutoHideTimer) clearTimeout(this.chromeAutoHideTimer);
@@ -1145,16 +1294,11 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
       this.readingSessionService.endSession(currentPage.toString(), percentage);
     }
 
-    this.annotationSaveSubscription?.unsubscribe();
-    this.annotationCacheSubscription?.unsubscribe();
     // Cannot await async export in ngOnDestroy — use cached annotation data
     this.persistAnnotationsSync();
     this.destroyBookViewer();
     this.destroyDocViewerIframe();
 
-    if (this.appSettingsSubscription) {
-      this.appSettingsSubscription.unsubscribe();
-    }
     document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     this.mouseMoveCleanup?.();
     this.documentClickCleanup?.();
@@ -1162,7 +1306,6 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     this.touchCleanup?.();
 
     this.revokePdfBlobUrl();
-    this.cachedPdfBuffer = null;
     if (this.bookData?.startsWith('blob:')) {
       URL.revokeObjectURL(this.bookData);
     }
@@ -1274,6 +1417,17 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     this.isToolbarOverflowOpen.set(false);
   }
 
+  onCloseReaderPointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse') return;
+    event.preventDefault();
+    this.requestCloseReader();
+  }
+
+  onCloseReaderClick(event?: Event): void {
+    event?.preventDefault();
+    this.requestCloseReader();
+  }
+
   // --- Fullscreen ---
 
   toggleFullscreen(): void {
@@ -1360,29 +1514,50 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  private requestCloseReader(): void {
+    if (this.isClosingReader()) return;
+    this.isClosingReader.set(true);
+    void this.closeReader();
+  }
+
   closeReader = async (): Promise<void> => {
+    if (this.closeReaderPromise) return this.closeReaderPromise;
+    this.closeReaderPromise = this.performCloseReader();
+    return this.closeReaderPromise;
+  }
+
+  private async performCloseReader(): Promise<void> {
     try {
-      if (this.viewerMode() === 'document' && this.embedPdfIframe) {
-        await this.saveEmbedPdfDocument();
-        await this.destroyDocViewerIframe();
-      } else {
-        await this.persistAnnotations();
+      try {
+        if (this.viewerMode() === 'document' && this.embedPdfIframe) {
+          await this.saveEmbedPdfDocument();
+          await this.destroyDocViewerIframe();
+        } else {
+          await this.persistAnnotations();
+        }
+      } catch (e) {
+        console.error('[PDF Reader] Error saving on close:', e);
       }
-    } catch (e) {
-      console.error('[PDF Reader] Error saving on close:', e);
+      if (this.readingSessionService.isSessionActive()) {
+        const currentPage = this.page();
+        const total = this.totalPages();
+        const percentage = total > 0 ? Math.round((currentPage / total) * 1000) / 10 : 0;
+        this.readingSessionService.endSession(currentPage.toString(), percentage);
+      }
+      // Navigate back within the SPA; fall back to home if there's no history
+      if (window.history.length > 1) {
+        this.location.back();
+      } else {
+        this.router.navigate(['/']);
+      }
+    } finally {
+      this.resetCloseReaderState();
     }
-    if (this.readingSessionService.isSessionActive()) {
-      const currentPage = this.page();
-      const total = this.totalPages();
-      const percentage = total > 0 ? Math.round((currentPage / total) * 1000) / 10 : 0;
-      this.readingSessionService.endSession(currentPage.toString(), percentage);
-    }
-    // Navigate back within the SPA; fall back to home if there's no history
-    if (window.history.length > 1) {
-      this.location.back();
-    } else {
-      this.router.navigate(['/']);
-    }
+  }
+
+  private resetCloseReaderState(): void {
+    this.closeReaderPromise = null;
+    this.isClosingReader.set(false);
   }
 
   private getBookData(

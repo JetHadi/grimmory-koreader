@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -154,7 +155,7 @@ public class PdfReaderService {
                     .orElseThrow(() -> ApiError.INVALID_INPUT.createException("Invalid book type: " + bookType));
             BookFileEntity bookFile = bookEntity.getBookFiles().stream()
                     .filter(bf -> bf.getBookType() == requestedType)
-                    .findFirst()
+                    .min(Comparator.comparingLong(BookFileEntity::getId))
                     .orElseThrow(() -> ApiError.FILE_NOT_FOUND.createException("No file of type " + bookType + " found for book"));
             return bookFile.getFullFilePath();
         }
@@ -220,7 +221,7 @@ public class PdfReaderService {
             }
 
             // PDFium4j pageIndex is 0-based, PdfOutlineItem.pageNumber is 1-based
-            Integer pageNumber = bookmark.isInternal() ? bookmark.pageIndex() + 1 : null;
+            Integer pageNumber = (bookmark.pageIndex() >= 0) ? bookmark.pageIndex() + 1 : null;
 
             List<PdfOutlineItem> children = new ArrayList<>();
             for (Bookmark child : bookmark.children()) {

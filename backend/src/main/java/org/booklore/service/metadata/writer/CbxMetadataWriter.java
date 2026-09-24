@@ -42,11 +42,12 @@ public class CbxMetadataWriter implements MetadataWriter {
 
     // Cache JAXBContext for performance
     private static final JAXBContext JAXB_CONTEXT;
+    private static final Pattern COMIC_ID_PATTERN = Pattern.compile("\\d+-\\d+");
 
     static {
         try {
             JAXB_CONTEXT = JAXBContext.newInstance(ComicInfo.class);
-        } catch (jakarta.xml.bind.JAXBException e) {
+        } catch (JAXBException e) {
             throw new RuntimeException("Failed to initialize JAXB Context", e);
         }
     }
@@ -231,7 +232,7 @@ public class CbxMetadataWriter implements MetadataWriter {
                 primaryUrl = "https://comicvine.gamespot.com/volume/" + cvId + "/";
             } else if (cvId.startsWith("4000-")) {
                 primaryUrl = "https://comicvine.gamespot.com/issue/" + cvId + "/";
-            } else if (cvId.matches("\\d+-\\d+")) {
+            } else if (COMIC_ID_PATTERN.matcher(cvId).matches()) {
                 // Already prefixed with some other Comicvine namespace; preserve as-is.
                 primaryUrl = "https://comicvine.gamespot.com/issue/" + cvId + "/";
             } else {
@@ -242,6 +243,10 @@ public class CbxMetadataWriter implements MetadataWriter {
             primaryUrl = "https://www.goodreads.com/book/show/" + metadata.getGoodreadsId();
         } else if (metadata.getAsin() != null && !metadata.getAsin().isBlank()) {
             primaryUrl = "https://www.amazon.com/dp/" + metadata.getAsin();
+        } else if (metadata.getApplebooksId() != null && !metadata.getApplebooksId().isBlank()) {
+            primaryUrl = "https://books.apple.com/us/book/id" + metadata.getApplebooksId();
+        } else if (metadata.getOpenlibraryId() != null && !metadata.getOpenlibraryId().isBlank()) {
+            primaryUrl = "https://openlibrary.org/" + metadata.getOpenlibraryId().replaceAll("^/+", "");
         }
         info.setWeb(primaryUrl);
 
@@ -278,15 +283,18 @@ public class CbxMetadataWriter implements MetadataWriter {
         appendBookLoreTag(notesBuilder, "HardcoverRating", metadata.getHardcoverRating());
         appendBookLoreTag(notesBuilder, "LubimyczytacRating", metadata.getLubimyczytacRating());
         appendBookLoreTag(notesBuilder, "RanobedbRating", metadata.getRanobedbRating());
+        appendBookLoreTag(notesBuilder, "ApplebooksRating", metadata.getApplebooksRating());
 
         appendBookLoreTag(notesBuilder, "HardcoverBookId", metadata.getHardcoverBookId());
         appendBookLoreTag(notesBuilder, "HardcoverId", metadata.getHardcoverId());
         appendBookLoreTag(notesBuilder, "LubimyczytacId", metadata.getLubimyczytacId());
         appendBookLoreTag(notesBuilder, "RanobedbId", metadata.getRanobedbId());
         appendBookLoreTag(notesBuilder, "GoogleId", metadata.getGoogleId());
+        appendBookLoreTag(notesBuilder, "OpenlibraryId", metadata.getOpenlibraryId());
         appendBookLoreTag(notesBuilder, "GoodreadsId", metadata.getGoodreadsId());
         appendBookLoreTag(notesBuilder, "ASIN", metadata.getAsin());
         appendBookLoreTag(notesBuilder, "ComicvineId", metadata.getComicvineId());
+        appendBookLoreTag(notesBuilder, "ApplebooksId", metadata.getApplebooksId());
         
         // Comic-specific metadata from ComicMetadataEntity
         ComicMetadataEntity comic = metadata.getComicMetadata();
@@ -449,7 +457,7 @@ public class CbxMetadataWriter implements MetadataWriter {
         // Ensure 2-space indentation if possible
         try {
             marshaller.setProperty("com.sun.xml.bind.indentString", "  ");
-        } catch (Exception ignored) {
+        } catch (Exception _) {
             log.debug("Custom indentation property not supported via 'com.sun.xml.bind.indentString'");
         }
         

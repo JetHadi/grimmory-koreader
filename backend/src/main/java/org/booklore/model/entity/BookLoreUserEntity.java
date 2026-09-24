@@ -39,6 +39,25 @@ public class BookLoreUserEntity {
     @Column(unique = true)
     private String email;
 
+    @Builder.Default
+    @Column(nullable = false, length = 16)
+    private String locale = "en";
+
+    @Builder.Default
+    @Column(nullable = false, length = 32)
+    private String theme = "grimmory";
+
+    @Column(name = "theme_accent", length = 32)
+    private String themeAccent;
+
+    @Builder.Default
+    @Column(name = "theme_sync_enabled", nullable = false)
+    private boolean themeSyncEnabled = true;
+
+    @Builder.Default
+    @Column(name = "ui_font", nullable = false, length = 32)
+    private String uiFont = "default";
+
     @Column(name = "provisioning_method")
     @Enumerated(EnumType.STRING)
     private ProvisioningMethod provisioningMethod;
@@ -65,11 +84,7 @@ public class BookLoreUserEntity {
 
     @BatchSize(size = 20)
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_library_mapping",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "library_id")
-    )
+    @JoinTable(name = "user_library_mapping", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "library_id"))
     @Builder.Default
     private Set<LibraryEntity> libraries = new HashSet<>();
 
@@ -97,15 +112,15 @@ public class BookLoreUserEntity {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public final boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         BookLoreUserEntity that = (BookLoreUserEntity) o;
-        return id != null && Objects.equals(id, that.id);
+        return getId() != null && Objects.equals(getId(), that.getId());
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return Hibernate.getClass(this).hashCode();
     }
 }

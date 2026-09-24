@@ -1,6 +1,3 @@
-> [!NOTE]
-> Grimmory is an independent community fork of Booklore.
-
 <div align="center">
 
 <picture>
@@ -10,12 +7,13 @@
 
 **Grimmory is a self-hosted digital library for people who take their reading seriously.**
 
-[![Release](https://img.shields.io/github/v/release/grimmory-tools/grimmory?color=818CF8&style=flat-square&logo=github)](https://github.com/grimmory-tools/grimmory/releases)
-[![License](https://img.shields.io/github/license/grimmory-tools/grimmory?color=fab005&style=flat-square)](LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/grimmory/grimmory?color=2496ED&style=flat-square&logo=docker&logoColor=white)](https://hub.docker.com/r/grimmory/grimmory)
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/9YJ7HB4n8T)
+[![Release](https://img.shields.io/github/v/release/grimmory-tools/grimmory?color=818CF8&logo=github)](https://github.com/grimmory-tools/grimmory/releases)
+[![License](https://img.shields.io/github/license/grimmory-tools/grimmory?color=fab005)](LICENSE)
+[![Crowdin](https://badges.crowdin.net/grimmory/localized.svg)](https://crowdin.com/project/grimmory)
+[![Docker Pulls](https://img.shields.io/docker/pulls/grimmory/grimmory?color=2496ED&logo=docker&logoColor=white)](https://hub.docker.com/r/grimmory/grimmory)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/9YJ7HB4n8T)
 
-[Documentation](https://grimmory.org/docs) · [Quick Start](docs/QUICKSTART.md) · [Discord](https://discord.gg/9YJ7HB4n8T) · [Releases](https://github.com/grimmory-tools/grimmory/releases)
+[Documentation](https://grimmory.org/docs) · [Quick Start](#quick-start) · [Translations](https://crowdin.com/project/grimmory) · [Discord](https://discord.gg/9YJ7HB4n8T) · [Releases](https://github.com/grimmory-tools/grimmory/releases)
 
 <!-- ![Grimmory Demo](assets/demo.gif) -->
 
@@ -95,15 +93,6 @@ MYSQL_DATABASE=grimmory
 
 Stable images are published from semantic-release tags on `main` as `vX.Y.Z` plus `latest`. Nightly images are built from `develop` and tagged `nightly`.
 
-> [!NOTE]
-> Migrating from an existing Booklore container? You can keep your current service name, `container_name`, database name and user, ports, and mounted volumes the same. Replace only the `image:` line with `grimmory/grimmory:<tag>` or `ghcr.io/grimmory-tools/grimmory:<tag>`.
-
-```yaml
-services:
-  booklore:
-    image: grimmory/grimmory:v2.2.1
-```
-
 Create a `docker-compose.yml` or copy and adapt [`deploy/compose/docker-compose.yml`](deploy/compose/docker-compose.yml):
 
 ```yaml
@@ -144,7 +133,6 @@ services:
 
   mariadb:
     image: lscr.io/linuxserver/mariadb:11.4.5
-    container_name: mariadb
     environment:
       - PUID=${DB_USER_ID}
       - PGID=${DB_GROUP_ID}
@@ -169,7 +157,20 @@ services:
 docker compose up -d
 ```
 
-Open http://localhost:6060, create your admin account, and start building your library.
+Open http://localhost:6060, create your admin account, and start building your library. (All libraries must be created within directories mounted on the host, e.g. the `/books/` directory in the sample `docker-compose.yml` above.)
+
+#### Optional: Capture Heap Dumps for OOM Debugging
+
+Heap dumps are disabled by default. To enable them temporarily, add the following environment variable to the `grimmory` service:
+
+```yaml
+services:
+  grimmory:
+    environment:
+      - JDK_JAVA_OPTIONS=-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/data
+```
+
+The JVM creates a PID-specific `.hprof` file in the mounted `/app/data` directory. Remove the option after collecting the diagnostic data because heap dumps can be large and contain sensitive application data.
 
 Additional deployment examples:
 
@@ -182,7 +183,8 @@ Additional deployment examples:
 ## Developer Surfaces
 
 
-Contributor workflow, PR policy, and release semantics live in [CONTRIBUTING.md](CONTRIBUTING.md). 
+Contributor workflow, PR policy, and release semantics live in [CONTRIBUTING.md](CONTRIBUTING.md).
+Non-English translation contributions are managed through [Crowdin](https://crowdin.com/project/grimmory).
 
 General purpose development guidelines live in [DEVELOPMENT.md](DEVELOPMENT.md). Component-specific implementation guidance lives in:
 
@@ -245,12 +247,12 @@ All other features — reading, metadata, sync — remain fully functional.
 
 ## Community and Support
 
-| Channel | |
-| :--- | :--- |
-| Report a bug | [Open an issue](https://github.com/grimmory-tools/grimmory/issues/new?template=bug_report.yml) |
-| Request a feature | [Open an issue](https://github.com/grimmory-tools/grimmory/issues/new?template=feature_request.yml) |
-| Contribute | [Contributing Guide](CONTRIBUTING.md) |
-| Join the discussion | [Discord Server](https://discord.gg/9YJ7HB4n8T) |
+| Channel |                                                                                                         |
+| :--- |:--------------------------------------------------------------------------------------------------------|
+| Report a bug | [Open an issue](https://github.com/grimmory-tools/grimmory/issues/new?template=bug-report.yml)          |
+| Request a feature | [Open a Discussion](https://github.com/orgs/grimmory-tools/discussions/new?category=feature-requests-ideas) |
+| Contribute | [Contributing Guide](CONTRIBUTING.md)                                                                   |
+| Join the discussion | [Discord Server](https://discord.gg/9YJ7HB4n8T)                                                         |
 
 > [!WARNING]
 > Before opening a pull request, open an issue first and get maintainer approval. Pull requests without a linked issue, without screenshots or video proof, or without pasted test output will be closed. All code must follow the project [backend](CONTRIBUTING.md#backend-conventions) and [frontend](CONTRIBUTING.md#frontend-conventions) conventions. AI-assisted contributions are welcome, but you must run, test, and understand every line you submit. See the [Contributing Guide](CONTRIBUTING.md) for full details.

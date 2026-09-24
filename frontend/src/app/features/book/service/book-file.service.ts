@@ -4,13 +4,13 @@ import {HttpClient} from '@angular/common/http';
 import {catchError, tap} from 'rxjs/operators';
 import {AdditionalFile, AdditionalFileType, Book, DetachBookFileResponse, DuplicateDetectionRequest, DuplicateGroup} from '../model/book.model';
 import {API_CONFIG} from '../../../core/config/api-config';
-import {MessageService} from 'primeng/api';
+import {MessageService} from '@openng/optimus-ui/api';
 import {FileDownloadService} from '../../../shared/service/file-download.service';
 import {CacheStorageService} from '../../../shared/service/cache-storage.service';
 import {LocalSettingsService} from '../../../shared/service/local-settings.service';
 import {TranslocoService} from '@jsverse/transloco';
 import {QueryClient} from '@tanstack/angular-query-experimental';
-import {patchBookInCacheWith, patchBooksInCache, removeBooksFromCache} from './book-query-cache';
+import {patchAttachedBookFilesInCache, patchBookInCacheWith, upsertBooksInCache} from './legacy-book-cache';
 
 @Injectable({
   providedIn: 'root',
@@ -168,7 +168,7 @@ export class BookFileService {
   detachBookFile(bookId: number, fileId: number, copyMetadata: boolean): Observable<DetachBookFileResponse> {
     return this.http.post<DetachBookFileResponse>(`${this.url}/${bookId}/files/${fileId}/detach`, {copyMetadata}).pipe(
       tap(response => {
-        patchBooksInCache(this.queryClient, [response.sourceBook, response.newBook]);
+        upsertBooksInCache(this.queryClient, [response.sourceBook, response.newBook]);
         this.messageService.add({
           severity: 'success',
           summary: this.t.translate('metadata.viewer.toast.detachFileSuccessSummary'),
@@ -196,8 +196,11 @@ export class BookFileService {
       moveFiles
     }).pipe(
       tap(response => {
-        patchBooksInCache(this.queryClient, [response.updatedBook]);
-        removeBooksFromCache(this.queryClient, response.deletedSourceBookIds);
+        patchAttachedBookFilesInCache(
+          this.queryClient,
+          response.updatedBook,
+          response.deletedSourceBookIds,
+        );
         this.messageService.add({
           severity: 'success',
           summary: this.t.translate('book.bookService.toast.filesAttachedSummary'),

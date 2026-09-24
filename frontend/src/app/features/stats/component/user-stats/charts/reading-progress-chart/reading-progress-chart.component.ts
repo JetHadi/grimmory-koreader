@@ -1,6 +1,6 @@
 import {Component, computed, inject} from '@angular/core';
 import {BaseChartDirective} from 'ng2-charts';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {BookService} from '../../../../../book/service/book.service';
 import {Book} from '../../../../../book/model/book.model';
@@ -20,13 +20,6 @@ const CHART_COLORS = [
   '#6f42c1', // Purple - Almost Finished (76-99%)
   '#28a745'  // Green - Completed (100%)
 ] as const;
-
-const CHART_DEFAULTS = {
-  borderColor: '#ffffff',
-  borderWidth: 1,
-  hoverBorderWidth: 2,
-  hoverBorderColor: '#ffffff'
-} as const;
 
 const PROGRESS_RANGES = [
   {range: '0%', min: 0, max: 0, desc: 'Not Started'},
@@ -70,7 +63,6 @@ export class ReadingProgressChartComponent {
         display: true,
         position: 'bottom',
         labels: {
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 12
@@ -90,11 +82,9 @@ export class ReadingProgressChartComponent {
                 return {
                   text: `${label}: ${value}`,
                   fillStyle: (data.datasets[0].backgroundColor as string[])[i],
-                  strokeStyle: '#ffffff',
                   lineWidth: 1,
                   hidden: !isVisible,
                   index: i,
-                  fontColor: '#ffffff'
                 };
               });
             }
@@ -104,10 +94,6 @@ export class ReadingProgressChartComponent {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: '#ffffff',
         borderWidth: 1,
         cornerRadius: 6,
         displayColors: true,
@@ -132,8 +118,7 @@ export class ReadingProgressChartComponent {
             return this.t.translate('statsUser.readingProgress.tooltipLabel', {value, plural, description, percentage});
           }
         }
-      },
-      datalabels: {display: false}
+      }
     },
     interaction: {
       intersect: false,
@@ -153,10 +138,6 @@ export class ReadingProgressChartComponent {
           label: this.t.translate('statsUser.readingProgress.booksByProgress'),
           data: dataValues,
           backgroundColor: [...CHART_COLORS],
-          borderColor: '#ffffff',
-          borderWidth: 2,
-          hoverBorderWidth: 3,
-          hoverBorderColor: '#ffffff'
         }]
       };
     } catch (error) {
@@ -166,8 +147,7 @@ export class ReadingProgressChartComponent {
         datasets: [{
           label: this.t.translate('statsUser.readingProgress.booksByProgress'),
           data: [],
-          backgroundColor: [...CHART_COLORS],
-          ...CHART_DEFAULTS
+          backgroundColor: [...CHART_COLORS]
         }]
       };
     }

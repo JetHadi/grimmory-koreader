@@ -9,7 +9,7 @@ work.
 
 ```
 grimmory/
-├── frontend/                # Angular frontend (TypeScript, PrimeNG)
+├── frontend/                # Angular frontend (TypeScript, Optimus UI)
 ├── backend/                 # Spring Boot backend (Java 25, Gradle)
 ├── deploy/                  # Compose, Helm, and Podman deployment examples
 ├── packaging/docker/        # Container runtime assets used by the Docker build
@@ -84,7 +84,7 @@ For full control over each component or IDE integration (debugging, hot-reload, 
 | Tool                    | Version | Download                                     |
 | ----------------------- | ------- | -------------------------------------------- |
 | Java                    | 25+     | [Adoptium](https://adoptium.net/)            |
-| Node.js + Corepack/Yarn | 24+     | [nodejs.org](https://nodejs.org/)            |
+| Node.js + pnpm          | 24+     | [nodejs.org](https://nodejs.org/)            |
 | MariaDB                 | 10.6+   | [mariadb.org](https://mariadb.org/download/) |
 | Git                     | latest  | [git-scm.com](https://git-scm.com/)          |
 

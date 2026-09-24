@@ -1,6 +1,6 @@
 package org.booklore.service.book;
 
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.booklore.config.security.service.AuthenticationService;
@@ -30,6 +30,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.io.InputStream;
 
 @Slf4j
 @AllArgsConstructor
@@ -51,6 +53,7 @@ public class BookService {
 
     private final BookRepository bookRepository;
     private final BookFileRepository bookFileRepository;
+    private final EntityManager entityManager;
     private final PdfViewerPreferencesRepository pdfViewerPreferencesRepository;
     private final CbxViewerPreferencesRepository cbxViewerPreferencesRepository;
     private final NewPdfViewerPreferencesRepository newPdfViewerPreferencesRepository;
@@ -277,30 +280,20 @@ public class BookService {
         return bookUpdateService.assignShelvesToBooks(bookIds, shelfIdsToAssign, shelfIdsToUnassign);
     }
 
+    public Optional<Resource> getBookThumbnailIfPresent(long bookId) {
+        return resolveImageResource(fileService.getThumbnailFile(bookId), bookId);
+    }
+
     public Resource getBookThumbnail(long bookId) {
-        Path thumbnailPath = Paths.get(fileService.getThumbnailFile(bookId));
-        try {
-            if (Files.exists(thumbnailPath)) {
-                return new UrlResource(thumbnailPath.toUri());
-            } else {
-                return new ClassPathResource("static/images/missing-cover.jpg");
-            }
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Failed to load book cover for bookId=" + bookId, e);
-        }
+        return getBookThumbnailIfPresent(bookId).orElse(null);
+    }
+
+    public Optional<Resource> getBookCoverIfPresent(long bookId) {
+        return resolveImageResource(fileService.getCoverFile(bookId), bookId);
     }
 
     public Resource getBookCover(long bookId) {
-        Path coverPath = Paths.get(fileService.getCoverFile(bookId));
-        try {
-            if (Files.exists(coverPath)) {
-                return new UrlResource(coverPath.toUri());
-            } else {
-                return getMissingCoverResource();
-            }
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Failed to load book cover for bookId=" + bookId, e);
-        }
+        return getBookCoverIfPresent(bookId).orElse(null);
     }
 
     public Resource getBookCover(String coverHash) {
@@ -308,47 +301,37 @@ public class BookService {
         return getBookCover(bookEntity.getId());
     }
 
-    public Resource getAudiobookThumbnail(long bookId) {
-        Path thumbnailPath = Paths.get(fileService.getAudiobookThumbnailFile(bookId));
-        try {
-            if (Files.exists(thumbnailPath)) {
-                return new UrlResource(thumbnailPath.toUri());
-            } else {
-                return getMissingCoverResource();
-            }
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Failed to load audiobook thumbnail for bookId=" + bookId, e);
-        }
+    public Optional<Resource> getAudiobookThumbnailIfPresent(long bookId) {
+        return resolveImageResource(fileService.getAudiobookThumbnailFile(bookId), bookId);
+    }
+
+    public Optional<Resource> getAudiobookCoverIfPresent(long bookId) {
+        return resolveImageResource(fileService.getAudiobookCoverFile(bookId), bookId);
     }
 
     public Resource getAudiobookCover(long bookId) {
-        Path coverPath = Paths.get(fileService.getAudiobookCoverFile(bookId));
+        return getAudiobookCoverIfPresent(bookId).orElse(null);
+    }
+
+    private Optional<Resource> resolveImageResource(String filePath, long bookId) {
+        Path path = Paths.get(filePath);
+        if (!Files.exists(path)) {
+            return Optional.empty();
+        }
         try {
-            if (Files.exists(coverPath)) {
-                return new UrlResource(coverPath.toUri());
-            } else {
-                return getMissingCoverResource();
-            }
+            return Optional.of(new UrlResource(path.toUri()));
         } catch (MalformedURLException e) {
-            throw new RuntimeException("Failed to load audiobook cover for bookId=" + bookId, e);
+            log.error("Failed to load image for bookId={} from path={}", bookId, filePath, e);
+            throw ApiError.INTERNAL_SERVER_ERROR.createException("Failed to load image for bookId=" + bookId);
         }
     }
 
-    private Resource getMissingCoverResource() {
-        try {
-            byte[] bytes = new ClassPathResource("static/images/missing-cover.jpg").getInputStream().readAllBytes();
-            return new ByteArrayResource(bytes);
-        } catch (IOException e) {
-            throw ApiError.INTERNAL_SERVER_ERROR.createException("Failed to load missing cover image");
-        }
-    }
-
-    public ResponseEntity<Resource> downloadBook(Long bookId) {
+    public ResponseEntity<StreamingResponseBody> downloadBook(Long bookId) {
         return bookDownloadService.downloadBook(bookId);
     }
 
-    public void downloadAllBookFiles(Long bookId, HttpServletResponse response) {
-        bookDownloadService.downloadAllBookFiles(bookId, response);
+    public ResponseEntity<StreamingResponseBody> downloadAllBookFiles(Long bookId) {
+        return bookDownloadService.downloadAllBookFiles(bookId);
     }
 
     public ResponseEntity<Resource> getBookContent(long bookId) {
@@ -385,7 +368,7 @@ public class BookService {
                 .body(new FileSystemResource(file));
     }
 
-    public void replaceBookContent(long bookId, String bookType, java.io.InputStream content) throws IOException {
+    public void replaceBookContent(long bookId, String bookType, InputStream content) throws IOException {
         BookEntity bookEntity = bookRepository.findByIdWithBookFiles(bookId)
                 .orElseThrow(() -> ApiError.BOOK_NOT_FOUND.createException(bookId));
 
@@ -459,7 +442,13 @@ public class BookService {
             }
         }
 
+        // Because this is `InBatch` we need to clear and flush the entity manager to
+        // prevent unexpected updates of records when the transaction commits.
+        entityManager.flush();
+        entityManager.clear();
+
         bookRepository.deleteAllInBatch(books);
+
         auditService.log(AuditAction.BOOK_DELETED, "Deleted " + ids.size() + " book(s)");
         BookDeletionResponse response = new BookDeletionResponse(ids, failedFileDeletions);
         return failedFileDeletions.isEmpty()
@@ -471,9 +460,9 @@ public class BookService {
         if (!Files.exists(path)) return;
 
         try (var walk = Files.walk(path)) {
-            walk.sorted(java.util.Comparator.reverseOrder())
+            walk.sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
-                    .forEach(java.io.File::delete);
+                    .forEach(File::delete);
         }
     }
 

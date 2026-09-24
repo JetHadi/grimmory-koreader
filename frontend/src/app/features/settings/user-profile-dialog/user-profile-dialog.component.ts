@@ -1,11 +1,11 @@
 import {Component, effect, inject} from '@angular/core';
-import {Button} from 'primeng/button';
+import {Button} from '@openng/optimus-ui/button';
 import {AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators} from '@angular/forms';
-import {InputText} from 'primeng/inputtext';
-import {Password} from 'primeng/password';
-import {User, UserService, UserUpdateRequest} from '../user-management/user.service';
-import {MessageService} from 'primeng/api';
-import {DynamicDialogRef} from 'primeng/dynamicdialog';
+import {InputText} from '@openng/optimus-ui/inputtext';
+import {Password} from '@openng/optimus-ui/password';
+import {User, UserProfileUpdateRequest, UserService} from '../user-management/user.service';
+import {MessageService} from '@openng/optimus-ui/api';
+import {DynamicDialogRef} from '@openng/optimus-ui/dynamicdialog';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 
 export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
@@ -28,7 +28,7 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
     InputText,
     Password,
     TranslocoDirective,
-    TranslocoPipe
+    TranslocoPipe,
   ],
   templateUrl: './user-profile-dialog.component.html',
   styleUrls: ['./user-profile-dialog.component.scss']
@@ -98,11 +98,11 @@ export class UserProfileDialogComponent {
       return;
     }
 
-    const updateRequest: UserUpdateRequest = {
+    const updateRequest: UserProfileUpdateRequest = {
       name: this.editUserData.name,
       email: this.editUserData.email,
     };
-    this.userService.updateUser(this.currentUser.id, updateRequest).subscribe({
+    this.userService.updateUserProfile(this.currentUser.id, updateRequest).subscribe({
       next: () => {
         this.messageService.add({severity: 'success', summary: this.t.translate('common.success'), detail: this.t.translate('settingsProfile.toast.profileUpdated')});
         this.isEditing = false;

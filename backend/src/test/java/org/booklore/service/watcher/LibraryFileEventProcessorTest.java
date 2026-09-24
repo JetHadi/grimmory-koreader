@@ -9,7 +9,6 @@ import org.booklore.model.enums.LibraryOrganizationMode;
 import org.booklore.repository.BookRepository;
 import org.booklore.repository.LibraryRepository;
 import org.booklore.service.library.LibraryProcessingService;
-import org.booklore.service.library.LibraryScanListener;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
@@ -19,7 +18,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,6 +25,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import java.util.Comparator;
 
 class LibraryFileEventProcessorTest {
 
@@ -35,7 +34,6 @@ class LibraryFileEventProcessorTest {
     @Mock private BookFileTransactionalHandler bookFileTransactionalHandler;
     @Mock private BookFilePersistenceService bookFilePersistenceService;
     @Mock private LibraryProcessingService libraryProcessingService;
-    @Mock private LibraryScanListener libraryScanListener;
     @Mock private PendingDeletionPool pendingDeletionPool;
 
     private LibraryFileEventProcessor processor;
@@ -53,7 +51,7 @@ class LibraryFileEventProcessorTest {
         mocks = MockitoAnnotations.openMocks(this);
         processor = new LibraryFileEventProcessor(
                 libraryRepository, bookRepository, bookFileTransactionalHandler,
-                bookFilePersistenceService, libraryProcessingService, libraryScanListener, pendingDeletionPool);
+                bookFilePersistenceService, libraryProcessingService, pendingDeletionPool);
 
         libraryPath = new LibraryPathEntity();
         libraryPath.setId(1L);
@@ -184,6 +182,42 @@ class LibraryFileEventProcessorTest {
         }
 
         @Test
+        void bookPerFileMode_processesMultiFileAudiobookFolderAsOneBook() throws Exception {
+            library.setOrganizationMode(LibraryOrganizationMode.BOOK_PER_FILE);
+
+            Path folder = tempDir.resolve("Chaptered Audiobook");
+            Files.createDirectory(folder);
+            Files.writeString(folder.resolve("Chaptered Audiobook - 1 - Chapter One.mp3"), "audio content 1");
+            Files.writeString(folder.resolve("Chaptered Audiobook - 2 - Chapter Two.mp3"), "audio content 2");
+
+            processor.processEvent(StandardWatchEventKinds.ENTRY_CREATE, 1L, folder, true);
+
+            Thread.sleep(8000);
+
+            verify(bookFileTransactionalHandler).handleNewFolderAudiobook(eq(1L), eq(folder));
+            verify(bookFileTransactionalHandler, never()).handleNewBookFile(anyLong(), any());
+            verify(libraryProcessingService, never()).processLibraryFiles(any(), any());
+        }
+
+        @Test
+        void bookPerFolderMode_processesMultiFileAudiobookFolderAsOneBook() throws Exception {
+            library.setOrganizationMode(LibraryOrganizationMode.BOOK_PER_FOLDER);
+
+            Path folder = tempDir.resolve("Chaptered Audiobook");
+            Files.createDirectory(folder);
+            Files.writeString(folder.resolve("Chaptered Audiobook - 1 - Chapter One.mp3"), "audio content 1");
+            Files.writeString(folder.resolve("Chaptered Audiobook - 2 - Chapter Two.mp3"), "audio content 2");
+
+            processor.processEvent(StandardWatchEventKinds.ENTRY_CREATE, 1L, folder, true);
+
+            Thread.sleep(8000);
+
+            verify(bookFileTransactionalHandler).handleNewFolderAudiobook(eq(1L), eq(folder));
+            verify(bookFileTransactionalHandler, never()).handleNewBookFile(anyLong(), any());
+            verify(libraryProcessingService, never()).processLibraryFiles(any(), any());
+        }
+
+        @Test
         void bookPerFileMode_ignoresFolderWithIgnoreFile() throws Exception {
             library.setOrganizationMode(LibraryOrganizationMode.BOOK_PER_FILE);
 
@@ -249,8 +283,8 @@ class LibraryFileEventProcessorTest {
                 verify(bookFileTransactionalHandler, never()).handleNewBookFile(anyLong(), any());
             } finally {
                 try (var stream = Files.walk(outsideFolder)) {
-                    stream.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
-                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                    stream.sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (IOException _) {}
                     });
                 }
             }
@@ -267,14 +301,14 @@ class LibraryFileEventProcessorTest {
                     .library(library)
                     .libraryPath(libraryPath)
                     .deleted(false)
-                    .bookFiles(new ArrayList<>(List.of(BookFileEntity.builder()
+                    .bookFiles(Set.of(BookFileEntity.builder()
                             .id(100L)
                             .fileName("test.epub")
                             .fileSubPath("books")
                             .currentHash("hash")
                             .isBookFormat(true)
                             .bookType(BookFileType.EPUB)
-                            .build())))
+                            .build()))
                     .build();
 
             when(bookRepository.findBooksWithFilesUnderPath(eq(1L), anyString()))
@@ -311,7 +345,7 @@ class LibraryFileEventProcessorTest {
         void bookFileFound_addsToPool() throws Exception {
             BookEntity book = BookEntity.builder()
                     .id(10L).library(library).libraryPath(libraryPath).deleted(false)
-                    .bookFiles(new ArrayList<>()).build();
+                    .bookFiles(Set.of()).build();
             BookFileEntity bookFile = BookFileEntity.builder()
                     .id(100L).book(book).fileName("test.epub").fileSubPath("sub")
                     .currentHash("hash").isBookFormat(true).bookType(BookFileType.EPUB).build();
@@ -397,7 +431,7 @@ class LibraryFileEventProcessorTest {
             // Reinitialize so tearDown's shutdown doesn't fail
             processor = new LibraryFileEventProcessor(
                     libraryRepository, bookRepository, bookFileTransactionalHandler,
-                    bookFilePersistenceService, libraryProcessingService, libraryScanListener, pendingDeletionPool);
+                    bookFilePersistenceService, libraryProcessingService, pendingDeletionPool);
         }
     }
 }

@@ -1,6 +1,6 @@
 import {Component, inject, Input, OnDestroy, OnInit} from '@angular/core';
 import {BaseChartDirective} from 'ng2-charts';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {BehaviorSubject, EMPTY, Observable, Subject} from 'rxjs';
 import {catchError, takeUntil} from 'rxjs/operators';
@@ -68,7 +68,6 @@ export class CompletionRaceChartComponent implements OnInit, OnDestroy {
           display: true,
           position: 'top',
           labels: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11},
             boxWidth: 12,
             padding: 8,
@@ -78,10 +77,6 @@ export class CompletionRaceChartComponent implements OnInit, OnDestroy {
         },
         tooltip: {
           enabled: true,
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          borderColor: '#ffffff',
           borderWidth: 1,
           cornerRadius: 6,
           padding: 12,
@@ -95,8 +90,7 @@ export class CompletionRaceChartComponent implements OnInit, OnDestroy {
               return this.t.translate('statsUser.completionRace.tooltipDayProgress', {day, progress});
             }
           }
-        },
-        datalabels: {display: false}
+        }
       },
       scales: {
         x: {
@@ -104,15 +98,12 @@ export class CompletionRaceChartComponent implements OnInit, OnDestroy {
           title: {
             display: true,
             text: this.t.translate('statsUser.completionRace.axisDaysSinceFirstSession'),
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 12, weight: 'bold'}
           },
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11},
             stepSize: 1
           },
-          grid: {color: 'rgba(255, 255, 255, 0.1)'},
           border: {display: false}
         },
         y: {
@@ -121,15 +112,12 @@ export class CompletionRaceChartComponent implements OnInit, OnDestroy {
           title: {
             display: true,
             text: this.t.translate('statsUser.completionRace.axisProgress'),
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 12, weight: 'bold'}
           },
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11},
             callback: (value) => `${value}%`
           },
-          grid: {color: 'rgba(255, 255, 255, 0.1)'},
           border: {display: false}
         }
       },

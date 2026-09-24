@@ -1,7 +1,7 @@
 import {Component, computed, inject} from '@angular/core';
 import {BaseChartDirective} from 'ng2-charts';
 import {ChartConfiguration, ChartData} from 'chart.js';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {BookService} from '../../../../../book/service/book.service';
 import {Book} from '../../../../../book/model/book.model';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
@@ -26,10 +26,8 @@ const CHART_COLORS = [
 ] as const;
 
 const CHART_DEFAULTS = {
-  borderColor: '#ffffff',
   borderWidth: 1,
   hoverBorderWidth: 2,
-  hoverBorderColor: '#ffffff'
 } as const;
 
 const RATING_RANGES = [
@@ -77,10 +75,6 @@ export class PersonalRatingChartComponent {
       legend: {display: false},
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: '#ffffff',
         borderWidth: 1,
         cornerRadius: 6,
         displayColors: true,
@@ -96,21 +90,18 @@ export class PersonalRatingChartComponent {
           }
         }
       },
-      datalabels: {display: false}
     },
     scales: {
       x: {
         title: {
           display: true,
           text: this.t.translate('statsUser.personalRating.axisPersonalRating'),
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 12
           }
         },
         ticks: {
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 11
@@ -123,7 +114,6 @@ export class PersonalRatingChartComponent {
         title: {
           display: true,
           text: this.t.translate('statsUser.personalRating.axisNumberOfBooks'),
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 12
@@ -131,7 +121,6 @@ export class PersonalRatingChartComponent {
         },
         beginAtZero: true,
         ticks: {
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 11
@@ -140,7 +129,6 @@ export class PersonalRatingChartComponent {
           maxTicksLimit: 8
         },
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
         },
         border: {display: false}
       }

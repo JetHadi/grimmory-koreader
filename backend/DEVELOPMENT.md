@@ -47,13 +47,14 @@ just api check
 
 ## Running Locally
 
-The backend expects a MariaDB instance and a local `application-dev.yml` with your database and
+The backend expects a MariaDB instance plus environment or local configuration for your database and
 storage paths. The common backend loop is:
 
 ```bash
 cd backend
 just run
 ```
+Where [application-dev.yaml](./src/main/resources/application-dev.yaml) is the default configuration file for development.
 
 If you need a different Spring profile:
 
@@ -63,6 +64,13 @@ just run profile=local
 
 Use the repo-level guide in [../DEVELOPMENT.md](../DEVELOPMENT.md) for the full Docker stack, MariaDB
 setup, and cross-project local workflows.
+
+### IDE
+
+**Spring Boot:**  Active Profile = `dev`,
+Working Directory = `backend/` 
+
+**Gradle:**  `bootRun --args="--spring.profiles.active=dev"`
 
 ## Build and Test
 
@@ -80,10 +88,14 @@ backend-only development and test runs, frontend resources are optional.
 
 - `application.yaml` binds `app.api-docs.enabled` to `API_DOCS_ENABLED` (default `false`).
 - `application.yaml` binds `springdoc.api-docs.enabled` to `app.api-docs.enabled`.
-- `application-dev.yml` enables docs for local dev profile runs by default.
 - For runtime or container profiles, set `API_DOCS_ENABLED=true` to expose:
   - `/api/openapi.json`
   - `/api/docs`
+- To export a release-ready spec without running the full container stack, use:
+
+```bash
+just openapi-export
+```
 
 ## Packaging Notes
 

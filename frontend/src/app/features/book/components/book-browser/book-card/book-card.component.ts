@@ -1,19 +1,19 @@
 import {ChangeDetectionStrategy, Component, computed, inject, input, output, signal} from '@angular/core';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {AdditionalFile, Book, BookType, ReadStatus} from '../../../model/book.model';
-import {ConfirmationService, MenuItem, MessageService} from 'primeng/api';
+import {ConfirmationService, MenuItem, MessageService} from '@openng/optimus-ui/api';
 import {BookService} from '../../../service/book.service';
 import {BookFileService} from '../../../service/book-file.service';
 import {BookMetadataManageService} from '../../../service/book-metadata-manage.service';
-import {CheckboxChangeEvent, Checkbox} from 'primeng/checkbox';
+import {CheckboxChangeEvent, Checkbox} from '@openng/optimus-ui/checkbox';
 import {FormsModule} from '@angular/forms';
 import {MetadataRefreshType} from '../../../../metadata/model/request/metadata-refresh-type.enum';
 import {UrlHelperService} from '../../../../../shared/service/url-helper.service';
-import {CoverPlaceholderComponent} from '../../../../../shared/components/cover-generator/cover-generator.component';
+import {CoverComponent} from '../../../../../shared/components/cover/cover.component';
 import {NgClass} from '@angular/common';
 import {UserService} from '../../../../settings/user-management/user.service';
 import {EmailService} from '../../../../settings/email-v2/email.service';
-import {TieredMenu} from 'primeng/tieredmenu';
+import {TieredMenu} from '@openng/optimus-ui/tieredmenu';
 import {Router, RouterLink} from '@angular/router';
 import {readStatusLabels} from '../book-filter/book-filter.config';
 import {ResetProgressTypes} from '../../../../../shared/constants/reset-progress-type';
@@ -25,12 +25,13 @@ import {BookCardOverlayPreferenceService} from '../book-card-overlay-preference.
 import {AppSettingsService} from '../../../../../shared/service/app-settings.service';
 import {TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 import {QueryClient} from '@tanstack/angular-query-experimental';
+import {ButtonDirective} from '@openng/optimus-ui/button';
 
 @Component({
   selector: 'app-book-card',
   templateUrl: './book-card.component.html',
   styleUrls: ['./book-card.component.scss'],
-  imports: [Checkbox, FormsModule, NgClass, TieredMenu, Tooltip, RouterLink, TranslocoPipe, CoverPlaceholderComponent],
+  imports: [ButtonDirective, Checkbox, FormsModule, NgClass, TieredMenu, Tooltip, RouterLink, TranslocoPipe, CoverComponent],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -418,7 +419,7 @@ export class BookCardComponent {
           {
             label: this.t.translate('book.card.menu.customSend'),
             icon: 'pi pi-envelope',
-            command: () => this.bookDialogHelperService.openCustomSendDialog(this.book())
+            command: () => void this.bookDialogHelperService.openCustomSendDialog(this.book()).catch(() => undefined)
           }
         ]
       });
@@ -451,7 +452,7 @@ export class BookCardComponent {
           {
             label: this.t.translate('book.card.menu.customFetch'),
             icon: 'pi pi-sync',
-            command: () => this.bookDialogHelperService.openMetadataRefreshDialog(new Set([this.book().id])),
+            command: () => void this.bookDialogHelperService.openMetadataRefreshDialog(new Set([this.book().id])).catch(() => undefined),
           },
           {
             label: this.t.translate('book.card.menu.regenerateCover'),
@@ -504,7 +505,7 @@ export class BookCardComponent {
       moreActions.push({
         label: this.t.translate('book.card.menu.organizeFile'),
         icon: 'pi pi-arrows-h',
-        command: () => this.bookDialogHelperService.openFileMoverDialog(new Set([this.book().id]))
+        command: () => void this.bookDialogHelperService.openFileMoverDialog(new Set([this.book().id])).catch(() => undefined)
       });
     }
 
@@ -596,7 +597,7 @@ export class BookCardComponent {
   }
 
   private openShelfDialog(): void {
-    this.bookDialogHelperService.openShelfAssignerDialog(this.book(), null);
+    void this.bookDialogHelperService.openShelfAssignerDialog(this.book(), null).catch(() => undefined);
   }
 
   openSeriesInfo(): void {
@@ -609,7 +610,7 @@ export class BookCardComponent {
     }
   }
 
-  openBookInfo(book: Book): void {
+  async openBookInfo(book: Book) {
     const allBookIds = this.bookNavigationService.availableBookIds();
     if (allBookIds.length > 0) {
       this.bookNavigationService.setNavigationContext(allBookIds, book.id);
@@ -620,7 +621,7 @@ export class BookCardComponent {
         queryParams: {tab: 'view'}
       });
     } else {
-      this.bookDialogHelperService.openBookDetailsDialog(book.id);
+      await this.bookDialogHelperService.openBookDetailsDialog(book.id).catch(() => undefined);
     }
   }
 

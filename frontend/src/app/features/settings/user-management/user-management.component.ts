@@ -1,25 +1,25 @@
-import {Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {Component, DestroyRef, inject, OnInit, signal, WritableSignal} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {FormsModule} from '@angular/forms';
-import {Button} from 'primeng/button';
-import {DynamicDialogRef} from 'primeng/dynamicdialog';
-import {TableModule} from 'primeng/table';
+import {Button} from '@openng/optimus-ui/button';
+import {DynamicDialogRef} from '@openng/optimus-ui/dynamicdialog';
+import {TableModule} from '@openng/optimus-ui/table';
 import {LowerCasePipe, TitleCasePipe} from '@angular/common';
 import {User, UserService, UserUpdateRequest} from './user.service';
-import {MessageService} from 'primeng/api';
-import {Checkbox} from 'primeng/checkbox';
-import {MultiSelect} from 'primeng/multiselect';
+import {MessageService} from '@openng/optimus-ui/api';
+import {Checkbox} from '@openng/optimus-ui/checkbox';
+import {MultiSelect} from '@openng/optimus-ui/multiselect';
 import {Library} from '../../book/model/library.model';
 import {LibraryService} from '../../book/service/library.service';
-import {Dialog} from 'primeng/dialog';
-import {Password} from 'primeng/password';
-import {InputText} from 'primeng/inputtext';
-import {Tooltip} from 'primeng/tooltip';
+import {Dialog} from '@openng/optimus-ui/dialog';
+import {Password} from '@openng/optimus-ui/password';
+import {InputText} from '@openng/optimus-ui/inputtext';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {DialogLauncherService} from '../../../shared/services/dialog-launcher.service';
 import {ContentRestrictionsEditorComponent} from './content-restrictions-editor/content-restrictions-editor.component';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 
-interface UserWithEditing extends User {
+export interface UserWithEditing extends User {
   isEditing?: boolean;
   selectedLibraryIds?: number[];
   libraryNames?: string;
@@ -56,7 +56,7 @@ export class UserManagementComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   get allLibraries() { return this.libraryService.libraries(); }
 
-  users: UserWithEditing[] = [];
+  users: WritableSignal<UserWithEditing[]> = signal([]);
   currentUser: User | null = null;
   editingLibraryIds: number[] = [];
   expandedRows: Record<string, boolean> = {};
@@ -82,13 +82,13 @@ export class UserManagementComponent implements OnInit {
   loadUsers() {
     this.userService.getUsers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
-        this.users = data.map((user) => ({
+        this.users.set(data.map((user: UserWithEditing) => ({
           ...user,
           isEditing: false,
           selectedLibraryIds: user.assignedLibraries?.map((lib) => lib.id!).filter(id => id !== undefined) as number[] || [],
           libraryNames:
             user.assignedLibraries?.map((lib) => lib.name).join(', ') || '',
-        }));
+        })));
       },
       error: () => {
         this.messageService.add({
@@ -100,8 +100,8 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
-  openCreateUserDialog() {
-    this.ref = this.dialogLauncherService.openCreateUserDialog();
+  async openCreateUserDialog() {
+    this.ref = await this.dialogLauncherService.openCreateUserDialog().catch(() => null);
     this.ref?.onClose.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result) {
         this.loadUsers();
@@ -119,6 +119,18 @@ export class UserManagementComponent implements OnInit {
           ?.map((lib: Library) => lib.name)
           .join(', ') || '';
     }
+  }
+
+  getLibraryAccessLabel(user: UserWithEditing): string {
+    if (user.libraryNames) {
+      return user.libraryNames;
+    }
+
+    return this.t.translate(
+      user.permissions.admin
+        ? 'settingsUsers.userInfo.allLibrariesAdmin'
+        : 'settingsUsers.userInfo.noLibrariesAssigned'
+    );
   }
 
   saveUser(user: UserWithEditing) {
@@ -330,5 +342,9 @@ export class UserManagementComponent implements OnInit {
 
   isPermissionDisabled(user: UserWithEditing): boolean {
     return !user.isEditing || user.permissions.admin;
+  }
+  
+  editUserBtnEnabled(user: User) : boolean {
+    return !(this.editingLibraryIds.length === 0 && !user.permissions.admin);
   }
 }

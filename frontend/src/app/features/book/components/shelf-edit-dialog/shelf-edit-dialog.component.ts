@@ -1,17 +1,18 @@
 import {Component, effect, inject, Injector, OnInit} from '@angular/core';
 import {ShelfService} from '../../service/shelf.service';
-import {DynamicDialogConfig, DynamicDialogRef} from 'primeng/dynamicdialog';
-import {Button} from 'primeng/button';
-import {InputText} from 'primeng/inputtext';
+import {DynamicDialogConfig, DynamicDialogRef} from '@openng/optimus-ui/dynamicdialog';
+import {Button} from '@openng/optimus-ui/button';
+import {InputText} from '@openng/optimus-ui/inputtext';
 
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {Shelf} from '../../model/shelf.model';
-import {MessageService} from 'primeng/api';
-import {IconPickerService, IconSelection} from '../../../../shared/service/icon-picker.service';
+import {MessageService} from '@openng/optimus-ui/api';
+import {IconPickerService} from '../../../../shared/service/icon-picker.service';
 import {IconDisplayComponent} from '../../../../shared/components/icon-display/icon-display.component';
-import {Checkbox} from 'primeng/checkbox';
+import {Checkbox} from '@openng/optimus-ui/checkbox';
 import {UserService} from '../../../settings/user-management/user.service';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
+import {IconSelection, toIconSelection} from '../../../../shared/icons/icon-selection';
 
 @Component({
   selector: 'app-shelf-edit-dialog',
@@ -63,11 +64,7 @@ export class ShelfEditDialogComponent implements OnInit {
       this.shelfName = shelf.name;
       this.isPublic = shelf.publicShelf ?? false;
       if (shelf.iconType && shelf.icon) {
-        if (shelf.iconType === 'PRIME_NG') {
-          this.selectedIcon = {type: 'PRIME_NG', value: `pi pi-${shelf.icon}`};
-        } else {
-          this.selectedIcon = {type: 'CUSTOM_SVG', value: shelf.icon};
-        }
+        this.selectedIcon = toIconSelection(shelf.icon, shelf.iconType);
       }
     }, {injector: this.injector});
   }

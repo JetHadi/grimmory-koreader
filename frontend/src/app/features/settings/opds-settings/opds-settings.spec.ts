@@ -2,7 +2,7 @@ import {signal} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {of, type Observable} from 'rxjs';
 import {describe, expect, it, vi} from 'vitest';
-import {MessageService} from 'primeng/api';
+import {MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
 
 import {AppSettings} from '../../../shared/model/app-settings.model';
@@ -17,6 +17,10 @@ function buildUser(overrides: Partial<User['permissions']> = {}): User {
     username: 'reader',
     name: 'Reader',
     email: 'reader@example.com',
+    locale: 'en',
+    theme: 'grimmory',
+    themeAccent: null,
+    themeSyncEnabled: true,
     assignedLibraries: [],
     permissions: {admin: false, canAccessOpds: true, ...overrides} as User['permissions'],
     userSettings: {} as User['userSettings'],
@@ -71,13 +75,13 @@ describe('OpdsSettings', () => {
     component.ngOnInit();
 
     TestBed.flushEffects();
-    expect(component.loading).toBe(true);
+    expect(component.loading()).toBe(true);
 
     appSettingsState.set(buildAppSettings());
     TestBed.flushEffects();
 
     expect(getUser).not.toHaveBeenCalled();
-    expect(component.loading).toBe(false);
+    expect(component.loading()).toBe(false);
 
     fixture.destroy();
   });
@@ -100,8 +104,8 @@ describe('OpdsSettings', () => {
     TestBed.flushEffects();
 
     expect(getUser).toHaveBeenCalledOnce();
-    expect(component.loading).toBe(false);
-    expect(component.users).toHaveLength(1);
+    expect(component.loading()).toBe(false);
+    expect(component.users()).toHaveLength(1);
 
     fixture.destroy();
   });

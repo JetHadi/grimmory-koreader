@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Integration tests verifying Hibernate entity relationships, lazy loading,
@@ -74,7 +76,7 @@ class HibernateRegressionTest {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @org.springframework.boot.test.context.TestConfiguration
+    @TestConfiguration
     public static class TestConfig {
         @Bean("flyway")
         @Primary
@@ -311,7 +313,7 @@ class HibernateRegressionTest {
             // Intentionally NOT setting library back-reference
 
             Assertions.assertThrows(
-                    org.springframework.dao.DataIntegrityViolationException.class,
+                    DataIntegrityViolationException.class,
                     () -> {
                         libraryRepository.saveAndFlush(library);
                         entityManager.flush();
@@ -417,7 +419,7 @@ class HibernateRegressionTest {
 
             // Must NOT throw LazyInitializationException
             assertThat(loaded.getBookFiles()).hasSize(1);
-            assertThat(loaded.getBookFiles().get(0).getFileName()).isEqualTo("test.epub");
+            assertThat(loaded.getBookFiles().stream().toList().getFirst().getFileName()).isEqualTo("test.epub");
         }
     }
 
@@ -657,7 +659,7 @@ class HibernateRegressionTest {
                     .library(library)
                     .libraryPath(libraryPath)
                     .addedOn(Instant.now())
-                    .bookFiles(new ArrayList<>())
+                    .bookFiles(new HashSet<>())
                     .build();
 
             BookFileEntity bookFile = BookFileEntity.builder()
@@ -688,7 +690,7 @@ class HibernateRegressionTest {
             assertThat(loaded.getLibrary().getId()).isEqualTo(library.getId());
             assertThat(loaded.getLibraryPath().getId()).isEqualTo(libraryPath.getId());
             assertThat(loaded.getBookFiles()).hasSize(1);
-            assertThat(loaded.getBookFiles().get(0).getFileName()).isEqualTo("test.epub");
+            assertThat(loaded.getBookFiles().stream().toList().getFirst().getFileName()).isEqualTo("test.epub");
             assertThat(loaded.getMetadata().getTitle()).isEqualTo("Test Book Title");
             assertThat(loaded.getDeleted()).isFalse();
         }

@@ -21,6 +21,11 @@ public class BookLoreUser {
     private boolean isDefaultPassword;
     private String name;
     private String email;
+    private String locale;
+    private String theme;
+    private String themeAccent;
+    private boolean themeSyncEnabled;
+    private String uiFont;
     private ProvisioningMethod provisioningMethod;
     private List<Library> assignedLibraries;
     private UserPermissions permissions;
@@ -181,6 +186,7 @@ public class BookLoreUser {
             private Integer maxInlineSize;
             private String theme;
             private String flow;
+            private Boolean tapToTurnPage;
         }
 
         @Data
@@ -190,6 +196,7 @@ public class BookLoreUser {
         public static class PdfReaderSetting {
             private String pageSpread;
             private String pageZoom;
+            private String scrollLayout;
         }
 
         @Data

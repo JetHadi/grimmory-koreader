@@ -49,6 +49,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import org.springframework.transaction.TransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class BookMetadataServiceTest {
@@ -91,11 +92,27 @@ class BookMetadataServiceTest {
             Book book = Book.builder().build();
             FetchMetadataRequest request = FetchMetadataRequest.builder().build();
             List<BookMetadata> expected = List.of(BookMetadata.builder().title("Test").build());
+            when(parser.isEnabled()).thenReturn(true);
             when(parser.fetchMetadata(book, request)).thenReturn(expected);
 
             List<BookMetadata> result = service.fetchMetadataListFromAProvider(MetadataProvider.Google, book, request);
 
             assertThat(result).isEqualTo(expected);
+        }
+
+        @Test
+        void ignoresDisabledParser() {
+            BookParser parser = mock(BookParser.class);
+            when(parser.isEnabled()).thenReturn(false);
+
+            parserMap.put(MetadataProvider.Google, parser);
+            Book book = Book.builder().build();
+            FetchMetadataRequest request = FetchMetadataRequest.builder().build();
+
+            List<BookMetadata> result = service.fetchMetadataListFromAProvider(MetadataProvider.Google, book, request);
+
+            assertThat(result).isEmpty();
+            verify(parser, never()).fetchMetadata(book, request);
         }
 
         @Test
@@ -114,6 +131,7 @@ class BookMetadataServiceTest {
             parserMap.put(MetadataProvider.Google, parser);
             BookMetadata expected = BookMetadata.builder().title("Detailed").build();
             when(parser.fetchDetailedMetadata("item-123")).thenReturn(expected);
+            when(parser.isEnabled()).thenReturn(true);
 
             BookMetadata result = service.getDetailedProviderMetadata(MetadataProvider.Google, "item-123");
 
@@ -123,11 +141,27 @@ class BookMetadataServiceTest {
         @Test
         void returnsNullWhenParserDoesNotImplementDetailedProvider() {
             BookParser parser = mock(BookParser.class);
+
+            when(parser.isEnabled()).thenReturn(true);
+
             parserMap.put(MetadataProvider.Google, parser);
 
             BookMetadata result = service.getDetailedProviderMetadata(MetadataProvider.Google, "item-123");
 
             assertThat(result).isNull();
+        }
+
+        @Test
+        void returnsNullWhenParserIsNotEnabled() {
+            DetailedBookParser parser = mock(DetailedBookParser.class);
+            when(parser.isEnabled()).thenReturn(false);
+
+            parserMap.put(MetadataProvider.Google, parser);
+
+            BookMetadata result = service.getDetailedProviderMetadata(MetadataProvider.Google, "item-123");
+
+            assertThat(result).isNull();
+            verify(parser, never()).fetchDetailedMetadata(anyString());
         }
 
         @Test
@@ -159,6 +193,7 @@ class BookMetadataServiceTest {
             when(appSettingService.getAppSettings()).thenReturn(settings);
 
             BookMetadata expected = BookMetadata.builder().title("Found").build();
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
 
@@ -186,8 +221,10 @@ class BookMetadataServiceTest {
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
 
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenThrow(new RuntimeException("timeout"));
+            when(amazonParser.isEnabled()).thenReturn(true);
             BookMetadata expected = BookMetadata.builder().title("Amazon Result").build();
             when(amazonParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
@@ -212,6 +249,7 @@ class BookMetadataServiceTest {
                             .build())
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenThrow(new RuntimeException("fail"));
 
@@ -235,6 +273,7 @@ class BookMetadataServiceTest {
                             .build())
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(Collections.emptyList());
 
@@ -255,6 +294,7 @@ class BookMetadataServiceTest {
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
 
+            when(googleParser.isEnabled()).thenReturn(true);
             BookMetadata expected = BookMetadata.builder().title("Google").build();
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
@@ -272,6 +312,7 @@ class BookMetadataServiceTest {
             when(appSettingService.getAppSettings()).thenThrow(new RuntimeException("config error"));
 
             BookMetadata expected = BookMetadata.builder().title("Google").build();
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
 
@@ -294,6 +335,7 @@ class BookMetadataServiceTest {
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
 
+            when(googleParser.isEnabled()).thenReturn(true);
             BookMetadata expected = BookMetadata.builder().title("Google").build();
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
@@ -320,6 +362,7 @@ class BookMetadataServiceTest {
                             .build())
                     .build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
+            when(googleParser.isEnabled()).thenReturn(true);
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(Collections.emptyList());
 
@@ -336,6 +379,7 @@ class BookMetadataServiceTest {
             AppSettings settings = AppSettings.builder().defaultMetadataRefreshOptions(null).build();
             when(appSettingService.getAppSettings()).thenReturn(settings);
 
+            when(googleParser.isEnabled()).thenReturn(true);
             BookMetadata expected = BookMetadata.builder().title("Google").build();
             when(googleParser.fetchMetadata(any(Book.class), any(FetchMetadataRequest.class)))
                     .thenReturn(List.of(expected));
@@ -459,7 +503,7 @@ class BookMetadataServiceTest {
 
         @Test
         void returnsNullWhenPrimaryFileIsNull() {
-            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(new ArrayList<>()).build();
+            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(new HashSet<>()).build();
             when(bookRepository.findByIdWithBookFiles(1L)).thenReturn(Optional.of(bookEntity));
 
             BookMetadata result = service.getComicInfoMetadata(1L);
@@ -470,7 +514,7 @@ class BookMetadataServiceTest {
         @Test
         void returnsNullWhenFileTypeIsNotCbx() {
             BookFileEntity file = BookFileEntity.builder().bookType(BookFileType.PDF).isBookFormat(true).build();
-            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(List.of(file)).build();
+            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(Set.of(file)).build();
             when(bookRepository.findByIdWithBookFiles(1L)).thenReturn(Optional.of(bookEntity));
 
             BookMetadata result = service.getComicInfoMetadata(1L);
@@ -492,7 +536,7 @@ class BookMetadataServiceTest {
 
         @Test
         void throwsWhenPrimaryFileIsNull() {
-            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(new ArrayList<>()).build();
+            BookEntity bookEntity = BookEntity.builder().id(1L).bookFiles(new HashSet<>()).build();
             when(bookRepository.findByIdWithBookFiles(1L)).thenReturn(Optional.of(bookEntity));
 
             assertThatThrownBy(() -> service.getFileMetadata(1L))
@@ -519,7 +563,7 @@ class BookMetadataServiceTest {
             when(bookRepository.findByIdFull(1L)).thenReturn(Optional.of(book1));
             when(bookRepository.findByIdFull(2L)).thenReturn(Optional.of(book2));
 
-            var txStatus = mock(org.springframework.transaction.TransactionStatus.class);
+            var txStatus = mock(TransactionStatus.class);
             when(transactionManager.getTransaction(any())).thenReturn(txStatus);
 
             service.bulkUpdateMetadata(request, true, false, true);
@@ -540,7 +584,7 @@ class BookMetadataServiceTest {
             MetadataClearFlags clearFlags = new MetadataClearFlags();
             when(metadataClearFlagsMapper.toClearFlags(request)).thenReturn(clearFlags);
 
-            var txStatus = mock(org.springframework.transaction.TransactionStatus.class);
+            var txStatus = mock(TransactionStatus.class);
             when(transactionManager.getTransaction(any())).thenReturn(txStatus);
 
             BookEntity book2 = BookEntity.builder().id(2L).build();
@@ -563,7 +607,7 @@ class BookMetadataServiceTest {
             MetadataClearFlags clearFlags = new MetadataClearFlags();
             when(metadataClearFlagsMapper.toClearFlags(request)).thenReturn(clearFlags);
 
-            var txStatus = mock(org.springframework.transaction.TransactionStatus.class);
+            var txStatus = mock(TransactionStatus.class);
             when(transactionManager.getTransaction(any())).thenReturn(txStatus);
 
             BookEntity book = BookEntity.builder().id(1L).build();

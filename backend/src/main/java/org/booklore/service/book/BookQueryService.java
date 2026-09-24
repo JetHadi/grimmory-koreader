@@ -1,24 +1,30 @@
 package org.booklore.service.book;
 
 import lombok.RequiredArgsConstructor;
+import org.booklore.app.specification.AppBookSpecification;
 import org.booklore.mapper.v2.BookMapperV2;
 import org.booklore.model.dto.Book;
 import org.booklore.model.dto.BookMetadata;
 import org.booklore.model.dto.BookRecommendationLite;
 import org.booklore.model.dto.ComicMetadata;
 import org.booklore.model.entity.BookEntity;
+import org.booklore.model.entity.BookMetadataEntity;
 import org.booklore.repository.BookRepository;
+import org.booklore.repository.UserContentRestrictionRepository;
+import org.booklore.security.policy.ContentRestrictionSpecification;
 import org.booklore.service.restriction.ContentRestrictionService;
+import org.booklore.util.BookUtils;
 import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.time.Instant;
 
 @RequiredArgsConstructor
 @Service
@@ -28,6 +34,7 @@ public class BookQueryService {
     private final BookRepository bookRepository;
     private final BookMapperV2 bookMapperV2;
     private final ContentRestrictionService contentRestrictionService;
+    private final UserContentRestrictionRepository restrictionRepository;
 
     public List<Book> getAllBooks(boolean includeDescription, boolean stripForListView) {
         List<BookEntity> books = bookRepository.findAllWithMetadata();
@@ -46,12 +53,44 @@ public class BookQueryService {
     }
 
     public Page<Book> getAllBooksByLibraryIdsPaged(Collection<Long> libraryIds, Long userId, Pageable pageable) {
-        Page<BookEntity> page = bookRepository.findAllWithMetadataByLibraryIdsPage(libraryIds, pageable);
-        List<BookEntity> filtered = contentRestrictionService.applyRestrictions(page.getContent(), userId);
-        List<Book> dtos = filtered.stream()
+        return findBooksPaged(visibleBooks(libraryIds, userId), pageable, userId);
+    }
+
+    private Specification<BookEntity> distinct(Specification<BookEntity> filter) {
+        return (root, query, cb) -> {
+            // We need to query distinct because otherwise the `JOIN` + `LIMIT` cause the page sizes to be wrong.
+            //
+            // I've tried a few ways to just get only what we need - distinct IDs from the repository.
+            // With Projections, we ran into issues with the order by not getting applied.  I'm sure
+            // there's a better way but right now this works well enough, even though it over-fetches.
+
+            query.distinct(true);
+            return filter.toPredicate(root, query, cb);
+        };
+    }
+
+    public Page<Book> findBooksPaged(Specification<BookEntity> spec, Pageable pageable, Long userId) {
+        Page<BookEntity> page = bookRepository.findAll(distinct(spec), pageable);
+        Map<Long, BookEntity> booksById = bookRepository
+                .findAllWithMetadataByIds(page.getContent().stream().map(BookEntity::getId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(BookEntity::getId, book -> book));
+        List<Book> dtos = page.getContent().stream()
+                .map(book -> booksById.get(book.getId()))
+                .filter(Objects::nonNull)
                 .map(book -> mapBookToDto(book, false, userId, true))
                 .toList();
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
+    }
+
+    private Specification<BookEntity> visibleBooks(Collection<Long> libraryIds, Long userId) {
+        Specification<BookEntity> inLibraries = (root, query, cb) ->
+                libraryIds == null || libraryIds.isEmpty()
+                        ? cb.disjunction()
+                        : root.get("library").get("id").in(libraryIds);
+        return AppBookSpecification.notDeleted()
+                .and(inLibraries)
+                .and(ContentRestrictionSpecification.from(restrictionRepository.findByUserId(userId)));
     }
 
     public List<BookEntity> getAllFullBookEntitiesBatch(Pageable pageable) {
@@ -81,6 +120,10 @@ public class BookQueryService {
         return bookRepository.findAllFullBooks();
     }
 
+    public List<BookEntity> getAllFullBookEntitiesWithFiles() {
+        return bookRepository.findAllFullBooksWithFiles();
+    }
+
     @Transactional
     public void saveAll(List<BookEntity> books) {
         bookRepository.saveAll(books);
@@ -94,7 +137,7 @@ public class BookQueryService {
             if (embeddingJson != null && book.getMetadata() != null) {
                 if (!Objects.equals(book.getMetadata().getEmbeddingVector(), embeddingJson)) {
                     book.getMetadata().setEmbeddingVector(embeddingJson);
-                    book.getMetadata().setEmbeddingUpdatedAt(java.time.Instant.now());
+                    book.getMetadata().setEmbeddingUpdatedAt(Instant.now());
                 }
             }
         }
@@ -130,9 +173,7 @@ public class BookQueryService {
         }
 
         if (dto.getShelves() != null && userId != null) {
-            dto.setShelves(dto.getShelves().stream()
-                    .filter(shelf -> userId.equals(shelf.getUserId()))
-                    .collect(Collectors.toSet()));
+            dto.setShelves(BookUtils.filterShelvesByUserId(dto.getShelves(), userId));
         }
 
         if (stripForListView) {
@@ -147,9 +188,6 @@ public class BookQueryService {
 
         BookMetadata m = dto.getMetadata();
         if (m != null) {
-            // Compute allMetadataLocked before stripping lock flags
-            m.setAllMetadataLocked(computeAllMetadataLocked(m));
-
             // Strip lock flags
             m.setTitleLocked(null);
             m.setSubtitleLocked(null);
@@ -161,6 +199,7 @@ public class BookQueryService {
             m.setSeriesTotalLocked(null);
             m.setIsbn13Locked(null);
             m.setIsbn10Locked(null);
+            m.setOpenlibraryIdLocked(null);
             m.setAsinLocked(null);
             m.setGoodreadsIdLocked(null);
             m.setComicvineIdLocked(null);
@@ -185,6 +224,9 @@ public class BookQueryService {
             m.setAudibleIdLocked(null);
             m.setAudibleRatingLocked(null);
             m.setAudibleReviewCountLocked(null);
+            m.setApplebooksIdLocked(null);
+            m.setApplebooksRatingLocked(null);
+            m.setApplebooksReviewCountLocked(null);
             m.setExternalUrlLocked(null);
             m.setCoverLocked(null);
             m.setAudiobookCoverLocked(null);
@@ -199,6 +241,7 @@ public class BookQueryService {
             m.setContentRatingLocked(null);
 
             // Strip external IDs
+            m.setOpenlibraryId(null);
             m.setAsin(null);
             m.setGoodreadsId(null);
             m.setComicvineId(null);
@@ -209,9 +252,9 @@ public class BookQueryService {
             m.setRanobedbId(null);
             m.setAudibleId(null);
             m.setDoubanId(null);
+            m.setApplebooksId(null);
 
             // Strip unused detail fields
-            m.setSubtitle(null);
             m.setSeriesTotal(null);
             m.setAbridged(null);
             m.setExternalUrl(null);
@@ -228,6 +271,8 @@ public class BookQueryService {
             m.setAudibleRating(null);
             m.setAudibleReviewCount(null);
             m.setLubimyczytacRating(null);
+            m.setApplebooksRating(null);
+            m.setApplebooksReviewCount(null);
 
             // Strip empty metadata collections
             if (m.getMoods() != null && m.getMoods().isEmpty()) m.setMoods(null);
@@ -285,37 +330,5 @@ public class BookQueryService {
         // Strip empty book-level collections
         if (dto.getAlternativeFormats() != null && dto.getAlternativeFormats().isEmpty()) dto.setAlternativeFormats(null);
         if (dto.getSupplementaryFiles() != null && dto.getSupplementaryFiles().isEmpty()) dto.setSupplementaryFiles(null);
-    }
-
-    private boolean computeAllMetadataLocked(BookMetadata m) {
-        Boolean[] bookLocks = {
-                m.getTitleLocked(), m.getSubtitleLocked(), m.getPublisherLocked(),
-                m.getPublishedDateLocked(), m.getDescriptionLocked(), m.getSeriesNameLocked(),
-                m.getSeriesNumberLocked(), m.getSeriesTotalLocked(), m.getIsbn13Locked(),
-                m.getIsbn10Locked(), m.getAsinLocked(), m.getGoodreadsIdLocked(),
-                m.getComicvineIdLocked(), m.getHardcoverIdLocked(), m.getHardcoverBookIdLocked(),
-                m.getDoubanIdLocked(), m.getGoogleIdLocked(), m.getPageCountLocked(),
-                m.getLanguageLocked(), m.getAmazonRatingLocked(), m.getAmazonReviewCountLocked(),
-                m.getGoodreadsRatingLocked(), m.getGoodreadsReviewCountLocked(),
-                m.getHardcoverRatingLocked(), m.getHardcoverReviewCountLocked(),
-                m.getDoubanRatingLocked(), m.getDoubanReviewCountLocked(),
-                m.getLubimyczytacIdLocked(), m.getLubimyczytacRatingLocked(),
-                m.getRanobedbIdLocked(), m.getRanobedbRatingLocked(),
-                m.getAudibleIdLocked(), m.getAudibleRatingLocked(), m.getAudibleReviewCountLocked(),
-                m.getExternalUrlLocked(), m.getCoverLocked(), m.getAudiobookCoverLocked(),
-                m.getAuthorsLocked(), m.getCategoriesLocked(), m.getMoodsLocked(),
-                m.getTagsLocked(), m.getReviewsLocked(), m.getNarratorLocked(),
-                m.getAbridgedLocked(), m.getAgeRatingLocked(), m.getContentRatingLocked()
-        };
-
-        boolean hasAnyLock = false;
-        for (Boolean lock : bookLocks) {
-            if (Boolean.TRUE.equals(lock)) {
-                hasAnyLock = true;
-            } else {
-                return false;
-            }
-        }
-        return hasAnyLock;
     }
 }

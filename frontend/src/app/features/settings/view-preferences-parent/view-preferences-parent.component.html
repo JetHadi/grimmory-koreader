@@ -10,6 +10,10 @@
       </p>
     </div>
 
+    <app-display-preferences></app-display-preferences>
+    <div class="section-divider"><hr></div>
+    <app-dashboard-preferences></app-dashboard-preferences>
+    <div class="section-divider"><hr></div>
     <app-view-preferences></app-view-preferences>
     <div class="section-divider"><hr></div>
     <app-filter-preferences></app-filter-preferences>
@@ -35,10 +39,9 @@
               <div class="slider-container">
                 <p-slider
                   [(ngModel)]="sidebarWidth"
-                  [min]="175"
-                  [max]="400"
+                  [min]="SIDEBAR_MIN_WIDTH"
+                  [max]="SIDEBAR_MAX_WIDTH"
                   [step]="1"
-                  (onChange)="onSidebarWidthChange()"
                   (onSlideEnd)="saveSidebarWidth()">
                 </p-slider>
               </div>

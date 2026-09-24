@@ -1,40 +1,54 @@
 import { signal } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { TranslocoTestingModule } from "@jsverse/transloco";
-import { Subject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
+import { RxStompState } from "@stomp/rx-stomp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppComponent } from "./app.component";
 import { AuthInitializationService } from "./core/security/auth-initialization-service";
 import { RxStompService } from "./shared/websocket/rx-stomp.service";
 import { BookService } from "./features/book/service/book.service";
+import { MetadataRefreshSubmissionService } from "./features/metadata/data/metadata-refresh-submission.service";
 import { NotificationEventService } from "./shared/websocket/notification-event.service";
-import { AppConfigService } from "./shared/service/app-config.service";
+import { AppThemeService } from "./shared/service/app-theme.service";
 import { MetadataProgressService } from "./shared/service/metadata-progress.service";
 import { BookdropFileService } from "./features/bookdrop/service/bookdrop-file.service";
 import { TaskService } from "./features/settings/task-management/task.service";
-import { LibraryService } from "./features/book/service/library.service";
 import { LibraryHealthService } from "./features/book/service/library-health.service";
-import { LibraryLoadingService } from "./features/library-creator/library-loading.service";
 import { AuthService } from "./shared/service/auth.service";
-import { ConfirmationService } from "primeng/api";
-import { MessageService } from "primeng/api";
+import { ConfirmationService } from "@openng/optimus-ui/api";
+import { MessageService } from "@openng/optimus-ui/api";
+import { CommandPaletteService } from "./features/command-palette/command-palette.service";
+import { LibraryImportProgressService } from "./shared/service/library-import-progress.service";
+import { AuthorService } from "./features/author-browser/service/author.service";
 
 interface StompMessage {
   body: string;
 }
 
+const DEFAULT_AUTH = { ready: true, authenticated: true };
+
 describe("AppComponent", () => {
   let fixture: ComponentFixture<AppComponent>;
   let component: AppComponent;
   let topics: Map<string, Subject<StompMessage>>;
-  let rxStompService: { watch: ReturnType<typeof vi.fn> };
+  let connectionState: BehaviorSubject<RxStompState>;
+  let rxStompService: {
+    watch: ReturnType<typeof vi.fn>;
+    connectionState$: BehaviorSubject<RxStompState>;
+  };
   let bookService: {
     handleNewlyCreatedBook: ReturnType<typeof vi.fn>;
     handleBookUpdate: ReturnType<typeof vi.fn>;
     handleMultipleBookCoverPatches: ReturnType<typeof vi.fn>;
     handleRemovedBookIds: ReturnType<typeof vi.fn>;
-    handleMultipleBookUpdates: ReturnType<typeof vi.fn>;
+    handleTaskProgress: ReturnType<typeof vi.fn>;
+    handleReconnect: ReturnType<typeof vi.fn>;
+  };
+  let authorService: {
+    handleNewlyCreatedBook: ReturnType<typeof vi.fn>;
+    invalidateAuthors: ReturnType<typeof vi.fn>;
   };
   let notificationEventService: {
     handleNewNotification: ReturnType<typeof vi.fn>;
@@ -44,15 +58,19 @@ describe("AppComponent", () => {
   };
   let bookdropFileService: { handleIncomingFile: ReturnType<typeof vi.fn> };
   let taskService: { handleTaskProgress: ReturnType<typeof vi.fn> };
+  let metadataRefreshSubmissionService: { handleBatchProgress: ReturnType<typeof vi.fn> };
   let libraryHealthService: { initWebsocket: ReturnType<typeof vi.fn>, fetchHealth: ReturnType<typeof vi.fn> };
-  let libraryLoadingService: {
-    showBookLoadingProgress: ReturnType<typeof vi.fn>;
-    hide: ReturnType<typeof vi.fn>;
-  };
   let authService: { forceLogout: ReturnType<typeof vi.fn>, isAuthenticated: ReturnType<typeof signal> };
-  let libraryService: {
-    largeLibraryLoading: ReturnType<typeof signal>;
-    setLargeLibraryLoading: ReturnType<typeof vi.fn>;
+  let libraryImportProgressService: { recordBookAdded: ReturnType<typeof vi.fn> };
+  let commandPaletteService: {
+    toggle: ReturnType<typeof vi.fn>;
+    open: ReturnType<typeof vi.fn>;
+    hide: ReturnType<typeof vi.fn>;
+    registerOverlayController: ReturnType<typeof vi.fn>;
+    isOpen: ReturnType<typeof signal>;
+    query: ReturnType<typeof signal>;
+    visibleItems: ReturnType<typeof signal>;
+    groups: ReturnType<typeof signal>;
   };
 
   function createTopicStream(topic: string): Subject<StompMessage> {
@@ -62,35 +80,42 @@ describe("AppComponent", () => {
   }
 
   function configureComponent(
-    auth = { ready: true, authenticated: true },
-    largeLibraryLoading = { isLoading: false, expectedCount: 0 },
+    auth = DEFAULT_AUTH
   ): void {
     topics = new Map();
+    connectionState = new BehaviorSubject<RxStompState>(RxStompState.CLOSED);
     rxStompService = {
       watch: vi.fn((topic: string) =>
         (topics.get(topic) ?? createTopicStream(topic)).asObservable(),
       ),
+      connectionState$: connectionState,
     };
     bookService = {
       handleNewlyCreatedBook: vi.fn(),
       handleBookUpdate: vi.fn(),
       handleMultipleBookCoverPatches: vi.fn(),
       handleRemovedBookIds: vi.fn(),
-      handleMultipleBookUpdates: vi.fn(),
+      handleTaskProgress: vi.fn(),
+      handleReconnect: vi.fn(),
     };
+    authorService = { handleNewlyCreatedBook: vi.fn(), invalidateAuthors: vi.fn() };
     notificationEventService = { handleNewNotification: vi.fn() };
     metadataProgressService = { handleIncomingProgress: vi.fn() };
     bookdropFileService = { handleIncomingFile: vi.fn() };
     taskService = { handleTaskProgress: vi.fn() };
+    metadataRefreshSubmissionService = { handleBatchProgress: vi.fn() };
     libraryHealthService = { initWebsocket: vi.fn(), fetchHealth: vi.fn() };
-    libraryLoadingService = {
-      showBookLoadingProgress: vi.fn(),
-      hide: vi.fn(),
-    };
     authService = { forceLogout: vi.fn(), isAuthenticated: signal(auth.authenticated) };
-    libraryService = {
-      largeLibraryLoading: signal(largeLibraryLoading),
-      setLargeLibraryLoading: vi.fn(),
+    libraryImportProgressService = { recordBookAdded: vi.fn() };
+    commandPaletteService = {
+      toggle: vi.fn(),
+      open: vi.fn(),
+      hide: vi.fn(),
+      registerOverlayController: vi.fn(() => vi.fn()),
+      isOpen: signal(false),
+      query: signal(''),
+      visibleItems: signal([]),
+      groups: signal([]),
     };
 
     TestBed.configureTestingModule({
@@ -102,18 +127,20 @@ describe("AppComponent", () => {
         },
         { provide: RxStompService, useValue: rxStompService },
         { provide: BookService, useValue: bookService },
+        { provide: AuthorService, useValue: authorService },
         {
           provide: NotificationEventService,
           useValue: notificationEventService,
         },
-        { provide: AppConfigService, useValue: {} },
+        { provide: AppThemeService, useValue: {} },
         { provide: MetadataProgressService, useValue: metadataProgressService },
         { provide: BookdropFileService, useValue: bookdropFileService },
         { provide: TaskService, useValue: taskService },
-        { provide: LibraryService, useValue: libraryService },
+        { provide: MetadataRefreshSubmissionService, useValue: metadataRefreshSubmissionService },
         { provide: LibraryHealthService, useValue: libraryHealthService },
-        { provide: LibraryLoadingService, useValue: libraryLoadingService },
         { provide: AuthService, useValue: authService },
+        { provide: LibraryImportProgressService, useValue: libraryImportProgressService },
+        { provide: CommandPaletteService, useValue: commandPaletteService },
         ConfirmationService,
         MessageService],
     });
@@ -153,27 +180,16 @@ describe("AppComponent", () => {
     expect(libraryHealthService.fetchHealth).not.toHaveBeenCalled();
   });
 
-  it("routes websocket book notifications through the large library loading branch", () => {
-    configureComponent({ ready: true, authenticated: true }, { isLoading: true, expectedCount: 2 });
+  it("routes websocket book notifications to bookService", () => {
+    configureComponent();
 
     topics
       .get("/user/queue/book-add")
       ?.next({ body: JSON.stringify({ metadata: { title: "First" } }) });
-    topics
-      .get("/user/queue/book-add")
-      ?.next({ body: JSON.stringify({ metadata: { title: "Second" } }) });
 
-    expect(bookService.handleNewlyCreatedBook).toHaveBeenCalledTimes(2);
-    expect(
-      libraryLoadingService.showBookLoadingProgress,
-    ).toHaveBeenNthCalledWith(1, "First", 1, 2);
-    expect(
-      libraryLoadingService.showBookLoadingProgress,
-    ).toHaveBeenNthCalledWith(2, "Second", 2, 2);
-    expect(libraryService.setLargeLibraryLoading).toHaveBeenCalledWith(
-      false,
-      0,
-    );
+    expect(bookService.handleNewlyCreatedBook).toHaveBeenCalledWith({ metadata: { title: "First" } });
+    expect(authorService.handleNewlyCreatedBook).toHaveBeenCalledWith({ metadata: { title: "First" } });
+    expect(libraryImportProgressService.recordBookAdded).toHaveBeenCalledWith("First");
   });
 
   it("forwards websocket updates to the matching root services", () => {
@@ -181,7 +197,7 @@ describe("AppComponent", () => {
 
     topics
       .get("/user/queue/book-update")
-      ?.next({ body: JSON.stringify({ id: 1 }) });
+      ?.next({ body: JSON.stringify({ id: 1, libraryId: 1, libraryName: "Library" }) });
     topics
       .get("/user/queue/books-cover-update")
       ?.next({ body: JSON.stringify([{ id: 1 }]) });
@@ -190,10 +206,7 @@ describe("AppComponent", () => {
       ?.next({ body: JSON.stringify([1, 2]) });
     topics
       .get("/user/queue/book-metadata-update")
-      ?.next({ body: JSON.stringify({ id: 2 }) });
-    topics
-      .get("/user/queue/book-metadata-batch-update")
-      ?.next({ body: JSON.stringify([{ id: 3 }]) });
+      ?.next({ body: JSON.stringify({ id: 2, libraryId: 1, libraryName: "Library" }) });
     topics
       .get("/user/queue/book-metadata-batch-progress")
       ?.next({ body: JSON.stringify({ taskId: "task-1" }) });
@@ -207,13 +220,19 @@ describe("AppComponent", () => {
       .get("/user/queue/task-progress")
       ?.next({ body: JSON.stringify({ taskId: "task-2" }) });
 
-    expect(bookService.handleBookUpdate).toHaveBeenCalledWith({ id: 1 });
+    expect(bookService.handleBookUpdate).toHaveBeenCalledWith(
+      { id: 1, libraryId: 1, libraryName: "Library" },
+    );
+    expect(bookService.handleBookUpdate).toHaveBeenCalledWith(
+      { id: 2, libraryId: 1, libraryName: "Library" },
+    );
     expect(bookService.handleMultipleBookCoverPatches).toHaveBeenCalledWith([
       { id: 1 }]);
     expect(bookService.handleRemovedBookIds).toHaveBeenCalledWith([1, 2]);
-    expect(bookService.handleMultipleBookUpdates).toHaveBeenCalledWith([
-      { id: 3 }]);
     expect(metadataProgressService.handleIncomingProgress).toHaveBeenCalledWith(
+      { taskId: "task-1" },
+    );
+    expect(metadataRefreshSubmissionService.handleBatchProgress).toHaveBeenCalledWith(
       { taskId: "task-1" },
     );
     expect(notificationEventService.handleNewNotification).toHaveBeenCalledWith(
@@ -229,6 +248,22 @@ describe("AppComponent", () => {
     expect(taskService.handleTaskProgress).toHaveBeenCalledWith({
       taskId: "task-2",
     });
+    expect(bookService.handleTaskProgress).toHaveBeenCalledWith({
+      taskId: "task-2",
+    });
+  });
+
+  it("reconciles book caches after a websocket reconnect", () => {
+    configureComponent();
+
+    connectionState.next(RxStompState.OPEN);
+    expect(bookService.handleReconnect).not.toHaveBeenCalled();
+
+    connectionState.next(RxStompState.CLOSED);
+    connectionState.next(RxStompState.OPEN);
+
+    expect(bookService.handleReconnect).toHaveBeenCalledOnce();
+    expect(authorService.invalidateAuthors).toHaveBeenCalledOnce();
   });
 
   it("forces logout when the session is revoked", () => {
@@ -239,12 +274,11 @@ describe("AppComponent", () => {
     expect(authService.forceLogout).toHaveBeenCalledWith("session_revoked");
   });
 
-  it("unsubscribes and hides the loading overlay when destroyed", () => {
+  it("unsubscribes when destroyed", () => {
     configureComponent();
 
     component.ngOnDestroy();
 
-    expect(libraryLoadingService.hide).toHaveBeenCalledOnce();
     topics
       .get("/user/queue/book-update")
       ?.next({ body: JSON.stringify({ id: 99 }) });

@@ -33,11 +33,9 @@ public class ChapterCacheService {
 
     /**
      * Ensures all pages of a CBX archive are extracted to the disk cache.
-     * Extracts pages sequentially to avoid concurrent native libarchive access
-     * which can cause SIGSEGV / out-of-memory crashes in the native heap.
      */
     public void prepareCbxCache(String cacheKey, Path cbxPath, List<String> entries) throws IOException {
-        ReentrantLock lock = cacheLocks.computeIfAbsent(cacheKey, ignored -> new ReentrantLock());
+        ReentrantLock lock = cacheLocks.computeIfAbsent(cacheKey, _ -> new ReentrantLock());
         lock.lock();
         try {
             Path cacheDir = getCacheDir(cacheKey);

@@ -2,10 +2,10 @@ import {Component, effect, inject, OnInit} from '@angular/core';
 import {AuthService} from '../../service/auth.service';
 import {ActivatedRoute, Router} from '@angular/router';
 import {FormsModule} from '@angular/forms';
-import {Password} from 'primeng/password';
-import {Button} from 'primeng/button';
-import {Message} from 'primeng/message';
-import {InputText} from 'primeng/inputtext';
+import {Password} from '@openng/optimus-ui/password';
+import {Button} from '@openng/optimus-ui/button';
+import {Message} from '@openng/optimus-ui/message';
+import {InputText} from '@openng/optimus-ui/inputtext';
 import {take} from 'rxjs/operators';
 import {AppSettingsService} from '../../service/app-settings.service';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
@@ -126,7 +126,7 @@ export class LoginComponent implements OnInit {
   login(): void {
     this.authService.internalLogin({username: this.username, password: this.password}).subscribe({
       next: (response) => {
-        if (response.isDefaultPassword === 'true') {
+        if (response.isDefaultPassword) {
           this.router.navigate(['/change-password']);
         } else {
           this.router.navigate(['/dashboard']);

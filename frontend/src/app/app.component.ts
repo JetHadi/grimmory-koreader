@@ -1,31 +1,34 @@
-import {Component, effect, inject, OnDestroy, OnInit, signal} from '@angular/core';
+import {Component, DestroyRef, effect, inject, OnDestroy, OnInit, signal} from '@angular/core';
 import {RxStompService} from './shared/websocket/rx-stomp.service';
 import {BookService} from './features/book/service/book.service';
 import {NotificationEventService} from './shared/websocket/notification-event.service';
 import {parseLogNotification} from './shared/websocket/model/log-notification.model';
-import {ConfirmDialog} from 'primeng/confirmdialog';
-import {Toast} from 'primeng/toast';
+import {ConfirmDialog} from '@openng/optimus-ui/confirmdialog';
+import {Toast} from '@openng/optimus-ui/toast';
 import {RouterOutlet} from '@angular/router';
-import {TranslocoDirective, TranslocoPipe} from '@jsverse/transloco';
+import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 import {AuthInitializationService} from './core/security/auth-initialization-service';
-import {AppConfigService} from './shared/service/app-config.service';
+import {AppThemeService} from './shared/service/app-theme.service';
 import {MetadataBatchProgressNotification} from './shared/model/metadata-batch-progress.model';
 import {MetadataProgressService} from './shared/service/metadata-progress.service';
 import {BookdropFileNotification, BookdropFileService} from './features/bookdrop/service/bookdrop-file.service';
 import {Subscription} from 'rxjs';
 import {TaskProgressPayload, TaskService} from './features/settings/task-management/task.service';
-import {LibraryService} from './features/book/service/library.service';
 import {LibraryHealthService} from './features/book/service/library-health.service';
-import {LibraryLoadingService} from './features/library-creator/library-loading.service';
-import {scan} from 'rxjs/operators';
 import {AuthService} from './shared/service/auth.service';
+import {CommandPaletteComponent} from './features/command-palette/command-palette.component';
+import {CommandPaletteService} from './features/command-palette/command-palette.service';
+import {LibraryImportProgressService} from './shared/service/library-import-progress.service';
+import {AuthorService} from './features/author-browser/service/author.service';
+import {MetadataRefreshSubmissionService} from './features/metadata/data/metadata-refresh-submission.service';
+import {RxStompState} from '@stomp/rx-stomp';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true,
-  imports: [ConfirmDialog, Toast, RouterOutlet, TranslocoDirective, TranslocoPipe]
+  imports: [ConfirmDialog, Toast, RouterOutlet, TranslocoDirective, TranslocoPipe, CommandPaletteComponent]
 })
 export class AppComponent implements OnInit, OnDestroy {
 
@@ -34,18 +37,22 @@ export class AppComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
   private subscriptionsInitialized = false;
 
-  private appConfigService = inject(AppConfigService); // DO NOT REMOVE: Used to initialize app config on startup
+  private appThemeService = inject(AppThemeService); // DO NOT REMOVE: Used to initialize app theme on startup
   private authInit = inject(AuthInitializationService);
   private bookService = inject(BookService);
+  private authorService = inject(AuthorService);
   private rxStompService = inject(RxStompService);
   private notificationEventService = inject(NotificationEventService);
   private metadataProgressService = inject(MetadataProgressService);
   private bookdropFileService = inject(BookdropFileService);
   private taskService = inject(TaskService);
-  private libraryService = inject(LibraryService);
+  private metadataRefreshSubmissionService = inject(MetadataRefreshSubmissionService);
   private libraryHealthService = inject(LibraryHealthService);
-  private libraryLoadingService = inject(LibraryLoadingService);
   private authService = inject(AuthService);
+  private commandPaletteService = inject(CommandPaletteService);
+  private readonly libraryImportProgressService = inject(LibraryImportProgressService);
+  private readonly translocoService = inject(TranslocoService);
+  private destroyRef = inject(DestroyRef);
   private readonly syncAuthInitializationEffect = effect(() => {
     const ready = this.authInit.initialized();
     this.loading.set(!ready);
@@ -68,7 +75,18 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
+    document.addEventListener('keydown', this.onGlobalKeydown);
+    this.destroyRef.onDestroy(() => document.removeEventListener('keydown', this.onGlobalKeydown));
   }
+
+  private onGlobalKeydown = (event: KeyboardEvent): void => {
+    if (event.repeat) return;
+    const combo = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey;
+    if (!combo) return;
+    if (event.key !== 'k' && event.key !== 'K') return;
+    event.preventDefault();
+    this.commandPaletteService.toggle();
+  };
 
   private onOnline = () => {
     this.offline.set(false);
@@ -91,26 +109,27 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private setupWebSocketSubscriptions(): void {
+    let hasConnected = false;
     this.subscriptions.push(
-      this.rxStompService.watch('/user/queue/book-add').pipe(
-        scan((acc, msg) => {
-          const loadingState = this.libraryService.largeLibraryLoading();
-          const book = JSON.parse(msg.body);
-          if (loadingState.isLoading) {
-            const newCount = acc.count + 1;
-            this.libraryLoadingService.showBookLoadingProgress(book.metadata?.title || 'Unknown Book', newCount, loadingState.expectedCount);
-            this.bookService.handleNewlyCreatedBook(book);
-            if (newCount >= loadingState.expectedCount) {
-              this.libraryService.setLargeLibraryLoading(false, 0);
-              return {count: 0};
-            }
-            return {count: newCount};
-          } else {
-            this.bookService.handleNewlyCreatedBook(book);
-            return {count: 0};
-          }
-        }, {count: 0})
-      ).subscribe()
+      this.rxStompService.connectionState$.subscribe(state => {
+        if (state !== RxStompState.OPEN) {
+          return;
+        }
+        if (hasConnected) {
+          this.bookService.handleReconnect();
+          this.authorService.invalidateAuthors();
+          return;
+        }
+        hasConnected = true;
+      })
+    );
+    this.subscriptions.push(
+      this.rxStompService.watch('/user/queue/book-add').subscribe(msg => {
+        const book = JSON.parse(msg.body);
+        this.libraryImportProgressService.recordBookAdded(book.metadata?.title || this.translocoService.translate('book.unknownTitle'));
+        this.bookService.handleNewlyCreatedBook(book);
+        this.authorService.handleNewlyCreatedBook(book);
+      })
     );
     this.subscriptions.push(
       this.rxStompService.watch('/user/queue/book-update').subscribe(msg =>
@@ -133,14 +152,11 @@ export class AppComponent implements OnInit, OnDestroy {
       )
     );
     this.subscriptions.push(
-      this.rxStompService.watch('/user/queue/book-metadata-batch-update').subscribe(msg =>
-        this.bookService.handleMultipleBookUpdates(JSON.parse(msg.body))
-      )
-    );
-    this.subscriptions.push(
-      this.rxStompService.watch('/user/queue/book-metadata-batch-progress').subscribe(msg =>
-        this.metadataProgressService.handleIncomingProgress(JSON.parse(msg.body) as MetadataBatchProgressNotification)
-      )
+      this.rxStompService.watch('/user/queue/book-metadata-batch-progress').subscribe(msg => {
+        const progress = JSON.parse(msg.body) as MetadataBatchProgressNotification;
+        this.metadataProgressService.handleIncomingProgress(progress);
+        this.metadataRefreshSubmissionService.handleBatchProgress(progress);
+      })
     );
     this.subscriptions.push(
       this.rxStompService.watch('/user/queue/log').subscribe(msg => {
@@ -158,6 +174,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.rxStompService.watch('/user/queue/task-progress').subscribe(msg => {
         const progress = JSON.parse(msg.body) as TaskProgressPayload;
         this.taskService.handleTaskProgress(progress);
+        this.bookService.handleTaskProgress(progress);
       })
     );
     this.subscriptions.push(
@@ -171,6 +188,5 @@ export class AppComponent implements OnInit, OnDestroy {
     window.removeEventListener('online', this.onOnline);
     window.removeEventListener('offline', this.onOffline);
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.libraryLoadingService.hide();
   }
 }

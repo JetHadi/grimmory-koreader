@@ -2,6 +2,8 @@ package org.booklore.config.security.service;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.booklore.model.dto.AccessTokenDto;
+import org.booklore.model.dto.OpdsUser;
 import org.springframework.context.annotation.Lazy;
 import org.booklore.config.AppProperties;
 import org.booklore.config.security.JwtUtils;
@@ -27,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.booklore.model.enums.AuditAction;
 import org.booklore.service.audit.AuditService;
@@ -85,13 +86,16 @@ public class AuthenticationService {
             return null;
         }
         Object principal = authentication.getPrincipal();
+        if (principal instanceof OpdsUserDetails opdsUser) {
+            principal = opdsUser.getUser();
+        }
         if (principal instanceof BookLoreUser user) {
             if (user.getId() != null && user.getId() != -1L) {
                 defaultSettingInitializer.ensureDefaultSettings(user);
             }
             return user;
         }
-        throw new IllegalStateException("Authenticated principal is not of type BookLoreUser");
+        throw new IllegalStateException("Authenticated principal is not of expected type");
     }
 
     public BookLoreUser getSystemUser() {
@@ -108,7 +112,7 @@ public class AuthenticationService {
                 .id(-1L)
                 .username("system")
                 .name("System User")
-                .email("system@booklore.internal")
+                .email("system@grimmory.internal")
                 .provisioningMethod(ProvisioningMethod.LOCAL)
                 .isDefaultPassword(false)
                 .permissions(permissions)
@@ -126,7 +130,7 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, String>> loginUser(UserLoginRequest loginRequest) {
+    public ResponseEntity<AccessTokenDto> loginUser(UserLoginRequest loginRequest) {
         if (appSettingService.getAppSettings().isOidcForceOnlyMode()) {
             BookLoreUserEntity oidcCheckUser = userRepository.findByUsername(loginRequest.getUsername()).orElse(null);
             if (oidcCheckUser == null || !oidcCheckUser.getPermissions().isPermissionAdmin()) {
@@ -164,7 +168,7 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, String>> loginRemote(String name, String username, String email, String groups) {
+    public ResponseEntity<AccessTokenDto> loginRemote(String name, String username, String email, String groups) {
         if (username == null || username.isEmpty()) {
             throw ApiError.GENERIC_BAD_REQUEST.createException("Remote-User header is missing");
         }
@@ -181,11 +185,11 @@ public class AuthenticationService {
         return loginUser(user.get());
     }
 
-    public ResponseEntity<Map<String, String>> loginUser(BookLoreUserEntity user) {
+    public ResponseEntity<AccessTokenDto> loginUser(BookLoreUserEntity user) {
         return loginUser(user, null);
     }
 
-    public ResponseEntity<Map<String, String>> loginUser(BookLoreUserEntity user, Long customRefreshTokenExpirationMs) {
+    public ResponseEntity<AccessTokenDto> loginUser(BookLoreUserEntity user, Long customRefreshTokenExpirationMs) {
         String accessToken = jwtUtils.generateAccessToken(user);
         String refreshToken = jwtUtils.generateRefreshToken(user);
 
@@ -201,15 +205,19 @@ public class AuthenticationService {
         refreshTokenRepository.save(refreshTokenEntity);
         auditService.log(AuditAction.LOGIN_SUCCESS, "User", user.getId(), "Login successful for user: " + user.getUsername());
 
-        return ResponseEntity.ok(Map.of(
-                "accessToken", accessToken,
-                "refreshToken", refreshTokenEntity.getToken(),
-                "isDefaultPassword", String.valueOf(user.isDefaultPassword())
-        ));
+
+        return ResponseEntity.ok(
+                AccessTokenDto.builder()
+                        .accessToken(jwtUtils.generateAccessToken(user))
+                        .refreshToken(refreshTokenEntity.getToken())
+                        .expires(JwtUtils.getAccessTokenExpirationMs() / 1000)
+                        .isDefaultPassword(user.isDefaultPassword())
+                        .build()
+        );
     }
 
     @Transactional
-    public ResponseEntity<Map<String, String>> refreshToken(String token) {
+    public ResponseEntity<AccessTokenDto> refreshToken(String token) {
         String ip = RequestUtils.getCurrentRequest().getRemoteAddr();
         authRateLimitService.checkRefreshRateLimit(ip);
 
@@ -241,9 +249,12 @@ public class AuthenticationService {
 
         authRateLimitService.resetRefreshAttempts(ip);
 
-        return ResponseEntity.ok(Map.of(
-                "accessToken", jwtUtils.generateAccessToken(user),
-                "refreshToken", newRefreshToken
-        ));
+        return ResponseEntity.ok(
+                AccessTokenDto.builder()
+                        .accessToken(jwtUtils.generateAccessToken(user))
+                        .refreshToken(newRefreshToken)
+                        .expires(JwtUtils.getAccessTokenExpirationMs() / 1000)
+                        .build()
+        );
     }
 }

@@ -1,7 +1,6 @@
 package org.booklore.service;
 
 import org.booklore.config.security.service.AuthenticationService;
-import org.booklore.model.dto.Book;
 import org.booklore.model.dto.BookLoreUser;
 import org.booklore.model.dto.settings.AppSettings;
 import org.booklore.model.dto.kobo.KoboBookMetadata;
@@ -48,8 +47,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import org.springframework.data.domain.PageImpl;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -218,6 +215,51 @@ class KoboEntitlementServiceTest {
         assertEquals(KoboBookFormat.KEPUB.toString(), result.getDownloadUrls().getFirst().getFormat());
     }
 
+    @Test
+    void mapToKoboMetadata_subtitleNull() {
+        long bookId = 1L;
+        BookEntity epubBook = createEpubBookEntity(bookId);
+        epubBook.getMetadata().setSubtitle(null);
+        String token = "test-token";
+
+        when(bookQueryService.findAllWithMetadataByIds(Set.of(bookId)))
+                .thenReturn(List.of(epubBook));
+        when(koboCompatibilityService.isBookSupportedForKobo(epubBook))
+                .thenReturn(true);
+        when(koboUrlBuilder.downloadUrl(token, epubBook.getId()))
+                .thenReturn("http://test.com/download/" + epubBook.getId());
+        when(appSettingService.getAppSettings())
+                .thenReturn(createAppSettingsWithKoboSettings());
+
+        KoboBookMetadata result = koboEntitlementService.getMetadataForBook(bookId, token);
+
+        assertNotNull(result);
+        assertNull(result.getSubtitle());
+    }
+
+    @Test
+    void mapToKoboMetadata_shouldIncludeSubtitleWhenNotNull() {
+        long bookId = 1L;
+        String subtitle = "A test subtitle";
+        BookEntity epubBook = createEpubBookEntity(bookId);
+        epubBook.getMetadata().setSubtitle(subtitle);
+        String token = "test-token";
+
+        when(bookQueryService.findAllWithMetadataByIds(Set.of(bookId)))
+                .thenReturn(List.of(epubBook));
+        when(koboCompatibilityService.isBookSupportedForKobo(epubBook))
+                .thenReturn(true);
+        when(koboUrlBuilder.downloadUrl(token, epubBook.getId()))
+                .thenReturn("http://test.com/download/" + epubBook.getId());
+        when(appSettingService.getAppSettings())
+                .thenReturn(createAppSettingsWithKoboSettings());
+
+        KoboBookMetadata result = koboEntitlementService.getMetadataForBook(bookId, token);
+
+        assertNotNull(result);
+        assertEquals(subtitle, result.getSubtitle());
+    }
+
     private BookEntity createCbxBookEntity(Long id) {
         BookEntity book = new BookEntity();
         book.setId(id);
@@ -226,7 +268,7 @@ class KoboEntitlementServiceTest {
         primaryFile.setBook(book);
         primaryFile.setBookType(BookFileType.CBX);
         primaryFile.setFileSizeKb(1024L);
-        book.setBookFiles(List.of(primaryFile));
+        book.setBookFiles(Set.of(primaryFile));
 
         BookMetadataEntity metadata = new BookMetadataEntity();
         metadata.setTitle("Test CBX Book");
@@ -476,7 +518,7 @@ class KoboEntitlementServiceTest {
     private BookEntity createEpubBookEntity(Long id) {
         BookEntity book = new BookEntity();
         book.setId(id);
-        book.setBookFiles(new java.util.ArrayList<>());
+        book.setBookFiles(new HashSet<>());
 
         BookFileEntity bookFile = BookFileEntity.builder()
                 .book(book)
@@ -725,7 +767,7 @@ class KoboEntitlementServiceTest {
             primaryFile.setId(10L);
             primaryFile.setBook(book);
             primaryFile.setBookType(BookFileType.EPUB);
-            book.setBookFiles(List.of(primaryFile));
+            book.setBookFiles(Set.of(primaryFile));
 
             UserBookProgressEntity progress = new UserBookProgressEntity();
             progress.setBook(book);
@@ -780,7 +822,7 @@ class KoboEntitlementServiceTest {
             alternateAudiobook.setBook(book);
             alternateAudiobook.setBookType(BookFileType.AUDIOBOOK);
 
-            book.setBookFiles(List.of(primaryEpub, alternateAudiobook));
+            book.setBookFiles(Set.of(primaryEpub, alternateAudiobook));
 
             UserBookProgressEntity progress = new UserBookProgressEntity();
             progress.setBook(book);

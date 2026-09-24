@@ -1,6 +1,6 @@
 import {Component, computed, inject} from '@angular/core';
 import {BaseChartDirective} from 'ng2-charts';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {BookService} from '../../../../../book/service/book.service';
 import {Book} from '../../../../../book/model/book.model';
@@ -54,9 +54,6 @@ export class ReadingSurvivalChartComponent {
       legend: {display: false},
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
         borderColor: '#e91e63',
         borderWidth: 1,
         cornerRadius: 6,
@@ -67,22 +64,18 @@ export class ReadingSurvivalChartComponent {
           title: (context) => this.t.translate('statsUser.readingSurvival.tooltipProgress', {label: context[0].label}),
           label: (context) => this.t.translate('statsUser.readingSurvival.tooltipSurvival', {value: (context.parsed.y ?? 0).toFixed(1)})
         }
-      },
-      datalabels: {display: false}
+      }
     },
     scales: {
       x: {
         title: {
           display: true,
           text: this.t.translate('statsUser.readingSurvival.axisProgressThreshold'),
-          color: '#ffffff',
           font: {family: "'Inter', sans-serif", size: 12, weight: 'bold'}
         },
         ticks: {
-          color: '#ffffff',
           font: {family: "'Inter', sans-serif", size: 11}
         },
-        grid: {color: 'rgba(255, 255, 255, 0.1)'},
         border: {display: false}
       },
       y: {
@@ -91,15 +84,12 @@ export class ReadingSurvivalChartComponent {
         title: {
           display: true,
           text: this.t.translate('statsUser.readingSurvival.axisBooksSurviving'),
-          color: '#ffffff',
           font: {family: "'Inter', sans-serif", size: 12, weight: 'bold'}
         },
         ticks: {
-          color: '#ffffff',
           font: {family: "'Inter', sans-serif", size: 11},
           callback: (value) => `${value}%`
         },
-        grid: {color: 'rgba(255, 255, 255, 0.1)'},
         border: {display: false}
       }
     }
@@ -165,7 +155,6 @@ export class ReadingSurvivalChartComponent {
           pointRadius: 5,
           pointHoverRadius: 7,
           pointBackgroundColor: '#e91e63',
-          pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           borderWidth: 2
         }]

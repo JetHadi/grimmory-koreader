@@ -1,8 +1,8 @@
-import {ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, DestroyRef, effect, HostListener, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, DestroyRef, effect, HostListener, inject, OnInit, signal, ViewChild} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {forkJoin, from, Observable, of, throwError} from 'rxjs';
 import {catchError, map, switchMap, tap} from 'rxjs/operators';
-import {MessageService} from 'primeng/api';
+import {MessageService} from '@openng/optimus-ui/api';
 import {ReaderLoaderService} from './core/loader.service';
 import {ReaderViewManagerService} from './core/view-manager.service';
 import {ReaderStateService} from './state/reader-state.service';
@@ -35,6 +35,7 @@ import {TranslocoPipe} from '@jsverse/transloco';
 import {RelocateProgressData} from './state/progress.service';
 import {WakeLockService} from '../../../shared/service/wake-lock.service';
 import {ViewEvent} from './core/view-manager.service';
+import {PageTitleService} from '../../../shared/service/page-title.service';
 
 interface PendingInitialChapterRestore {
   href: string;
@@ -97,6 +98,7 @@ export class EbookReaderComponent implements OnInit {
   private noteService = inject(ReaderNoteService);
   private wakeLockService = inject(WakeLockService);
   private messageService = inject(MessageService);
+  private pageTitle = inject(PageTitleService);
 
   public sidebarService = inject(ReaderSidebarService);
   public leftSidebarService = inject(ReaderLeftSidebarService);
@@ -113,6 +115,9 @@ export class EbookReaderComponent implements OnInit {
   private sectionFractionsTimeout?: ReturnType<typeof setTimeout>;
   private pendingInitialChapterRestore: PendingInitialChapterRestore | null = null;
   private pendingInitialChapterRestoreTimeout?: ReturnType<typeof setTimeout>;
+
+  @ViewChild(TextSelectionPopupComponent, {static: true})
+  private selectionPopup!: TextSelectionPopupComponent;
 
   isLoading = signal(true);
   showQuickSettings = signal(false);
@@ -163,13 +168,10 @@ export class EbookReaderComponent implements OnInit {
       this.applyStyles();
     });
 
-    effect(
-      () => {
-        this.sidebarService.bookmarks();
-        this.updateBookmarkIndicator();
-      },
-      {allowSignalWrites: true}
-    );
+    effect(() => {
+      this.sidebarService.bookmarks();
+      this.updateBookmarkIndicator();
+    });
   }
 
   ngOnInit() {
@@ -216,6 +218,7 @@ export class EbookReaderComponent implements OnInit {
     ]).pipe(
       switchMap(([, book]) => {
         this.book.set(book);
+        this.pageTitle.setBookPageTitle(book);
         const bookType = (this.altBookType as BookType | undefined) ?? book.primaryFile?.bookType;
         if (!bookType) {
           return throwError(() => new Error('Book type not found'));
@@ -355,6 +358,9 @@ export class EbookReaderComponent implements OnInit {
             break;
           case 'text-selected':
             this.selectionService.handleTextSelected(event.detail, event.popupPosition);
+            break;
+          case 'text-deselected':
+            this.selectionPopup.onDismiss();
             break;
           case 'toggle-fullscreen':
             this.toggleFullscreen();
@@ -607,6 +613,14 @@ export class EbookReaderComponent implements OnInit {
 
   onFooterTriggerZoneEnter(): void {
     this.visibilityManager.handleFooterZoneEnter();
+  }
+
+  onHeaderHovered(hovered: boolean): void {
+    this.visibilityManager.setHeaderHovered(hovered);
+  }
+
+  onFooterHovered(hovered: boolean): void {
+    this.visibilityManager.setFooterHovered(hovered);
   }
 
   toggleImmersiveMode(): void {

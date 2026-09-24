@@ -1,8 +1,10 @@
+import {MetadataCatalogService} from '../../../../../shared/metadata/metadata-catalog.service';
+import {METADATA_PROVIDER_LIST} from '../../../../../shared/metadata/metadata-providers';
 import {signal} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {of, throwError} from 'rxjs';
+import {BehaviorSubject, of, throwError} from 'rxjs';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {ConfirmationService, MessageService, MenuItem} from 'primeng/api';
+import {ConfirmationService, MessageService, MenuItem} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
 
 import {Book, BookFile, BookMetadata, BookRecommendation, ReadStatus} from '../../../../book/model/book.model';
@@ -42,6 +44,8 @@ interface ConfirmationLike {
 }
 
 describe('MetadataViewerComponent', () => {
+  let langChanges: BehaviorSubject<string>;
+  const providers = signal(METADATA_PROVIDER_LIST);
   const currentUser = signal<CurrentUser | null>(null);
   const appSettings = signal<AppSettings | null>(null);
   const navigationState = signal(false);
@@ -67,11 +71,11 @@ describe('MetadataViewerComponent', () => {
   const deleteBookFile = vi.fn(() => of(void 0));
   const detachBookFile = vi.fn(() => of(void 0));
 
-  const openAdditionalFileUploaderDialog = vi.fn();
-  const openCustomSendDialog = vi.fn();
-  const openBookFileAttacherDialog = vi.fn();
-  const openFileMoverDialog = vi.fn();
-  const openShelfAssignerDialog = vi.fn();
+  const openAdditionalFileUploaderDialog = vi.fn(() => Promise.resolve(null));
+  const openCustomSendDialog = vi.fn(() => Promise.resolve(null));
+  const openBookFileAttacherDialog = vi.fn(() => Promise.resolve(null));
+  const openFileMoverDialog = vi.fn(() => Promise.resolve(null));
+  const openShelfAssignerDialog = vi.fn(() => Promise.resolve(null));
 
   const emailBookQuick = vi.fn(() => of(void 0));
   const refreshMetadataTask = vi.fn(() => of(void 0));
@@ -90,10 +94,11 @@ describe('MetadataViewerComponent', () => {
   });
   const messageAdd = vi.fn();
   const translate = vi.fn((key: string, params?: Record<string, unknown>) => {
+    const translatedKey = langChanges.value === 'en' ? key : `${langChanges.value}:${key}`;
     if (!params) {
-      return key;
+      return translatedKey;
     }
-    return `${key}:${Object.entries(params).map(([paramKey, value]) => `${paramKey}=${value}`).join(',')}`;
+    return `${translatedKey}:${Object.entries(params).map(([paramKey, value]) => `${paramKey}=${String(value)}`).join(',')}`;
   });
   const getCoverUrl = vi.fn((bookId: number, updatedOn?: string) => `cover:${bookId}:${updatedOn ?? 'none'}`);
   const getAudiobookCoverUrl = vi.fn((bookId: number, updatedOn?: string) => `audio:${bookId}:${updatedOn ?? 'none'}`);
@@ -150,6 +155,8 @@ describe('MetadataViewerComponent', () => {
   }
 
   beforeEach(() => {
+    langChanges = new BehaviorSubject('en');
+    providers.set(METADATA_PROVIDER_LIST);
     currentUser.set(null);
     appSettings.set(null);
     navigationState.set(false);
@@ -202,7 +209,8 @@ describe('MetadataViewerComponent', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        {provide: TranslocoService, useValue: {translate}},
+        {provide: MetadataCatalogService, useValue: {providers: providers.asReadonly()}},
+        {provide: TranslocoService, useValue: {translate, getActiveLang: () => langChanges.value, langChanges$: langChanges}},
         {provide: LibraryService, useValue: {findLibraryById}},
         {
           provide: BookDialogHelperService,
@@ -256,7 +264,7 @@ describe('MetadataViewerComponent', () => {
     });
   });
 
-  it('filters series recommendations and builds the read, download, and other menus from the current book', () => {
+  it('filters series recommendations and builds the read, download, and other menus from the current book', async () => {
     const component = createComponent();
     const seriesBooks = [
       {id: 8, metadata: {seriesNumber: 2}},
@@ -310,8 +318,10 @@ describe('MetadataViewerComponent', () => {
 
     component.book = richBook;
 
-    expect(component.bookInSeries.map(book => book.id)).toEqual([4, 8]);
-    expect(component.recommendedBooks.map(book => book.book.id)).toEqual([17]);
+    await vi.waitFor(() => {
+      expect(component.bookInSeries.map(book => book.id)).toEqual([4, 8]);
+    });
+    expect(component.filteredRecommendedBooks().map(book => book.book.id)).toEqual([17]);
 
     const readItems = component.readMenuItems();
     expect(readItems.map(item => item.separator ? 'separator' : item.label)).toEqual([
@@ -372,6 +382,18 @@ describe('MetadataViewerComponent', () => {
     const deleteSupplementaryItems = otherItems[6].items ?? [];
     runMenuCommand(deleteSupplementaryItems[0].command);
     expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to an empty series list when the series lookup fails', async () => {
+    const component = createComponent();
+    getBooksInSeries.mockReturnValueOnce(throwError(() => new Error('series failed')));
+
+    component.book = createBook({}, {bookId: 21, seriesName: 'Series One'});
+
+    await vi.waitFor(() => {
+      expect(getBooksInSeries).toHaveBeenCalledWith(21);
+    });
+    expect(component.bookInSeries).toEqual([]);
   });
 
   it('chooses confirmation copy for file deletion branches and runs the accept callbacks', () => {
@@ -468,7 +490,6 @@ describe('MetadataViewerComponent', () => {
     expect(component.getStarColorScaled(null)).toBe('rgb(203, 213, 225)');
     expect(component.getStarColorScaled(5)).toBe('rgb(34, 197, 94)');
     expect(component.getRatingPercent(4.5)).toBe(90);
-    expect(component.getRatingTooltip(createBook({metadata: createMetadata({amazonRating: 4.2, amazonReviewCount: 1234})}), 'amazon')).toBe('★ 4.2 | 1,234 reviews');
     expect(component.getStatusLabel(ReadStatus.READING)).toBe('metadata.viewer.readStatusReading'.toUpperCase());
     expect(component.getStatusLabel('missing')).toBe('UNSET');
     expect(component.getBookCoverUrl(createBook())).toBe('cover:21:2026-03-26');
@@ -484,4 +505,5 @@ describe('MetadataViewerComponent', () => {
     expect(component.getChannelLabel(2)).toBe('metadata.viewer.channelStereo');
     expect(component.getChannelLabel(6)).toBe('metadata.viewer.channelMultiple:count=6');
   });
+
 });

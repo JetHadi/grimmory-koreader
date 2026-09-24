@@ -1,4 +1,4 @@
-<div class="book-card"
+<div class="book-card surface-card-outline"
      [class.selected]="isSelected()"
      role="button"
      tabindex="0"
@@ -6,20 +6,14 @@
      (keydown.enter)="onCardClick($event)">
 
   <div class="cover-container" [ngClass]="{ 'center-info-btn': isSeriesViewActive() || !hasDigitalFile(), 'audiobook-cover': isAudiobook(), 'square-library-cover': useSquareCovers() }">
-    @if (coverImageUrl(); as url) {
-      <img
-        [src]="url"
-        class="book-cover"
-        [class.square-cover]="isAudiobook() || useSquareCovers()"
-        [alt]="('book.card.alt.cover' | transloco: { title: displayTitle() })"
-        width="250"
-        [height]="(isAudiobook() || useSquareCovers()) ? 250 : 350"
-        loading="lazy"
-        decoding="async"
-        fetchpriority="low"/>
-    } @else {
-      <app-cover-placeholder class="book-cover" [class.square-cover]="isAudiobook() || useSquareCovers()" [title]="book().metadata?.title ?? ''" [author]="(book().metadata?.authors ?? []).join(', ')" />
-    }
+    <app-cover
+      class="book-cover"
+      [class.square-cover]="isAudiobook() || useSquareCovers()"
+      [src]="coverImageUrl()"
+      [title]="displayTitle()"
+      [authors]="book().metadata?.authors ?? []"
+      [fit]="(isAudiobook() || useSquareCovers()) ? 'contain' : 'cover'"
+      [alt]="('book.card.alt.cover' | transloco: { title: displayTitle() })"/>
 
     <div class="top-left-overlay-stack">
       @if (showBookTypePill() && displayFormat(); as fmt) {
@@ -40,17 +34,17 @@
     </div>
 
     @if (isSeriesViewActive()) {
-      <button type="button" class="p-button p-component p-button-rounded info-btn" (click)="openSeriesInfo()" [attr.aria-label]="'book.card.alt.viewSeriesInfo' | transloco">
+      <button pButton type="button" class="p-button p-component p-button-rounded info-btn" (click)="openSeriesInfo()" [attr.aria-label]="'book.card.alt.viewSeriesInfo' | transloco">
         <i class="pi pi-info"></i>
       </button>
     } @else {
-      <button type="button" class="p-button p-component p-button-rounded info-btn" (click)="openBookInfo(book())" [attr.aria-label]="'book.card.alt.viewDetails' | transloco">
+      <button pButton type="button" class="p-button p-component p-button-rounded info-btn" (click)="openBookInfo(book())" [attr.aria-label]="'book.card.alt.viewDetails' | transloco">
         <i class="pi pi-info"></i>
       </button>
     }
 
     @if (!isSeriesViewActive() && hasDigitalFile()) {
-      <a [routerLink]="readingUrl()" (click)="readBook(book())"
+      <a pButton [routerLink]="readingUrl()" (click)="readBook(book())"
          class="p-button p-component p-button-rounded read-btn"
          [pTooltip]="isContinueReading() ? ('book.card.alt.continueReading' | transloco) : ''"
          tooltipPosition="bottom"
@@ -110,7 +104,7 @@
         {{ displayTitle() }}
       </h4>
       <p-tieredmenu #menu [model]="items()" [popup]="true" appendTo="body" (onShow)="onMenuShow()" (onHide)="onMenuHide()"></p-tieredmenu>
-      <button type="button"
+      <button pButton type="button"
         class="p-button p-component p-button-text p-button-sm custom-button-padding"
         (click)="onMenuToggle($event, menu)"
         [attr.aria-label]="'book.card.alt.bookMenu' | transloco">

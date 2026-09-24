@@ -1,55 +1,90 @@
-import {AfterViewChecked, Component, computed, DestroyRef, ElementRef, inject, Input, OnChanges, OnInit, signal, SimpleChanges, ViewChild} from '@angular/core';
-import {Button} from 'primeng/button';
+import {AfterViewChecked, Component, computed, DestroyRef, ElementRef, inject, Input, OnInit, signal, ViewChild} from '@angular/core';
+import {Button} from '@openng/optimus-ui/button';
 import {DecimalPipe, NgClass} from '@angular/common';
 import {BookService} from '../../../../book/service/book.service';
 import {BookFileService} from '../../../../book/service/book-file.service';
-import {Rating, RatingRateEvent} from 'primeng/rating';
+import {Rating, RatingRateEvent} from '@openng/optimus-ui/rating';
 import {FormsModule} from '@angular/forms';
 import {Book, BookFile, BookMetadata, BookRecommendation, BookType, ComicMetadata, FileInfo, ReadStatus} from '../../../../book/model/book.model';
 import {UrlHelperService} from '../../../../../shared/service/url-helper.service';
-import {CoverPlaceholderComponent} from '../../../../../shared/components/cover-generator/cover-generator.component';
+import {CoverComponent} from '../../../../../shared/components/cover/cover.component';
 import {UserService} from '../../../../settings/user-management/user.service';
-import {SplitButton} from 'primeng/splitbutton';
-import {ConfirmationService, MenuItem, MessageService} from 'primeng/api';
-import {DynamicDialogRef} from 'primeng/dynamicdialog';
+import {SplitButton} from '@openng/optimus-ui/splitbutton';
+import {ConfirmationService, MenuItem, MessageService} from '@openng/optimus-ui/api';
+import {DynamicDialogRef} from '@openng/optimus-ui/dynamicdialog';
 import {EmailService} from '../../../../settings/email-v2/email.service';
-import {Tooltip} from 'primeng/tooltip';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {ProgressBar} from 'primeng/progressbar';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
+import {takeUntilDestroyed, toObservable, toSignal} from '@angular/core/rxjs-interop';
+import {ProgressBar} from '@openng/optimus-ui/progressbar';
 import {MetadataRefreshType} from '../../../model/request/metadata-refresh-type.enum';
 import {Router} from '@angular/router';
-import {take, tap} from 'rxjs/operators';
-import {Menu} from 'primeng/menu';
+import {catchError, map, switchMap, take} from 'rxjs/operators';
+import {of} from 'rxjs';
+import {Menu} from '@openng/optimus-ui/menu';
 import {ResetProgressType, ResetProgressTypes} from '../../../../../shared/constants/reset-progress-type';
-import {DatePicker} from 'primeng/datepicker';
-import {ProgressSpinner} from 'primeng/progressspinner';
-import {TieredMenu} from 'primeng/tieredmenu';
-import {Image} from 'primeng/image';
+import {DatePicker} from '@openng/optimus-ui/datepicker';
+import {ProgressSpinner} from '@openng/optimus-ui/progressspinner';
+import {TieredMenu} from '@openng/optimus-ui/tieredmenu';
 import {BookDialogHelperService} from '../../../../book/components/book-browser/book-dialog-helper.service';
 import {LibraryService} from '../../../../book/service/library.service';
 import {TagColor, TagComponent} from '../../../../../shared/components/tag/tag.component';
 import {TaskHelperService} from '../../../../settings/task-management/task-helper.service';
-import {AGE_RATING_OPTIONS, CONTENT_RATING_LABELS, fileSizeRanges, matchScoreRanges, pageCountRanges} from '../../../../book/components/book-browser/book-filter/book-filter.config';
+import {AGE_RATING_OPTIONS, CONTENT_RATING_LABELS, matchScoreRanges, pageCountRanges} from '../../../../book/components/book-browser/book-filter/book-filter.config';
 import {BookNavigationService} from '../../../../book/service/book-navigation.service';
 import {BookMetadataHostService} from '../../../../../shared/service/book-metadata-host.service';
 import {AppSettingsService} from '../../../../../shared/service/app-settings.service';
+import {LanguageResolverService} from '../../../../../shared/service/language-resolver.service';
 import {DeleteBookFileEvent, DeleteSupplementaryFileEvent, DetachBookFileEvent, DownloadAdditionalFileEvent, DownloadAllFilesEvent, DownloadEvent, MetadataTabsComponent, ReadEvent} from './metadata-tabs/metadata-tabs.component';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 import {AuthorService} from '../../../../author-browser/service/author.service';
-import {Dialog} from 'primeng/dialog';
-import {Checkbox} from 'primeng/checkbox';
+import {Dialog} from '@openng/optimus-ui/dialog';
+import {Checkbox} from '@openng/optimus-ui/checkbox';
 import DOMPurify from 'dompurify';
+import {MetadataCatalogService} from '../../../../../shared/metadata/metadata-catalog.service';
+import type {MetadataProviderId} from '../../../../../shared/metadata/metadata-providers';
 
+interface ProviderBadge {
+  id: MetadataProviderId;
+  labelKey: string;
+  rating: number | null;
+  tooltip: string | undefined;
+}
 
 @Component({
   selector: 'app-metadata-viewer',
   standalone: true,
   templateUrl: './metadata-viewer.component.html',
   styleUrl: './metadata-viewer.component.scss',
-  imports: [Button, Rating, FormsModule, SplitButton, NgClass, Tooltip, DecimalPipe, ProgressBar, Menu, DatePicker, ProgressSpinner, TieredMenu, Image, TagComponent, MetadataTabsComponent, TranslocoDirective, TranslocoPipe, Dialog, Checkbox, CoverPlaceholderComponent]
+  imports: [Button, Rating, FormsModule, SplitButton, NgClass, Tooltip, DecimalPipe, ProgressBar, Menu, DatePicker, ProgressSpinner, TieredMenu, TagComponent, MetadataTabsComponent, TranslocoDirective, TranslocoPipe, Dialog, Checkbox, CoverComponent]
 })
-export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChecked {
+export class MetadataViewerComponent implements OnInit, AfterViewChecked {
+  private bookService = inject(BookService);
   private currentBook = signal<Book | null>(null);
+  private readonly seriesLookupBookId = computed(() => {
+    const metadata = this.currentBook()?.metadata;
+    return metadata?.seriesName ? metadata.bookId : null;
+  });
+  private readonly bookInSeriesSignal = toSignal(
+    toObservable(this.seriesLookupBookId).pipe(
+      switchMap(bookId =>
+        bookId == null
+          ? of([])
+          : this.bookService.getBooksInSeries(bookId).pipe(
+            catchError(() => of([]))
+          )
+      ),
+      map(series => [...series].sort((a, b) => (a.metadata?.seriesNumber ?? 0) - (b.metadata?.seriesNumber ?? 0)))
+    ),
+    {initialValue: []}
+  );
+  private readonly originalRecommendedBooks = signal<BookRecommendation[]>([]);
+  readonly filteredRecommendedBooks = computed(() => {
+    const bookInSeriesIds = new Set(this.bookInSeriesSignal().map(book => book.id));
+
+    return this.originalRecommendedBooks().filter(
+      rec => !bookInSeriesIds.has(rec.book.id)
+    );
+  });
 
   @Input()
   set book(value: Book | null) {
@@ -60,7 +95,6 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     }
 
     this.isAutoFetching = false;
-    this.loadBooksInSeriesAndFilterRecommended(value.metadata.bookId);
     this.selectedReadStatus = value.readStatus ?? ReadStatus.UNREAD;
   }
 
@@ -68,20 +102,23 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     return this.currentBook();
   }
 
-  @Input() recommendedBooks: BookRecommendation[] = [];
-  private originalRecommendedBooks: BookRecommendation[] = [];
+  @Input()
+  set recommendedBooks(value: BookRecommendation[]) {
+    this.originalRecommendedBooks.set(value);
+  }
 
   private readonly t = inject(TranslocoService);
+  private readonly activeLang = toSignal(this.t.langChanges$, {initialValue: this.t.getActiveLang()});
   private libraryService = inject(LibraryService);
   private bookDialogHelperService = inject(BookDialogHelperService)
   private emailService = inject(EmailService);
   private messageService = inject(MessageService);
-  private bookService = inject(BookService);
   private bookFileService = inject(BookFileService);
   private taskHelperService = inject(TaskHelperService);
   private authorService = inject(AuthorService);
   protected urlHelper = inject(UrlHelperService);
   protected userService = inject(UserService);
+  protected languageResolver = inject(LanguageResolverService);
   private appSettingsService = inject(AppSettingsService);
   private confirmationService = inject(ConfirmationService);
 
@@ -90,6 +127,34 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
   private dialogRef = inject(DynamicDialogRef, { optional: true });
   private userState = this.userService.currentUser;
   private appSettings = this.appSettingsService.appSettings;
+  private readonly catalog = inject(MetadataCatalogService);
+
+  readonly providerBadges = computed((): ProviderBadge[] => {
+    const metadata = this.currentBook()?.metadata;
+    if (!metadata) {
+      return [];
+    }
+
+    return this.catalog.providers().map(provider => {
+      const book = provider.book;
+      const rating = (book?.rating ? metadata[book.rating] : null) ?? null;
+      const reviewCount = (book?.reviewCount ? metadata[book.reviewCount] : null) ?? null;
+
+      return {
+        id: provider.id,
+        labelKey: provider.labelKey,
+        rating,
+        tooltip: this.ratingTooltip(rating, reviewCount),
+      };
+    }).filter(provider => provider.rating !== null);
+  });
+
+  private ratingTooltip(rating: number | null, reviewCount: number | null): string | undefined {
+    if (rating === null) return undefined;
+    return reviewCount === null
+      ? this.t.translate('metadata.viewer.ratingTooltipNoReviews', {rating}, this.activeLang())
+      : this.t.translate('metadata.viewer.ratingTooltip', {rating, reviews: reviewCount.toLocaleString()}, this.activeLang());
+  }
 
   private navigateAfterDialogClose(navigate: () => void): void {
     if (this.metadataCenterViewMode !== 'dialog') {
@@ -214,7 +279,9 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     items.push({
       label: this.t.translate('metadata.viewer.menuShelf'),
       icon: 'pi pi-folder',
-      command: () => this.assignShelf(book.id)
+      command: () => {
+        void this.assignShelf(book).catch(() => undefined);
+      }
     });
 
     if (permissions?.canManageLibrary || permissions?.admin) {
@@ -235,7 +302,7 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
         label: this.t.translate('metadata.viewer.menuUploadFile'),
         icon: 'pi pi-upload',
         command: () => {
-          this.bookDialogHelperService.openAdditionalFileUploaderDialog(book);
+          void this.bookDialogHelperService.openAdditionalFileUploaderDialog(book).catch(() => undefined);
         },
       });
     }
@@ -247,7 +314,7 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
         label: this.t.translate('metadata.viewer.menuOrganizeFiles'),
         icon: 'pi pi-arrows-h',
         command: () => {
-          this.openFileMoverDialog(book.id);
+          void this.openFileMoverDialog(book.id).catch(() => undefined);
         },
       });
     }
@@ -266,7 +333,7 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
             label: this.t.translate('metadata.viewer.menuCustomSend'),
             icon: 'pi pi-cog',
             command: () => {
-              this.bookDialogHelperService.openCustomSendDialog(book);
+              void this.bookDialogHelperService.openCustomSendDialog(book).catch(() => undefined);
             }
           }
         ]
@@ -281,7 +348,7 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
         label: this.t.translate('metadata.viewer.menuAttachToAnotherBook'),
         icon: 'pi pi-link',
         command: () => {
-          this.bookDialogHelperService.openBookFileAttacherDialog(book);
+          void this.bookDialogHelperService.openBookFileAttacherDialog(book).catch(() => undefined);
         },
       });
     }
@@ -397,8 +464,9 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
 
     return items;
   });
-  bookInSeries: Book[] = [];
-  @ViewChild(Image) private coverImage?: Image;
+  get bookInSeries(): Book[] {
+    return this.bookInSeriesSignal();
+  }
   @ViewChild('descriptionContent') descriptionContentRef?: ElementRef<HTMLElement>;
   isExpanded = false;
   isOverflowing = false;
@@ -429,7 +497,6 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
 
   private bookNavigationService = inject(BookNavigationService);
   private metadataHostService = inject(BookMetadataHostService);
-  amazonDomain = 'com';
   readonly navigationState = this.bookNavigationService.navigationState;
   readonly canNavigatePrevious = this.bookNavigationService.canNavigatePrevious;
   readonly canNavigateNext = this.bookNavigationService.canNavigateNext;
@@ -441,47 +508,10 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
   });
 
   ngOnInit(): void {
-    this.destroyRef.onDestroy(() => this.coverImage?.closePreview());
-
-    const onPopState = () => this.coverImage?.closePreview();
-    window.addEventListener('popstate', onPopState);
-    this.destroyRef.onDestroy(() => window.removeEventListener('popstate', onPopState));
-
     const user = this.userService.currentUser();
     if (user) {
       this.metadataCenterViewMode = user.userSettings.metadataCenterViewMode ?? 'route';
     }
-
-    const settings = this.appSettingsService.appSettings();
-    if (settings) {
-      this.amazonDomain = settings.metadataProviderSettings?.amazon?.domain ?? 'com';
-    }
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['recommendedBooks']) {
-      this.originalRecommendedBooks = [...this.recommendedBooks];
-      this.filterRecommendations();
-    }
-  }
-
-  private loadBooksInSeriesAndFilterRecommended(bookId: number): void {
-    this.bookService.getBooksInSeries(bookId).pipe(
-      tap(series => {
-        series.sort((a, b) => (a.metadata?.seriesNumber ?? 0) - (b.metadata?.seriesNumber ?? 0));
-        this.bookInSeries = series;
-        this.originalRecommendedBooks = [...this.recommendedBooks];
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.filterRecommendations());
-  }
-
-  private filterRecommendations(): void {
-    if (!this.originalRecommendedBooks) return;
-    const bookInSeriesIds = new Set(this.bookInSeries.map(book => book.id));
-    this.recommendedBooks = this.originalRecommendedBooks.filter(
-      rec => !bookInSeriesIds.has(rec.book.id)
-    );
   }
 
   ngAfterViewChecked(): void {
@@ -687,8 +717,8 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     }
   }
 
-  assignShelf(bookId: number) {
-    this.bookDialogHelperService.openShelfAssignerDialog((this.bookService.findBookById(bookId) as Book), null);
+  async assignShelf(book: Book) {
+    await this.bookDialogHelperService.openShelfAssignerDialog(book, null);
   }
 
   updateReadStatus(status: ReadStatus): void {
@@ -856,6 +886,9 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
       if (['CBR', 'CBZ', 'CB7', 'CBT'].includes(filterValue)) {
         filterValue = 'CBX';
       }
+      if (["MP3", "M4A", "M4B", "OPUS"].includes(filterValue)) {
+        filterValue = 'AUDIOBOOK';
+      }
       this.handleMetadataClick('bookType', filterValue);
     }
   }
@@ -868,13 +901,6 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     const range = pageCountRanges.find(r => pageCount >= r.min && pageCount < r.max);
     if (range) {
       this.handleMetadataClick('pageCount', range.id.toString());
-    }
-  }
-
-  goToFileSizeRange(fileSizeKb: number): void {
-    const range = fileSizeRanges.find(r => fileSizeKb >= r.min && fileSizeKb < r.max);
-    if (range) {
-      this.handleMetadataClick('fileSize', range.id.toString());
     }
   }
 
@@ -1149,40 +1175,6 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     return p != null ? Math.round(p * 10) / 10 : null;
   }
 
-  getRatingTooltip(book: Book, source: 'amazon' | 'goodreads' | 'hardcover' | 'lubimyczytac' | 'ranobedb' | 'audible'): string {
-    const meta = book?.metadata;
-    if (!meta) return '';
-
-    switch (source) {
-      case 'amazon':
-        return meta.amazonRating != null
-          ? `★ ${meta.amazonRating} | ${meta.amazonReviewCount?.toLocaleString() ?? '0'} reviews`
-          : '';
-      case 'goodreads':
-        return meta.goodreadsRating != null
-          ? `★ ${meta.goodreadsRating} | ${meta.goodreadsReviewCount?.toLocaleString() ?? '0'} reviews`
-          : '';
-      case 'hardcover':
-        return meta.hardcoverRating != null
-          ? `★ ${meta.hardcoverRating} | ${meta.hardcoverReviewCount?.toLocaleString() ?? '0'} reviews`
-          : '';
-      case 'lubimyczytac':
-        return meta.lubimyczytacRating != null
-          ? `★ ${meta.lubimyczytacRating}`
-          : '';
-      case 'ranobedb':
-        return meta.ranobedbRating != null
-          ? `★ ${meta.ranobedbRating}`
-          : '';
-      case 'audible':
-        return meta.audibleRating != null
-          ? `★ ${meta.audibleRating} | ${meta.audibleReviewCount?.toLocaleString() ?? '0'} reviews`
-          : '';
-      default:
-        return '';
-    }
-  }
-
   getRatingPercent(rating: number | null | undefined): number {
     if (rating == null) return 0;
     return Math.round((rating / 5) * 100);
@@ -1251,8 +1243,8 @@ export class MetadataViewerComponent implements OnInit, OnChanges, AfterViewChec
     this.editDateFinished = null;
   }
 
-  openFileMoverDialog(bookId: number): void {
-    this.bookDialogHelperService.openFileMoverDialog(new Set([bookId]));
+  async openFileMoverDialog(bookId: number) {
+    await this.bookDialogHelperService.openFileMoverDialog(new Set([bookId]));
   }
 
   protected readonly ResetProgressTypes = ResetProgressTypes;

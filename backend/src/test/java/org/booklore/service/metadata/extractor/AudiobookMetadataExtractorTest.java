@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.jaudiotagger.audio.AudioFileIO;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -43,7 +44,7 @@ class AudiobookMetadataExtractorTest {
 
     @BeforeEach
     void setUp() {
-        extractor = new AudiobookMetadataExtractor(ffprobeService);
+        extractor = new AudiobookMetadataExtractor(new ObjectMapper(), ffprobeService);
     }
 
     @Nested
@@ -466,7 +467,7 @@ class AudiobookMetadataExtractorTest {
                 BookMetadata metadata = extractor.extractMetadata(file);
                 AudiobookMetadata abMeta = metadata.getAudiobookMetadata();
 
-                assertThat(abMeta.getDurationSeconds()).isEqualTo(3661L);
+                assertThat(abMeta.getDurationSeconds()).isEqualTo(3662L);
                 assertThat(abMeta.getBitrate()).isEqualTo(256);
                 assertThat(abMeta.getSampleRate()).isEqualTo(48000);
                 assertThat(abMeta.getChannels()).isEqualTo(2);

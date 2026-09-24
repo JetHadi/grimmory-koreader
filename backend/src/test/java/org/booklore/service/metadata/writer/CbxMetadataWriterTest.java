@@ -36,7 +36,6 @@ import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIf("org.booklore.service.ArchiveService#isAvailable")
 class CbxMetadataWriterTest {
 
     private CbxMetadataWriter writer;
@@ -68,7 +67,7 @@ class CbxMetadataWriterTest {
                     .forEach(p -> {
                         try {
                             Files.deleteIfExists(p);
-                        } catch (Exception ignore) {
+                        } catch (Exception _) {
                         }
                     });
         }

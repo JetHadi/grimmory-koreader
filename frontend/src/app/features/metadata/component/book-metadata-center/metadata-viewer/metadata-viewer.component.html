@@ -5,17 +5,14 @@
       <div class="cover-section">
         <div class="cover-wrapper">
 
-          @if (getBookCoverUrl(book); as coverUrl) {
-            <p-image
-              [src]="coverUrl"
-              [alt]="book.metadata?.title ? ('Cover of ' + book.metadata?.title) : ''"
-              width="250"
-              appendTo="body"
-              [preview]="true">
-            </p-image>
-          } @else {
-            <app-cover-placeholder style="width: 250px; height: 350px;" [title]="book.metadata?.title ?? ''" [author]="(book.metadata?.authors ?? []).join(', ')" size="lg" />
-          }
+          <app-cover
+            [src]="getBookCoverUrl(book)"
+            [title]="book.metadata?.title"
+            [authors]="book.metadata?.authors ?? []"
+            [natural]="true"
+            [alt]="book.metadata?.title ?? ''"
+            [preview]="true"
+            size="lg" />
 
           @if (book?.metadata!.seriesNumber !== null && book?.metadata!.seriesNumber !== undefined) {
             <div class="series-badge">
@@ -187,127 +184,20 @@
               </p-button>
             </div>
 
-            @if (book?.metadata?.amazonRating || book?.metadata?.asin || book?.metadata?.goodreadsRating || book?.metadata?.goodreadsId || book?.metadata?.hardcoverRating || book?.metadata?.hardcoverId || book?.metadata?.lubimyczytacRating || book?.metadata?.lubimyczytacId || book?.metadata?.ranobedbRating || book?.metadata?.ranobedbId || book?.metadata?.audibleRating || book?.metadata?.audibleId || book?.metadata?.googleId) {
+            @if (providerBadges().length > 0) {
               <div class="gradient-divider"></div>
             }
 
             <div class="external-ratings">
-              @if (book?.metadata?.amazonRating || book?.metadata?.asin) {
-                <a
-                  class="rating-link"
-                  [href]="'https://www.amazon.' + amazonDomain + '/dp/' + (book.metadata?.asin ?? '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.amazonRating ? getRatingTooltip(book, 'amazon') : undefined"
+              @for (provider of providerBadges(); track provider.id) {
+                <span
+                  class="rating-badge"
+                  [pTooltip]="provider.tooltip"
                   tooltipPosition="top"
                 >
-                  <img src="https://www.amazon.com/favicon.ico" alt="Amazon" class="rating-favicon"/>
-                  @if (book?.metadata?.amazonRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.amazonRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.goodreadsRating || book?.metadata?.goodreadsId) {
-                <a
-                  class="rating-link"
-                  [href]="'https://www.goodreads.com/book/show/' + (book.metadata?.goodreadsId ?? '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.goodreadsRating ? getRatingTooltip(book, 'goodreads') : undefined"
-                  tooltipPosition="top"
-                >
-                  <img src="https://www.goodreads.com/favicon.ico" alt="Goodreads" class="rating-favicon"/>
-                  @if (book?.metadata?.goodreadsRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.goodreadsRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.hardcoverRating || book?.metadata?.hardcoverId) {
-                <a
-                  class="rating-link"
-                  [href]="'https://hardcover.app/books/' + (book.metadata?.hardcoverId ?? '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.hardcoverRating ? getRatingTooltip(book, 'hardcover') : undefined"
-                  tooltipPosition="top"
-                >
-                  <img src="https://assets.hardcover.app/static/favicon.ico" alt="Hardcover" class="rating-favicon"/>
-                  @if (book?.metadata?.hardcoverRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.hardcoverRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.lubimyczytacRating || book?.metadata?.lubimyczytacId) {
-                <a
-                  class="rating-link"
-                  [href]="book.metadata?.lubimyczytacId ? 'https://lubimyczytac.pl/ksiazka/' + book.metadata?.lubimyczytacId + '/ksiazka' : ''"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.lubimyczytacRating ? getRatingTooltip(book, 'lubimyczytac') : undefined"
-                  tooltipPosition="top"
-                >
-                  <img src="https://lubimyczytac.pl/favicon.ico" alt="Lubimyczytac" class="rating-favicon"/>
-                  @if (book?.metadata?.lubimyczytacRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.lubimyczytacRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.ranobedbRating || book?.metadata?.ranobedbId) {
-                <a
-                  class="rating-link"
-                  [href]="'https://ranobedb.org/book/' + (book.metadata?.ranobedbId ?? '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.ranobedbRating ? getRatingTooltip(book, 'ranobedb') : undefined"
-                  tooltipPosition="top"
-                >
-                  <img src="https://www.ranobedb.org/favicon.png" alt="Ranobedb" class="rating-favicon"/>
-                  @if (book?.metadata?.ranobedbRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.ranobedbRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.audibleRating || book?.metadata?.audibleId) {
-                <a
-                  class="rating-link"
-                  [href]="'https://www.audible.com/pd/' + (book.metadata?.audibleId ?? '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [pTooltip]="book?.metadata?.audibleRating ? getRatingTooltip(book, 'audible') : undefined"
-                  tooltipPosition="top"
-                >
-                  <img src="https://www.audible.com/favicon.ico" alt="Audible" class="rating-favicon"/>
-                  @if (book?.metadata?.audibleRating) {
-                    <span class="rating-value">{{ getRatingPercent(book.metadata!.audibleRating) }}%</span>
-                  }
-                </a>
-              }
-
-              @if (book?.metadata?.googleId) {
-                <a
-                  class="rating-link"
-                  [href]="'https://books.google.com/books?id=' + book.metadata!.googleId"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img src="https://books.google.com/favicon.ico" alt="Google Books" class="rating-favicon"/>
-                </a>
-              }
-
-              @if (book?.metadata?.comicMetadata?.webLink) {
-                <a
-                  class="rating-link"
-                  [href]="book.metadata!.comicMetadata!.webLink"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img src="https://www.comicvine.com/favicon.ico" alt="Comic Vine" class="rating-favicon"/>
-                </a>
+                  <span class="rating-provider">{{ provider.labelKey | transloco }}</span>
+                  <span class="rating-value">{{ getRatingPercent(provider.rating) }}%</span>
+                </span>
               }
             </div>
           </div>
@@ -374,7 +264,7 @@
             @if (book?.shelves?.length) {
               <div class="metadata-item">
                 <span class="metadata-key">{{ t('shelvesLabel') }}</span>
-                <div class="metadata-value-group flex-wrap">
+                <div class="metadata-value-group">
                   @for (shelf of book.shelves; track shelf.id; let isLast = $last) {
                     <span class="metadata-value metadata-link" role="button" tabindex="0" (click)="goToShelf(shelf.id!)" (keydown.enter)="goToShelf(shelf.id!)">
                       {{ shelf.name }}
@@ -413,7 +303,7 @@
               <span class="metadata-key">{{ t('languageLabel') }}</span>
               @if (book?.metadata!.language) {
                 <span class="metadata-value metadata-link" role="button" tabindex="0" (click)="goToLanguage(book?.metadata!.language!)" (keydown.enter)="goToLanguage(book?.metadata!.language!)">
-                  {{ book?.metadata!.language }}
+                  {{ languageResolver.displayName(book?.metadata!.language) }}
                 </span>
               } @else {
                 <span class="metadata-value">-</span>
@@ -619,7 +509,7 @@
               <div class="metadata-item">
                 <span class="metadata-key">{{ t('fileSizeLabel') }}</span>
                 @if (book?.primaryFile?.fileSizeKb) {
-                  <span class="metadata-value metadata-link" role="button" tabindex="0" (click)="goToFileSizeRange(book?.primaryFile?.fileSizeKb!)" (keydown.enter)="goToFileSizeRange(book?.primaryFile?.fileSizeKb!)">
+                  <span class="metadata-value">
                     {{ formatFileSize(book?.primaryFile) }}
                   </span>
                 } @else {
@@ -716,7 +606,7 @@
         <span>{{ t('synopsisTitle') }}</span>
       </div>
       <div class="description-body">
-        <div #descriptionContent [ngClass]="{ 'line-clamp-7': !isExpanded }" class="description-content">
+        <div #descriptionContent [ngClass]="{ 'description-content-collapsed': !isExpanded }" class="description-content">
           <div class="description-html" [innerHTML]="sanitizeDescription(book.metadata!.description)"></div>
         </div>
         @if (isExpanded || isOverflowing) {
@@ -958,7 +848,8 @@
     <app-metadata-tabs
       [book]="book"
       [bookInSeries]="bookInSeries"
-      [recommendedBooks]="recommendedBooks"
+      [hasSeries]="!!book.metadata?.seriesName"
+      [recommendedBooks]="filteredRecommendedBooks()"
       (readBook)="onReadBook($event)"
       (downloadBook)="onDownloadBook($event)"
       (downloadFile)="onDownloadFile($event)"

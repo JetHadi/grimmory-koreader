@@ -57,7 +57,6 @@ export class BookFormatsChartComponent {
         display: true,
         position: 'right',
         labels: {
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 12
@@ -69,9 +68,6 @@ export class BookFormatsChartComponent {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
         borderColor: '#E11D48',
         borderWidth: 2,
         cornerRadius: 8,
@@ -86,9 +82,6 @@ export class BookFormatsChartComponent {
             return this.t.translate('statsLibrary.bookFormats.tooltipLabel', {label: context.label, value, percentage});
           }
         }
-      },
-      datalabels: {
-        display: false
       }
     }
   };
@@ -107,11 +100,7 @@ export class BookFormatsChartComponent {
       labels,
       datasets: [{
         data,
-        backgroundColor: colors,
-        borderColor: colors.map(() => 'rgba(255, 255, 255, 0.2)'),
-        borderWidth: 2,
-        hoverBorderColor: '#ffffff',
-        hoverBorderWidth: 3
+        backgroundColor: colors
       }]
     };
   });

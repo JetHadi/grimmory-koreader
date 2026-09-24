@@ -1,7 +1,7 @@
 import {Component, DestroyRef, inject, OnInit} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {BaseChartDirective} from 'ng2-charts';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {BehaviorSubject, EMPTY, Observable} from 'rxjs';
 import {catchError} from 'rxjs/operators';
 import {ChartConfiguration, ChartData} from 'chart.js';
@@ -46,9 +46,6 @@ export class PageTurnerChartComponent implements OnInit {
         legend: {display: false},
         tooltip: {
           enabled: true,
-          backgroundColor: 'rgba(0, 0, 0, 0.95)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
           borderColor: 'rgba(251, 146, 60, 0.8)',
           borderWidth: 2,
           cornerRadius: 8,
@@ -59,29 +56,24 @@ export class PageTurnerChartComponent implements OnInit {
           callbacks: {
             label: () => ''
           }
-        },
-        datalabels: {display: false}
+        }
       },
       scales: {
         x: {
           title: {
             display: true,
             text: this.t.translate('statsUser.pageTurner.axisGripScore'),
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 13, weight: 'bold'}
           },
           min: 0,
           max: 100,
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11}
           },
-          grid: {color: 'rgba(255, 255, 255, 0.1)'},
           border: {display: false}
         },
         y: {
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11}
           },
           grid: {display: false},

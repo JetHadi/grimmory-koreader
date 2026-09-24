@@ -19,6 +19,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Service to sync reading progress to Hardcover.
@@ -41,12 +43,14 @@ public class HardcoverSyncService {
     private final ThreadLocal<String> currentApiToken = new ThreadLocal<>();
 
     @Autowired
-    public HardcoverSyncService(HardcoverSyncSettingsService hardcoverSyncSettingsService, BookRepository bookRepository) {
+    public HardcoverSyncService(
+            HardcoverSyncSettingsService hardcoverSyncSettingsService,
+            BookRepository bookRepository,
+            RestClient restClient
+    ) {
         this.hardcoverSyncSettingsService = hardcoverSyncSettingsService;
         this.bookRepository = bookRepository;
-        this.restClient = RestClient.builder()
-                .baseUrl(HARDCOVER_API_URL)
-                .build();
+        this.restClient = restClient;
     }
 
     /**
@@ -112,7 +116,7 @@ public class HardcoverSyncService {
                 }
       
                 progressPages = Math.round((progressPercent / 100.0f) * hardcoverBook.pages);
-                progressPages = Math.max(0, Math.min(hardcoverBook.pages, progressPages));
+                progressPages = Math.clamp(progressPages, 0, hardcoverBook.pages);
 
                 boolean isFinished = progressPercent >= 99.0f;
                 
@@ -286,7 +290,7 @@ public class HardcoverSyncService {
 
         GraphQLRequest request = new GraphQLRequest();
         request.setQuery(query);
-        Map<String, Object> variables = new java.util.HashMap<>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("bookId", bookId);
         variables.put("isbn13", (isbn13 != null && !isbn13.isBlank()) ? isbn13 : "");
         variables.put("isbn10", (isbn10 != null && !isbn10.isBlank()) ? isbn10 : "");
@@ -394,7 +398,7 @@ public class HardcoverSyncService {
 
         GraphQLRequest request = new GraphQLRequest();
         request.setQuery(query);
-        Map<String, Object> variables = new java.util.HashMap<>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("isbn13", (isbn13 != null && !isbn13.isBlank()) ? isbn13 : "");
         variables.put("isbn10", (isbn10 != null && !isbn10.isBlank()) ? isbn10 : "");
         request.setVariables(variables);
@@ -476,7 +480,7 @@ public class HardcoverSyncService {
 
         GraphQLRequest request = new GraphQLRequest();
         request.setQuery(query);
-        Map<String, Object> variables = new java.util.HashMap<>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("bookId", bookId);
         request.setVariables(variables);
 
@@ -543,7 +547,7 @@ public class HardcoverSyncService {
             }
             """;
 
-        Map<String, Object> bookInput = new java.util.HashMap<>();
+        Map<String, Object> bookInput = new HashMap<>();
         bookInput.put("book_id", bookId);
         bookInput.put("edition_id", editionId);
         bookInput.put("status_id", STATUS_CURRENTLY_READING);
@@ -621,7 +625,7 @@ public class HardcoverSyncService {
             }
             """;
 
-        Map<String, Object> bookInput = new java.util.HashMap<>();
+        Map<String, Object> bookInput = new HashMap<>();
         bookInput.put("edition_id", editionId);
         bookInput.put("status_id", STATUS_CURRENTLY_READING);
 
@@ -687,11 +691,11 @@ public class HardcoverSyncService {
             }
             """;
 
-        Map<String, Object> bookInput = new java.util.HashMap<>();
+        Map<String, Object> bookInput = new HashMap<>();
         bookInput.put("edition_id", editionId);
         bookInput.put("status_id", isFinished ? STATUS_READ : STATUS_CURRENTLY_READING);
 
-        Map<String, Object> readInput = new java.util.HashMap<>();
+        Map<String, Object> readInput = new HashMap<>();
         readInput.put("started_at", LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
         readInput.put("progress_pages", progressPages);
         if (isFinished) {
@@ -752,7 +756,7 @@ public class HardcoverSyncService {
             }
             """;
 
-        Map<String, Object> readInput = new java.util.HashMap<>();
+        Map<String, Object> readInput = new HashMap<>();
         readInput.put("edition_id", readInfo.editionId);
         readInput.put("started_at", readInfo.startedAt);
         readInput.put("progress_pages", readInfo.progressPages);
@@ -793,7 +797,7 @@ public class HardcoverSyncService {
     private Map<String, Object> executeGraphQL(GraphQLRequest request) {
         try {
             return restClient.post()
-                    .uri("")
+                    .uri(HARDCOVER_API_URL)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getApiToken())
                     .body(request)
@@ -863,7 +867,7 @@ public class HardcoverSyncService {
 
         static UserBookWithReads fromMap(Map<String, Object> userBook) {
             UserBookWithReads result = new UserBookWithReads();
-            result.reads = new java.util.ArrayList<>();
+            result.reads = new ArrayList<>();
             result.id = extractInteger(userBook.get("id"));
             result.statusId = extractInteger(userBook.get("status_id"));
             result.editionId = extractInteger(userBook.get("edition_id"));

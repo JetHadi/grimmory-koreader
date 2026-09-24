@@ -15,6 +15,37 @@ mariadb:
     #   userPasswordKey: mariadb-password
   service:
     port: 3306
+
+# Mutually exclusive with the bundled mariadb subchart above.
+# Set mariadb.enabled to false and externalDatabase.enabled to true to use this.
+externalDatabase:
+  enabled: false
+
+  ## Database host
+  host: ""
+
+  ## Database port
+  port: 3306
+
+  ## Database user
+  username: grimmory
+
+  ## Database password
+  password: ""
+
+  ## Database name
+  database: grimmory
+
+  ## Use an existing secret
+  existingSecret:
+    enabled: false
+    # secretName: nameofsecret
+    # usernameKey: db-username
+    # passwordKey: db-password
+    # hostnameKey: db-hostname
+    # portKey: db-port
+    # databaseKey: db-name
+
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: grimmory/grimmory
@@ -89,13 +120,28 @@ resources: {}
 #   cpu: 100m
 #   memory: 128Mi
 
-# # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# This is to setup the startup, liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+startupProbe:
+  httpGet:
+    path: /api/v1/healthcheck
+    port: http
+  failureThreshold: 5
+  periodSeconds: 30
+  timeoutSeconds: 5
 livenessProbe:
-  tcpSocket:
+  httpGet:
+    path: /api/v1/healthcheck
     port: http
+  failureThreshold: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
 readinessProbe:
-  tcpSocket:
+  httpGet:
+    path: /api/v1/healthcheck
     port: http
+  failureThreshold: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
 # If you want to bring your own persistence (such as a hostPath),
 # disable these and do so in extraVolumes/extraVolumeMounts
 persistence:
@@ -107,8 +153,41 @@ persistence:
     enabled: true
     size: 10Gi
     existingClaim: ""
+# Additional environment variables for the application container.
+# Example:
+# extraEnv:
+#   - name: USER_ID
+#     value: "1000"
+#   - name: GROUP_ID
+#     value: "1000"
+#   - name: APP_USER
+#     value: "booklore"
+extraEnv: []
 extraVolumes: []
 extraVolumeMounts: []
+
+initContainer:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 50m
+      memory: 32Mi
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Additional items that need to be installed next to the application, e.g.
+# extraObjects:
+# - apiVersion: k8s.mariadb.com/v1alpha1
+#   kind: MariaDB
+#   metadata:
+#     name: grimmory-mariadb
+#     namespace: grimmory
+#   spec:
+#     rootPasswordSecretKeyRef:
+#       name: grimmory-mariadb-root
+#       key: password
+extraObjects: []

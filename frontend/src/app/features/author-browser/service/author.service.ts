@@ -1,14 +1,16 @@
-import {computed, effect, inject, Injectable} from '@angular/core';
+import {computed, DestroyRef, effect, inject, Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {lastValueFrom, Observable} from 'rxjs';
-import {map} from 'rxjs/operators';
+import {map, tap} from 'rxjs/operators';
 import {SseClient} from 'ngx-sse-client';
 import {API_CONFIG} from '../../../core/config/api-config';
 import {AuthorSummary, AuthorDetails, AuthorSearchResult, AuthorMatchRequest, AuthorUpdateRequest, AuthorPhotoResult} from '../model/author.model';
+import {Book} from '../../book/model/book.model';
 import {AuthService} from '../../../shared/service/auth.service';
 import {injectQuery, queryOptions, QueryClient} from '@tanstack/angular-query-experimental';
 import {AUTHORS_QUERY_KEY} from './author-query-keys';
-import {patchAuthorInCache} from './author-query-cache';
+import {invalidateAuthorsQuery, patchAuthorInCache} from './author-query-cache';
+import {invalidateAllBookCaches} from '../../book/service/legacy-book-cache';
 
 @Injectable({
   providedIn: 'root'
@@ -19,9 +21,12 @@ export class AuthorService {
   private authService = inject(AuthService);
   private sseClient = inject(SseClient);
   private queryClient = inject(QueryClient);
+  private destroyRef = inject(DestroyRef);
   private readonly baseUrl = `${API_CONFIG.BASE_URL}/api/v1/authors`;
   private readonly mediaBaseUrl = `${API_CONFIG.BASE_URL}/api/v1/media`;
   private readonly token = this.authService.token;
+  private readonly authorInvalidationDebounceMs = 200;
+  private authorInvalidationTimer: ReturnType<typeof setTimeout> | null = null;
 
   private authorsQuery = injectQuery(() => ({
     ...this.getAuthorsQueryOptions(),
@@ -32,6 +37,8 @@ export class AuthorService {
   isAuthorsLoading = computed(() => !!this.token() && this.authorsQuery.isPending());
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearAuthorInvalidationTimer());
+
     effect(() => {
       const token = this.token();
       if (token === null) {
@@ -48,7 +55,32 @@ export class AuthorService {
   }
 
   invalidateAuthors(): void {
-    void this.queryClient.invalidateQueries({queryKey: AUTHORS_QUERY_KEY, exact: true});
+    invalidateAuthorsQuery(this.queryClient);
+  }
+
+  handleNewlyCreatedBook(book: Book): void {
+    if (!book.metadata?.authors?.length) {
+      return;
+    }
+    this.debouncedInvalidateAuthors();
+  }
+
+  private debouncedInvalidateAuthors(): void {
+    this.clearAuthorInvalidationTimer();
+
+    this.authorInvalidationTimer = setTimeout(() => {
+      this.authorInvalidationTimer = null;
+      this.invalidateAuthors();
+    }, this.authorInvalidationDebounceMs);
+  }
+
+  private clearAuthorInvalidationTimer(): void {
+    if (this.authorInvalidationTimer === null) {
+      return;
+    }
+
+    clearTimeout(this.authorInvalidationTimer);
+    this.authorInvalidationTimer = null;
   }
 
   patchAuthorInCache(authorId: number, fields: Partial<AuthorSummary>): void {
@@ -105,7 +137,9 @@ export class AuthorService {
   }
 
   updateAuthor(authorId: number, request: AuthorUpdateRequest): Observable<AuthorDetails> {
-    return this.http.put<AuthorDetails>(`${this.baseUrl}/${authorId}`, request);
+    return this.http.put<AuthorDetails>(`${this.baseUrl}/${authorId}`, request).pipe(
+      tap(() => invalidateAllBookCaches(this.queryClient))
+    );
   }
 
   unmatchAuthors(authorIds: number[]): Observable<void> {
@@ -113,7 +147,12 @@ export class AuthorService {
   }
 
   deleteAuthors(authorIds: number[]): Observable<void> {
-    return this.http.delete<void>(this.baseUrl, {body: authorIds});
+    return this.http.delete<void>(this.baseUrl, {body: authorIds}).pipe(
+      tap(() => {
+        invalidateAllBookCaches(this.queryClient);
+        invalidateAuthorsQuery(this.queryClient);
+      })
+    );
   }
 
   searchAuthorPhotos(authorId: number, query: string): Observable<AuthorPhotoResult> {

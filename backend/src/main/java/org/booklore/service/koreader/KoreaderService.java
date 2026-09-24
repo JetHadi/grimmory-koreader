@@ -11,6 +11,7 @@ import org.booklore.model.dto.koreader.KoreaderAnnotationSyncRequest;
 import org.booklore.model.dto.koreader.KoreaderAnnotationSyncResponse;
 import org.booklore.model.dto.progress.KoreaderProgress;
 import org.booklore.model.entity.*;
+import org.booklore.model.enums.BookFileType;
 import org.booklore.model.enums.ReadStatus;
 import org.booklore.repository.*;
 import org.booklore.service.hardcover.HardcoverSyncService;
@@ -35,6 +36,8 @@ import java.util.Objects;
 @AllArgsConstructor
 @Service
 public class KoreaderService {
+    private static final String DEFAULT_DEVICE_NAME = "Grimmory";
+    private static final String DEFAULT_DEVICE_ID = "Grimmory";
 
     private final UserBookProgressRepository progressRepository;
     private final UserBookFileProgressRepository fileProgressRepository;
@@ -70,13 +73,21 @@ public class KoreaderService {
                 ? progress.getKoreaderLastSyncTime().getEpochSecond()
                 : null;
 
+        String device = progress.getKoreaderDevice() != null ?
+                progress.getKoreaderDevice() :
+                DEFAULT_DEVICE_NAME;
+
+        String deviceId = progress.getKoreaderDeviceId() != null ?
+                progress.getKoreaderDeviceId() :
+                DEFAULT_DEVICE_ID;
+
         return KoreaderProgress.builder()
                 .timestamp(timestamp)
                 .document(bookHash)
                 .progress(progress.getKoreaderProgress())
                 .percentage(progress.getKoreaderProgressPercent())
-                .device("BookLore")
-                .device_id("BookLore")
+                .device(device)
+                .device_id(deviceId)
                 .build();
     }
 
@@ -89,7 +100,7 @@ public class KoreaderService {
         UserBookProgressEntity userProgress = getOrCreateUserProgress(user, book);
         Float previousProgressPercent = userProgress.getKoreaderProgressPercent();
         ReadStatus previousReadStatus = userProgress.getReadStatus();
-        updateProgressData(userProgress, koProgress, authDetails.isSyncWithBookloreReader(), book);
+        updateProgressData(userProgress, koProgress, authDetails.isSyncWithWebReader(), book);
 
         progressRepository.save(userProgress);
 
@@ -186,7 +197,49 @@ public class KoreaderService {
                 .build();
     }
 
-    @SuppressWarnings("deprecation")
+    @Transactional
+    public void syncProgressToKoreader(long bookId, float percentage, long userId) {
+        try {
+            koreaderUserRepository.findByBookLoreUserId(userId)
+                    .filter(KoreaderUserEntity::isSyncEnabled)
+                    .filter(KoreaderUserEntity::isSyncWithWebReader)
+                    .ifPresent(koreaderUser -> {
+                        BookEntity book = bookRepository.findById(bookId).orElse(null);
+                        BookLoreUserEntity user = userRepository.findById(userId).orElse(null);
+                        if (book == null || user == null) {
+                            log.warn("KOReader sync skipped: bookId={} or userId={} was not found", bookId, userId);
+                            return;
+                        }
+
+                        UserBookProgressEntity progress = getOrCreateUserProgress(user, book);
+
+                        float koreaderPercent = percentage / 100.0f;
+                        progress.setKoreaderProgressPercent(koreaderPercent);
+                        progress.setKoreaderLastSyncTime(Instant.now());
+                        progress.setKoreaderProgress(null);
+
+                        progress.setKoreaderDevice(DEFAULT_DEVICE_NAME);
+                        progress.setKoreaderDeviceId(DEFAULT_DEVICE_ID);
+
+                        BookFileEntity primaryFile = book.getPrimaryBookFile();
+                        if (primaryFile != null && primaryFile.getBookType() == BookFileType.EPUB
+                                && progress.getEpubProgress() != null) {
+                            try {
+                                String xpointer = epubCfiService.convertCfiToProgressXPointer(
+                                        primaryFile.getFullFilePath(), progress.getEpubProgress());
+                                progress.setKoreaderProgress(xpointer);
+                            } catch (Exception e) {
+                                progress.setKoreaderProgress(null);
+                                log.warn("Failed to convert CFI to XPointer for KOReader sync", e);
+                            }
+                        }
+
+                        progressRepository.save(progress);
+                    });
+        } catch (Exception e) {
+            log.warn("Failed to sync progress to KOReader for userId={} bookId={}", userId, bookId, e);
+        }
+    }
     private void saveToFileProgress(BookLoreUserEntity user, BookEntity book, UserBookProgressEntity progress) {
         try {
             BookFileEntity primaryFile = book.getPrimaryBookFile();
@@ -226,16 +279,15 @@ public class KoreaderService {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void updateProgressData(UserBookProgressEntity userProgress, KoreaderProgress koProgress,
-            boolean syncWithBookloreReader, BookEntity book) {
+            boolean syncWithWebReader, BookEntity book) {
         userProgress.setKoreaderProgress(koProgress.getProgress());
         userProgress.setKoreaderProgressPercent(koProgress.getPercentage());
         userProgress.setKoreaderDevice(koProgress.getDevice());
         userProgress.setKoreaderDeviceId(koProgress.getDevice_id());
         userProgress.setKoreaderLastSyncTime(Instant.now());
         userProgress.setLastReadTime(Instant.now());
-        if (syncWithBookloreReader && koProgress.getProgress() != null) {
+        if (syncWithWebReader && koProgress.getProgress() != null) {
             try {
                 String cfi = epubCfiService.convertXPointerToCfi(book.getFullFilePath(), koProgress.getProgress());
 
@@ -543,6 +595,10 @@ public class KoreaderService {
             if (externalId.startsWith("highlight::")) {
                 return SyncKind.HIGHLIGHT;
             }
+        }
+
+        if (item.getSelectedText() != null && !item.getSelectedText().isBlank()) {
+            return SyncKind.HIGHLIGHT;
         }
 
         return item.getNoteContent() != null && !item.getNoteContent().isBlank()

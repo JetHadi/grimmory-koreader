@@ -28,11 +28,12 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Optional;
+import org.mockito.Mockito;
 
 /**
  * Integration tests that feed a real RAR5 archive into the service layer
  */
-@EnabledIf("org.booklore.service.ArchiveService#isAvailable")
 @ExtendWith(MockitoExtension.class)
 class Rar5IntegrationTest {
 
@@ -63,11 +64,11 @@ class Rar5IntegrationTest {
 
         BookEntity book = new BookEntity();
         book.setId(99L);
-        BookRepository mockRepo = org.mockito.Mockito.mock(BookRepository.class);
-        org.mockito.Mockito.when(mockRepo.findByIdForStreaming(99L)).thenReturn(java.util.Optional.of(book));
-        ChapterCacheService mockCache = org.mockito.Mockito.mock(ChapterCacheService.class);
+        BookRepository mockRepo = Mockito.mock(BookRepository.class);
+        Mockito.when(mockRepo.findByIdForStreaming(99L)).thenReturn(Optional.of(book));
+        ChapterCacheService mockCache = Mockito.mock(ChapterCacheService.class);
 
-        try (var fileUtilsStatic = org.mockito.Mockito.mockStatic(FileUtils.class)) {
+        try (var fileUtilsStatic = Mockito.mockStatic(FileUtils.class)) {
             fileUtilsStatic.when(() -> FileUtils.getBookFullPath(book))
                     .thenReturn(cbrCopy);
 
@@ -86,12 +87,12 @@ class Rar5IntegrationTest {
 
         BookEntity book = new BookEntity();
         book.setId(99L);
-        BookRepository mockRepo = org.mockito.Mockito.mock(BookRepository.class);
-        org.mockito.Mockito.when(mockRepo.findByIdForStreaming(99L)).thenReturn(java.util.Optional.of(book));
-        ChapterCacheService mockCache = org.mockito.Mockito.mock(ChapterCacheService.class);
+        BookRepository mockRepo = Mockito.mock(BookRepository.class);
+        Mockito.when(mockRepo.findByIdForStreaming(99L)).thenReturn(Optional.of(book));
+        ChapterCacheService mockCache = Mockito.mock(ChapterCacheService.class);
 
         try (
-            var fileUtilsStatic = org.mockito.Mockito.mockStatic(FileUtils.class)
+            var fileUtilsStatic = Mockito.mockStatic(FileUtils.class)
         ) {
             fileUtilsStatic.when(() -> FileUtils.getBookFullPath(book))
                     .thenReturn(cbrCopy);
@@ -145,7 +146,7 @@ class Rar5IntegrationTest {
         Path cbrCopy = tempDir.resolve("test.cbr");
         Files.copy(RAR5_CBR, cbrCopy);
 
-        AppSettingService mockSettings = org.mockito.Mockito.mock(AppSettingService.class);
+        AppSettingService mockSettings = Mockito.mock(AppSettingService.class);
         var appSettings = new AppSettings();
         var persistenceSettings = new MetadataPersistenceSettings();
         var saveToFile = new MetadataPersistenceSettings.SaveToOriginalFile();
@@ -155,7 +156,7 @@ class Rar5IntegrationTest {
         saveToFile.setCbx(cbxSettings);
         persistenceSettings.setSaveToOriginalFile(saveToFile);
         appSettings.setMetadataPersistenceSettings(persistenceSettings);
-        org.mockito.Mockito.when(mockSettings.getAppSettings()).thenReturn(appSettings);
+        Mockito.when(mockSettings.getAppSettings()).thenReturn(appSettings);
 
         CbxMetadataWriter writer = new CbxMetadataWriter(mockSettings, new ArchiveService());
 

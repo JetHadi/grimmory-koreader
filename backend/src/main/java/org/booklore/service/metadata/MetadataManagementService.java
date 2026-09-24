@@ -59,12 +59,12 @@ public class MetadataManagementService {
         for (BookMetadataEntity metadata : metadataList) {
             if (metadata.getBook() != null) {
                 BookEntity book = metadata.getBook();
-                if (Boolean.TRUE.equals(book.getIsPhysical())) {
+                BookFileEntity primaryFile = book.getPrimaryBookFile();
+                if (Boolean.TRUE.equals(book.getIsPhysical()) || primaryFile == null) {
                     continue;
                 }
                 boolean bookModified = false;
 
-                var primaryFile = book.getPrimaryBookFile();
                 BookFileType bookType = primaryFile.getBookType();
                 if (appProperties.isLocalStorage()) {
                     Optional<MetadataWriter> writerOpt = metadataWriterFactory.getWriter(bookType);
@@ -109,8 +109,8 @@ public class MetadataManagementService {
 
         List<AuthorEntity> authorsToMerge = valuesToMerge.stream()
                 .map(authorRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (AuthorEntity oldAuthor : authorsToMerge) {
@@ -147,8 +147,8 @@ public class MetadataManagementService {
 
         List<CategoryEntity> categoriesToMerge = valuesToMerge.stream()
                 .map(categoryRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (CategoryEntity oldCategory : categoriesToMerge) {
@@ -184,8 +184,8 @@ public class MetadataManagementService {
 
         List<MoodEntity> moodsToMerge = valuesToMerge.stream()
                 .map(moodRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (MoodEntity oldMood : moodsToMerge) {
@@ -222,8 +222,8 @@ public class MetadataManagementService {
 
         List<TagEntity> tagsToMerge = valuesToMerge.stream()
                 .map(tagRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (TagEntity oldTag : tagsToMerge) {
@@ -323,8 +323,8 @@ public class MetadataManagementService {
     private void deleteAuthors(List<String> valuesToDelete, boolean moveFile) {
         List<AuthorEntity> authorsToDelete = valuesToDelete.stream()
                 .map(authorRepository::findByName)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (AuthorEntity author : authorsToDelete) {
@@ -346,8 +346,8 @@ public class MetadataManagementService {
     private void deleteCategories(List<String> valuesToDelete, boolean moveFile) {
         List<CategoryEntity> categoriesToDelete = valuesToDelete.stream()
                 .map(categoryRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (CategoryEntity category : categoriesToDelete) {
@@ -369,8 +369,8 @@ public class MetadataManagementService {
     private void deleteMoods(List<String> valuesToDelete, boolean moveFile) {
         List<MoodEntity> moodsToDelete = valuesToDelete.stream()
                 .map(moodRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (MoodEntity mood : moodsToDelete) {
@@ -392,8 +392,8 @@ public class MetadataManagementService {
     private void deleteTags(List<String> valuesToDelete, boolean moveFile) {
         List<TagEntity> tagsToDelete = valuesToDelete.stream()
                 .map(tagRepository::findByNameIgnoreCase)
-                .filter(java.util.Optional::isPresent)
-                .map(java.util.Optional::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         for (TagEntity tag : tagsToDelete) {

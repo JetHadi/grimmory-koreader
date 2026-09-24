@@ -1,6 +1,6 @@
 import {Component, effect, inject} from '@angular/core';
 import {BaseChartDirective} from 'ng2-charts';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {BookService} from '../../../../../book/service/book.service';
@@ -88,7 +88,6 @@ export class SeriesProgressChartComponent {
         title: {
           display: true,
           text: this.t.translate('statsUser.seriesProgress.axisCompletion'),
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 11,
@@ -96,7 +95,6 @@ export class SeriesProgressChartComponent {
           }
         },
         ticks: {
-          color: 'rgba(255, 255, 255, 0.8)',
           font: {
             family: "'Inter', sans-serif",
             size: 10
@@ -104,13 +102,11 @@ export class SeriesProgressChartComponent {
           callback: (value) => `${value}%`
         },
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
         }
       },
       y: {
         stacked: true,
         ticks: {
-          color: 'rgba(255, 255, 255, 0.8)',
           font: {
             family: "'Inter', sans-serif",
             size: 10
@@ -126,7 +122,6 @@ export class SeriesProgressChartComponent {
         display: true,
         position: 'top',
         labels: {
-          color: '#ffffff',
           font: {
             family: "'Inter', sans-serif",
             size: 10
@@ -138,9 +133,6 @@ export class SeriesProgressChartComponent {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
         borderColor: '#673ab7',
         borderWidth: 2,
         cornerRadius: 8,

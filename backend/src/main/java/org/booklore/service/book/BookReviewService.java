@@ -1,9 +1,9 @@
 package org.booklore.service.book;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.booklore.config.security.service.AuthenticationService;
+import org.booklore.exception.APIException;
 import org.booklore.exception.ApiError;
 import org.booklore.mapper.BookReviewMapper;
 import org.booklore.model.dto.BookLoreUser;
@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -99,7 +98,7 @@ public class BookReviewService {
     @Transactional
     public void delete(Long id) {
         if (!bookReviewRepository.existsById(id)) {
-            throw new EntityNotFoundException("Review not found: " + id);
+            throw ApiError.RESOURCE_NOT_FOUND.createException("Review", id);
         }
         bookReviewRepository.deleteById(id);
     }

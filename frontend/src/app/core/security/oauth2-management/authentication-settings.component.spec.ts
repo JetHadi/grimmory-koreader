@@ -9,7 +9,7 @@ import {OidcGroupMapping} from '../../../shared/model/oidc-group-mapping.model';
 import {AppSettingsService} from '../../../shared/service/app-settings.service';
 import {OidcGroupMappingService} from '../../../shared/service/oidc-group-mapping.service';
 import {LibraryService} from '../../../features/book/service/library.service';
-import {MessageService} from 'primeng/api';
+import {MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
 import {AuthenticationSettingsComponent} from './authentication-settings.component';
 
@@ -18,6 +18,7 @@ function createSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     oidcEnabled: false,
     oidcAutoProvisionDetails: undefined,
     oidcProviderDetails: undefined,
+    oidcRedirectUris: ['grimmory://oauth2-callback'],
     oidcSessionDurationHours: null,
     oidcGroupSyncMode: null,
     oidcForceOnlyMode: false,
@@ -29,7 +30,6 @@ function completeProvider(overrides: Partial<OidcProviderDetails> = {}): OidcPro
   return {
     providerName: 'Example IdP',
     clientId: 'client-id',
-    clientSecret: 'secret',
     issuerUri: 'https://issuer.example',
     scopes: 'openid profile email',
     claimMapping: {
@@ -127,6 +127,7 @@ describe('AuthenticationSettingsComponent', () => {
       name: 'given_name',
       groups: '',
     });
+    expect(component.mobileRedirectUris).toEqual(['grimmory://oauth2-callback']);
     expect(groupMappingService.getAll).not.toHaveBeenCalled();
   });
 
@@ -165,7 +166,7 @@ describe('AuthenticationSettingsComponent', () => {
     expect(component.availablePermissions.find(p => p.value === 'permissionDeleteBook')?.selected).toBe(false);
     expect(component.editingLibraryIds).toEqual([1, 2]);
     expect(component.sessionDurationHours).toBe(12);
-    expect(component.groupSyncMode).toBe('ON_LOGIN');
+    expect(component.groupSyncMode()).toBe('ON_LOGIN');
     expect(component.oidcForceOnlyMode).toBe(true);
     expect(component.oidcProvider.providerName).toBe('Example IdP');
     expect(component.oidcProvider.claimMapping).toEqual({
@@ -174,7 +175,8 @@ describe('AuthenticationSettingsComponent', () => {
       name: 'displayName',
       groups: 'memberOf',
     });
-    expect(component.groupMappings).toEqual(mappings);
+    expect(component.mobileRedirectUris).toEqual(['grimmory://oauth2-callback']);
+    expect(component.groupMappings()).toEqual(mappings);
     expect(groupMappingService.getAll).toHaveBeenCalledOnce();
   });
 
@@ -188,31 +190,23 @@ describe('AuthenticationSettingsComponent', () => {
   });
 
   it('opens a new group mapping dialog with blank state', () => {
-    component.editingGroupMapping = {
+    component.groupMappingDraft.set({
       oidcGroupClaim: 'existing',
       isAdmin: true,
       permissions: ['permissionUpload'],
       libraryIds: [1],
       description: 'Existing',
-    };
-    component.editingGroupMappingPerms = component.availablePermissions.map(permission => ({
-      ...permission,
-      selected: true,
-    }));
-    component.editingGroupMappingLibraryIds = [1];
+    });
 
     component.openNewGroupMapping();
 
-    expect(component.showGroupMappingDialog).toBe(true);
-    expect(component.editingGroupMapping).toEqual({
+    expect(component.groupMappingDraft()).toEqual({
       oidcGroupClaim: '',
       isAdmin: false,
       permissions: [],
       libraryIds: [],
       description: '',
     });
-    expect(component.editingGroupMappingPerms.every(permission => !permission.selected)).toBe(true);
-    expect(component.editingGroupMappingLibraryIds).toEqual([]);
   });
 
   it('opens an existing group mapping dialog with cloned state and selected permissions', () => {
@@ -227,12 +221,11 @@ describe('AuthenticationSettingsComponent', () => {
 
     component.openEditGroupMapping(mapping);
 
-    expect(component.showGroupMappingDialog).toBe(true);
-    expect(component.editingGroupMapping).toEqual(mapping);
-    expect(component.editingGroupMapping).not.toBe(mapping);
-    expect(component.editingGroupMappingPerms.find(permission => permission.value === 'permissionUpload')?.selected).toBe(true);
-    expect(component.editingGroupMappingPerms.find(permission => permission.value === 'permissionDeleteBook')?.selected).toBe(false);
-    expect(component.editingGroupMappingLibraryIds).toEqual([1, 2]);
+    const draft = component.groupMappingDraft();
+    expect(draft).toEqual({...mapping, permissions: ['permissionUpload']});
+    expect(draft).not.toBe(mapping);
+    expect(draft?.permissions).not.toBe(mapping.permissions);
+    expect(draft?.libraryIds).not.toBe(mapping.libraryIds);
   });
 
   it('toggles OIDC enablement and reports persistence failures', () => {
@@ -272,6 +265,7 @@ describe('AuthenticationSettingsComponent', () => {
   it('saves OIDC provider settings with the session duration only when OIDC is enabled', () => {
     appSettingsService.saveSettings.mockReturnValue(of(void 0));
     component.oidcProvider = completeProvider();
+    component.mobileRedirectUris = ['grimmory://oauth2-callback', 'grimmory://auth/return'];
     component.oidcEnabled = false;
     component.sessionDurationHours = 24;
 
@@ -281,7 +275,15 @@ describe('AuthenticationSettingsComponent', () => {
       {
         key: AppSettingKey.OIDC_PROVIDER_DETAILS,
         newValue: component.oidcProvider,
-      }
+      },
+      {
+        key: AppSettingKey.OIDC_REDIRECT_URIS,
+        newValue: ['grimmory://oauth2-callback', 'grimmory://auth/return'],
+      },
+      {
+        key: AppSettingKey.OIDC_PROVIDER_CLIENT_SECRET,
+        newValue: "",
+      },
     ]);
 
     component.oidcEnabled = true;
@@ -293,15 +295,81 @@ describe('AuthenticationSettingsComponent', () => {
         newValue: component.oidcProvider,
       },
       {
+        key: AppSettingKey.OIDC_REDIRECT_URIS,
+        newValue: ['grimmory://oauth2-callback', 'grimmory://auth/return'],
+      },
+      {
+        key: AppSettingKey.OIDC_PROVIDER_CLIENT_SECRET,
+        newValue: "",
+      },
+      {
         key: AppSettingKey.OIDC_SESSION_DURATION_HOURS,
         newValue: 24,
-      }
+      },
     ]);
+  });
+
+  it('adds a mobile redirect URI from input and clears the field', () => {
+    component.mobileRedirectUris = ['grimmory://oauth2-callback'];
+    component.mobileRedirectUriInput = 'grimmory://auth/return';
+
+    component.addMobileRedirectUriFromInput();
+
+    expect(component.mobileRedirectUris).toEqual(['grimmory://oauth2-callback', 'grimmory://auth/return']);
+    expect(component.mobileRedirectUriInput).toBe('');
+  });
+
+  it('adds the pending mobile redirect URI before saving', () => {
+    appSettingsService.saveSettings.mockReturnValue(of(void 0));
+    component.oidcProvider = completeProvider();
+    component.mobileRedirectUris = ['grimmory://oauth2-callback'];
+    component.mobileRedirectUriInput = 'grimmory://auth/return';
+
+    component.saveOidcProvider();
+
+    expect(appSettingsService.saveSettings).toHaveBeenCalledWith(expect.arrayContaining([
+      {
+        key: AppSettingKey.OIDC_REDIRECT_URIS,
+        newValue: ['grimmory://oauth2-callback', 'grimmory://auth/return'],
+      }
+    ]));
+    expect(component.mobileRedirectUriInput).toBe('');
+  });
+
+  it('removes the last mobile redirect URI when delete is pressed on an empty input', () => {
+    component.mobileRedirectUris = ['grimmory://oauth2-callback', 'grimmory://auth/return'];
+    const preventDefault = vi.fn();
+
+    component.onMobileRedirectUriKeydown({
+      key: 'Delete',
+      preventDefault,
+    } as unknown as KeyboardEvent);
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(component.mobileRedirectUris).toEqual(['grimmory://oauth2-callback']);
+  });
+
+  it('surfaces backend redirect URI validation failures in the toast', () => {
+    component.oidcProvider = completeProvider();
+    component.mobileRedirectUris = ['grimmory://oauth2-callback'];
+    appSettingsService.saveSettings.mockReturnValue(
+      throwError(() => new HttpErrorResponse({
+        status: 400,
+        error: {message: 'Wildcard redirect URI must be the only value'}
+      }))
+    );
+
+    component.saveOidcProvider();
+
+    expect(messageService.add).toHaveBeenCalledWith(expect.objectContaining({
+      severity: 'error',
+      detail: 'Wildcard redirect URI must be the only value',
+    }));
   });
 
   it('saves the group sync mode and reports failures', () => {
     appSettingsService.saveSettings.mockReturnValueOnce(of(void 0));
-    component.groupSyncMode = 'ON_LOGIN_ADDITIVE';
+    component.groupSyncMode.set('ON_LOGIN_ADDITIVE');
 
     component.saveGroupSyncMode();
 
@@ -358,12 +426,13 @@ describe('AuthenticationSettingsComponent', () => {
     groupMappingService.update.mockReturnValue(of(createdMapping));
     groupMappingService.delete.mockReturnValue(of(void 0));
     groupMappingService.getAll.mockReturnValue(of([createdMapping]));
-    component.editingGroupMapping = {oidcGroupClaim: 'readers', isAdmin: false, permissions: [], libraryIds: [], description: ''};
-    component.editingGroupMappingPerms = component.availablePermissions.map(permission => ({
-      ...permission,
-      selected: permission.value === 'permissionUpload',
-    }));
-    component.editingGroupMappingLibraryIds = [1];
+    component.groupMappingDraft.set({
+      oidcGroupClaim: 'readers',
+      isAdmin: false,
+      permissions: ['permissionUpload'],
+      libraryIds: [1],
+      description: '',
+    });
 
     component.saveGroupMapping();
 
@@ -375,12 +444,7 @@ describe('AuthenticationSettingsComponent', () => {
       description: '',
     });
 
-    component.editingGroupMapping = createdMapping;
-    component.editingGroupMappingPerms = component.availablePermissions.map(permission => ({
-      ...permission,
-      selected: false,
-    }));
-    component.editingGroupMappingLibraryIds = [2];
+    component.groupMappingDraft.set({...createdMapping, permissions: [], libraryIds: [2]});
     component.saveGroupMapping();
 
     expect(groupMappingService.update).toHaveBeenCalledWith(9, {
@@ -438,12 +502,12 @@ describe('AuthenticationSettingsComponent', () => {
 
     component.testConnection();
 
-    expect(component.isTestingConnection).toBe(false);
-    expect(component.testConnectionResult).toEqual({
+    expect(component.isTestingConnection()).toBe(false);
+    expect(component.testConnectionResult()).toEqual({
       success: true,
       checks: [{name: 'issuer', status: 'PASS', message: 'ok'}],
     });
-    expect(component.showTestDetails).toBe(true);
+    expect(component.showTestDetails()).toBe(true);
 
     appSettingsService.testOidcConnection.mockReturnValueOnce(
       throwError(() => new HttpErrorResponse({status: 500}))
@@ -451,7 +515,7 @@ describe('AuthenticationSettingsComponent', () => {
 
     component.testConnection();
 
-    expect(component.isTestingConnection).toBe(false);
+    expect(component.isTestingConnection()).toBe(false);
     expect(messageService.add).toHaveBeenCalledWith(expect.objectContaining({
       severity: 'error',
       detail: 'settingsAuth.testConnection.error',

@@ -9,12 +9,14 @@ import {BookService} from '../../book/service/book.service';
 import {BookRuleEvaluatorService} from './book-rule-evaluator.service';
 import {AuthService} from '../../../shared/service/auth.service';
 import {GroupRule} from '../component/magic-shelf-component';
+import {IconType} from '../../../shared/icons/icon-selection';
+import {invalidateBookCollections} from '../../book/data/book-query-cache';
 
 export interface MagicShelf {
   id?: number | null;
   name: string;
   icon?: string | null;
-  iconType?: 'PRIME_NG' | 'CUSTOM_SVG' | null;
+  iconType?: IconType | null;
   filterJson: string;
   isPublic?: boolean;
 }
@@ -72,7 +74,7 @@ export class MagicShelfService {
     id?: number;
     name: string | null;
     icon: string | null;
-    iconType?: 'PRIME_NG' | 'CUSTOM_SVG';
+    iconType?: IconType | null;
     group: unknown;
     isPublic?: boolean | null;
   }): Observable<MagicShelf> {
@@ -88,6 +90,9 @@ export class MagicShelfService {
     return this.http.post<MagicShelf>(this.url, payload).pipe(
       tap(() => {
         void this.queryClient.invalidateQueries({queryKey: MAGIC_SHELVES_QUERY_KEY, exact: true});
+        if (data.id != null) {
+          void invalidateBookCollections(this.queryClient);
+        }
       })
     );
   }
@@ -116,10 +121,21 @@ export class MagicShelfService {
     ).length;
   }
 
+  readonly bookCountByMagicShelfId = computed(() => {
+    const counts = new Map<number, number>();
+    for (const shelf of this.shelves()) {
+      if (shelf.id != null) {
+        counts.set(shelf.id, this.getBookCountValue(shelf.id));
+      }
+    }
+    return counts;
+  });
+
   deleteShelf(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`).pipe(
       tap(() => {
         void this.queryClient.invalidateQueries({queryKey: MAGIC_SHELVES_QUERY_KEY, exact: true});
+        void invalidateBookCollections(this.queryClient);
       })
     );
   }

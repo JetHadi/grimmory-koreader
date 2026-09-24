@@ -1,5 +1,6 @@
 package org.booklore.controller;
 
+import org.booklore.browse.BrowsePage;
 import org.booklore.config.security.annotation.CheckBookAccess;
 import org.booklore.exception.ApiError;
 import org.booklore.model.dto.Book;
@@ -23,6 +24,9 @@ import org.booklore.service.book.BookService;
 import org.booklore.service.book.BookUpdateService;
 import org.booklore.service.book.DuplicateDetectionService;
 import org.booklore.service.book.PhysicalBookService;
+import org.booklore.service.browse.BookBrowseService;
+import org.booklore.service.browse.BookFacetService;
+import org.booklore.model.dto.browse.FacetGroupsResponse;
 import org.booklore.service.metadata.BookMetadataService;
 import org.booklore.service.progress.ReadingProgressService;
 import org.booklore.service.recommender.BookRecommendationService;
@@ -32,7 +36,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -43,11 +46,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
+import java.io.IOException;
 
 @Tag(name = "Books", description = "Endpoints for managing books, their metadata, progress, and recommendations")
 @RequestMapping("/api/v1/books")
@@ -57,6 +62,8 @@ import java.util.Set;
 public class BookController {
 
     private final BookService bookService;
+    private final BookBrowseService bookBrowseService;
+    private final BookFacetService bookFacetService;
     private final BookUpdateService bookUpdateService;
     private final BookRecommendationService bookRecommendationService;
     private final BookFileAttachmentService bookFileAttachmentService;
@@ -76,12 +83,54 @@ public class BookController {
         return ResponseEntity.ok(bookService.getBookDTOs(withDescription, stripForListView));
     }
 
-    @Operation(summary = "Get books (paginated)", description = "Retrieve a paginated list of books. Supports sorting via 'sort' parameter (e.g. sort=metadata.title,asc).")
+    @Operation(summary = "Get books (paginated)", description = "Retrieve a page of books. Supports cursor pagination plus sort, facet, facet_logic, and query parameters; with none of these the legacy page/size behavior is preserved.")
     @ApiResponse(responseCode = "200", description = "Page of books returned successfully")
     @GetMapping("/page")
-    public ResponseEntity<Page<Book>> getBooksPaged(
-            @Parameter(hidden = true) Pageable pageable) {
-        return ResponseEntity.ok(bookService.getBookDTOsPaged(pageable));
+    public ResponseEntity<BrowsePage<Book>> getBooksPaged(
+            @Parameter(hidden = true) Pageable pageable,
+            @Parameter(description = "Comma-separated sort keys; prefix a key with '-' for descending (e.g. seriesName,-seriesNumber)")
+            @RequestParam(required = false) String sort,
+            @Parameter(description = "Facet selection in key:value form; repeatable (e.g. facet=genre:Horror&facet=read_status:READ)")
+            @RequestParam(required = false) List<String> facet,
+            @Parameter(description = "How facet values combine within a group: and, or, or not")
+            @RequestParam(name = "facet_logic", required = false) String facetLogic,
+            @Parameter(description = "Free-text search across title, series, author, genre, tag, ISBN, and ASIN")
+            @RequestParam(required = false) String query,
+            @Parameter(description = "Opaque pagination cursor from a prior response's links")
+            @RequestParam(required = false) String cursor) {
+        boolean browseMode = sort != null || facet != null || facetLogic != null || query != null || cursor != null;
+        if (browseMode) {
+            return ResponseEntity.ok(bookBrowseService.browse(sort, facet, facetLogic, query, cursor, pageable));
+        }
+        return ResponseEntity.ok(bookBrowseService.wrapLegacy(bookService.getBookDTOsPaged(pageable), pageable));
+    }
+
+    @Operation(summary = "Get book facets", description = "Available facet values and counts for the current user, scoped by the same facet, facet_logic, and query parameters as the page endpoint. Each facet omits its own selections from its counts.")
+    @ApiResponse(responseCode = "200", description = "Facet groups returned successfully")
+    @GetMapping("/facets")
+    public ResponseEntity<FacetGroupsResponse> getBookFacets(
+            @Parameter(description = "Facet selection in key:value form; repeatable")
+            @RequestParam(required = false) List<String> facet,
+            @Parameter(description = "How facet values combine within a group: and, or, or not")
+            @RequestParam(name = "facet_logic", required = false) String facetLogic,
+            @Parameter(description = "Free-text search applied to the counts")
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(bookFacetService.getFacets(facet, facetLogic, query));
+    }
+
+    @Operation(summary = "Get matching book ids", description = "Returns every book id matching the given sort, facet, facet_logic, and query parameters, in sort order. For select-all over the current filters.")
+    @ApiResponse(responseCode = "200", description = "Matching book ids returned successfully")
+    @GetMapping("/ids")
+    public ResponseEntity<List<Long>> getBookIds(
+            @Parameter(description = "Comma-separated sort keys; prefix a key with '-' for descending")
+            @RequestParam(required = false) String sort,
+            @Parameter(description = "Facet selection in key:value form; repeatable")
+            @RequestParam(required = false) List<String> facet,
+            @Parameter(description = "How facet values combine within a group: and, or, or not")
+            @RequestParam(name = "facet_logic", required = false) String facetLogic,
+            @Parameter(description = "Free-text search")
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(bookBrowseService.findAllIds(sort, facet, facetLogic, query));
     }
 
     @Operation(summary = "Get a book by ID", description = "Retrieve details of a specific book by its ID.")
@@ -175,7 +224,7 @@ public class BookController {
     public ResponseEntity<Void> replaceBookContent(
             @Parameter(description = "ID of the book") @PathVariable long bookId,
             @Parameter(description = "Optional book type for alternative format") @RequestParam(required = false) String bookType,
-            HttpServletRequest request) throws java.io.IOException {
+            HttpServletRequest request) throws IOException {
         bookService.replaceBookContent(bookId, bookType, request.getInputStream());
         return ResponseEntity.noContent().build();
     }
@@ -188,7 +237,7 @@ public class BookController {
     @GetMapping("/{bookId}/download")
     @PreAuthorize("@securityUtil.canDownload() or @securityUtil.isAdmin()")
     @CheckBookAccess(bookIdParam = "bookId")
-    public ResponseEntity<Resource> downloadBook(@Parameter(description = "ID of the book to download") @PathVariable("bookId") Long bookId) {
+    public ResponseEntity<StreamingResponseBody> downloadBook(@Parameter(description = "ID of the book to download") @PathVariable("bookId") Long bookId) {
         return bookService.downloadBook(bookId);
     }
 
@@ -201,10 +250,9 @@ public class BookController {
     @GetMapping("/{bookId}/download-all")
     @PreAuthorize("@securityUtil.canDownload() or @securityUtil.isAdmin()")
     @CheckBookAccess(bookIdParam = "bookId")
-    public void downloadAllBookFiles(
-            @Parameter(description = "ID of the book") @PathVariable("bookId") Long bookId,
-            HttpServletResponse response) {
-        bookService.downloadAllBookFiles(bookId, response);
+    public ResponseEntity<StreamingResponseBody> downloadAllBookFiles(
+            @Parameter(description = "ID of the book") @PathVariable("bookId") Long bookId) {
+        return bookService.downloadAllBookFiles(bookId);
     }
 
     @Operation(summary = "Get viewer settings", description = "Retrieve viewer settings for a specific book file.")

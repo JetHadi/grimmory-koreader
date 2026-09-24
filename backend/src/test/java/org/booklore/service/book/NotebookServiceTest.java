@@ -14,6 +14,8 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -56,7 +58,7 @@ class NotebookServiceTest {
         when(projection.getUpdatedAt()).thenReturn(LocalDateTime.parse("2026-03-26T10:05:00"));
 
         Page<NotebookEntryRepository.EntryProjection> page = new PageImpl<>(Collections.singletonList(projection));
-        when(repository.findEntries(7L, Collections.singleton("BOOKMARK"), null, null, any()))
+        when(repository.findEntries(eq(7L), eq(Collections.singleton("BOOKMARK")), isNull(), isNull(), any()))
                 .thenReturn(page);
 
         NotebookEntry result = service.getNotebookEntries(0, 50, Collections.singleton("BOOKMARK"), null, null, "desc")

@@ -89,10 +89,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .httpBasic(basic -> basic
-                        .realmName("Booklore OPDS")
+                        .realmName("Grimmory OPDS")
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setHeader("WWW-Authenticate", "Basic realm=\"Booklore OPDS\"");
+                            response.setHeader("WWW-Authenticate", "Basic realm=\"Grimmory OPDS\"");
                             response.getWriter().write("HTTP Status 401 - " + authException.getMessage());
                         })
                 );
@@ -111,10 +111,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .httpBasic(basic -> basic
-                        .realmName("Booklore Komga API")
+                        .realmName("Grimmory Komga API")
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setHeader("WWW-Authenticate", "Basic realm=\"Booklore Komga API\"");
+                            response.setHeader("WWW-Authenticate", "Basic realm=\"Grimmory Komga API\"");
                             response.getWriter().write("HTTP Status 401 - " + authException.getMessage());
                         })
                 );
@@ -219,6 +219,23 @@ public class SecurityConfig {
 
     @Bean
     @Order(8)
+    public SecurityFilterChain bookDownloadSecurityChain(HttpSecurity http, QueryParameterJwtFilter queryParameterJwtFilter) throws Exception {
+        http
+                .securityMatcher("/api/v1/books/*/download", "/api/v1/books/*/download-all", "/api/v1/books/*/files/*/download")
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
+                )
+                .addFilterBefore(queryParameterJwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(authenticationCheckFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    @Order(9)
     public SecurityFilterChain wsSecurityChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/ws/**")
@@ -238,7 +255,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(9)
+    @Order(10)
     public SecurityFilterChain jwtApiSecurityChain(HttpSecurity http) throws Exception {
         var parser = new PathPatternParser();
         final List<PathPattern> matchPatterns = Stream.of(
@@ -289,7 +306,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(10)
+    @Order(11)
     public SecurityFilterChain staticResourcesSecurityChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -309,14 +326,6 @@ public class SecurityConfig {
         AuthenticationManagerBuilder auth = http.getSharedObject(AuthenticationManagerBuilder.class);
         auth.userDetailsService(opdsUserDetailsService).passwordEncoder(passwordEncoder());
         return auth.build();
-    }
-
-    @Bean("noRedirectRestTemplate")
-    public RestTemplate noRedirectRestTemplate() {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
-        return new RestTemplate(new JdkClientHttpRequestFactory(httpClient));
     }
 
     @Bean

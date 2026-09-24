@@ -26,11 +26,14 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.booklore.util.FileService.truncate;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 @Service
@@ -78,7 +81,7 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
     public boolean generateAudiobookCover(BookEntity bookEntity) {
         var audiobookFile = bookEntity.getBookFiles().stream()
                 .filter(f -> f.getBookType() == BookFileType.AUDIOBOOK)
-                .findFirst()
+                .min(Comparator.comparingLong(BookFileEntity::getId))
                 .orElse(null);
         if (audiobookFile == null) {
             return false;
@@ -155,9 +158,9 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
 
     private File getAudioFileForMetadata(BookEntity bookEntity, boolean isFolderBased) {
         if (isFolderBased) {
-            java.nio.file.Path folderPath = bookEntity.getFullFilePath();
+            Path folderPath = bookEntity.getFullFilePath();
             return FileUtils.getFirstAudioFileInFolder(folderPath)
-                    .map(java.nio.file.Path::toFile)
+                    .map(Path::toFile)
                     .orElse(null);
         } else {
             return FileUtils.getBookFullPath(bookEntity).toFile();
@@ -179,11 +182,11 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
             return null;
         }
 
-        java.nio.file.Path filePath;
+        Path filePath;
         if (subPath == null || subPath.isEmpty()) {
-            filePath = java.nio.file.Paths.get(libraryPath, fileName).normalize();
+            filePath = Paths.get(libraryPath, fileName).normalize();
         } else {
-            filePath = java.nio.file.Paths.get(libraryPath, subPath, fileName).normalize();
+            filePath = Paths.get(libraryPath, subPath, fileName).normalize();
         }
 
         log.debug("Constructed audiobook path: {}, isFolderBased: {}", filePath, bookFile.isFolderBased());
@@ -193,7 +196,7 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
             if (audioFile.isEmpty()) {
                 log.debug("No audio file found in folder: {}", filePath);
             }
-            return audioFile.map(java.nio.file.Path::toFile).orElse(null);
+            return audioFile.map(Path::toFile).orElse(null);
         } else {
             return filePath.toFile();
         }
@@ -250,7 +253,7 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
 
         BookFileEntity audiobookFile = bookEntity.getBookFiles().stream()
                 .filter(bf -> bf.getBookType() == BookFileType.AUDIOBOOK && bf.isBook())
-                .findFirst()
+                .min(Comparator.comparingLong(BookFileEntity::getId))
                 .orElse(null);
 
         if (audiobookFile == null) {
@@ -258,13 +261,44 @@ public class AudiobookProcessor extends AbstractFileProcessor implements BookFil
             return;
         }
 
-        audiobookFile.setDurationSeconds(audiobookDto.getDurationSeconds());
+        Long durationSeconds = audiobookFile.isFolderBased()
+                ? calculateFolderDurationSeconds(audiobookFile, audiobookDto.getDurationSeconds())
+                : audiobookDto.getDurationSeconds();
+
+        audiobookFile.setDurationSeconds(durationSeconds);
         audiobookFile.setBitrate(audiobookDto.getBitrate());
         audiobookFile.setSampleRate(audiobookDto.getSampleRate());
         audiobookFile.setChannels(audiobookDto.getChannels());
         audiobookFile.setCodec(truncate(audiobookDto.getCodec(), 50));
         audiobookFile.setChapterCount(audiobookDto.getChapterCount());
         audiobookFile.setChapters(mapChapters(audiobookDto.getChapters()));
+    }
+
+    private Long calculateFolderDurationSeconds(BookFileEntity audiobookFile, Long firstTrackDurationSeconds) {
+        List<Path> audioFiles = FileUtils.listAudioFilesInFolder(audiobookFile.getFullFilePath());
+        if (audioFiles.isEmpty()) {
+            return firstTrackDurationSeconds;
+        }
+
+        long totalDurationMillis = 0;
+        boolean hasDuration = false;
+
+        for (int i = 0; i < audioFiles.size(); i++) {
+            Long trackDurationMillis = audiobookMetadataExtractor.extractDurationMillis(audioFiles.get(i).toFile());
+            if (trackDurationMillis == null && i == 0 && firstTrackDurationSeconds != null) {
+                trackDurationMillis = firstTrackDurationSeconds * 1000;
+            }
+
+            if (trackDurationMillis != null && trackDurationMillis > 0) {
+                totalDurationMillis += trackDurationMillis;
+                hasDuration = true;
+            }
+        }
+
+        if (!hasDuration) {
+            return firstTrackDurationSeconds;
+        }
+        return Math.round(totalDurationMillis / 1000.0);
     }
 
     private List<BookFileEntity.AudioFileChapter> mapChapters(List<AudiobookMetadata.ChapterInfo> chapters) {

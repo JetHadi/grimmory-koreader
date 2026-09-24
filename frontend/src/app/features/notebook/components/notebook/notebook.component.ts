@@ -3,18 +3,18 @@ import {FormsModule} from '@angular/forms';
 import {of, Subject} from 'rxjs';
 import {debounceTime, finalize, switchMap} from 'rxjs/operators';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {InputText} from 'primeng/inputtext';
-import {Select} from 'primeng/select';
-import {Button} from 'primeng/button';
-import {Tooltip} from 'primeng/tooltip';
-import {Paginator} from 'primeng/paginator';
-import {ConfirmationService, MessageService} from 'primeng/api';
+import {InputText} from '@openng/optimus-ui/inputtext';
+import {Select} from '@openng/optimus-ui/select';
+import {Button} from '@openng/optimus-ui/button';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
+import {Paginator} from '@openng/optimus-ui/paginator';
+import {ConfirmationService, MessageService} from '@openng/optimus-ui/api';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
 import {Router} from '@angular/router';
 import {NotebookService} from '../../service/notebook.service';
 import {NotebookBookOption, NotebookEntry, NotebookPage} from '../../model/notebook.model';
 import {UrlHelperService} from '../../../../shared/service/url-helper.service';
-import {CoverPlaceholderComponent} from '../../../../shared/components/cover-generator/cover-generator.component';
+import {CoverComponent} from '../../../../shared/components/cover/cover.component';
 import {PageTitleService} from '../../../../shared/service/page-title.service';
 import {DatePipe} from '@angular/common';
 
@@ -47,7 +47,7 @@ const EMPTY_PAGE: NotebookPage = {
     Tooltip,
     Paginator,
     TranslocoDirective,
-    CoverPlaceholderComponent,
+    CoverComponent,
   ],
   templateUrl: './notebook.component.html',
   styleUrls: ['./notebook.component.scss'],

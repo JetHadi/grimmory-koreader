@@ -4,7 +4,7 @@ import {BaseChartDirective} from 'ng2-charts';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {BehaviorSubject, EMPTY, Observable} from 'rxjs';
 import {catchError} from 'rxjs/operators';
-import {Tooltip} from 'primeng/tooltip';
+import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {GenreStatsResponse, UserStatsService} from '../../../../../settings/user-management/user-stats.service';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
 import {AsyncPipe} from '@angular/common';
@@ -48,10 +48,6 @@ export class GenreStatsChartComponent implements OnInit {
         legend: {display: false},
         tooltip: {
           enabled: true,
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          borderColor: '#ffffff',
           borderWidth: 1,
           cornerRadius: 6,
           displayColors: true,
@@ -74,22 +70,19 @@ export class GenreStatsChartComponent implements OnInit {
               return `${label}: ${timeStr}`;
             }
           }
-        },
-        datalabels: {display: false}
+        }
       },
       scales: {
         x: {
           title: {
             display: true,
             text: this.t.translate('statsUser.genreStats.axisGenres'),
-            color: '#ffffff',
             font: {
               family: "'Inter', sans-serif",
               size: 12
             }
           },
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11},
             maxRotation: 90,
             minRotation: 90,
@@ -109,7 +102,6 @@ export class GenreStatsChartComponent implements OnInit {
           title: {
             display: true,
             text: this.t.translate('statsUser.genreStats.axisTimeRead'),
-            color: '#ffffff',
             font: {
               family: "'Inter', sans-serif",
               size: 12
@@ -117,7 +109,6 @@ export class GenreStatsChartComponent implements OnInit {
           },
           beginAtZero: true,
           ticks: {
-            color: '#ffffff',
             font: {family: "'Inter', sans-serif", size: 11},
             callback: (value) => {
               const seconds = value as number;
@@ -151,7 +142,6 @@ export class GenreStatsChartComponent implements OnInit {
             maxTicksLimit: 8
           },
           grid: {
-            color: 'rgba(255, 255, 255, 0.1)'
           },
           border: {display: false}
         }

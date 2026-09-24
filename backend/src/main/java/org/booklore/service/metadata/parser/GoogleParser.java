@@ -9,6 +9,7 @@ import org.booklore.model.dto.settings.MetadataProviderSettings;
 import org.booklore.model.enums.MetadataProvider;
 import org.booklore.service.appsettings.AppSettingService;
 import org.booklore.util.BookUtils;
+import org.booklore.util.LanguageNormalizer;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -33,6 +34,7 @@ import java.util.stream.Stream;
 @Service
 public class GoogleParser implements BookParser {
 
+    private static final String HEADER_API_KEY = "X-Goog-Api-Key"; // From https://docs.cloud.google.com/apis/docs/system-parameters
     private static final Pattern FOUR_DIGIT_YEAR_PATTERN = Pattern.compile("^(\\d{4})$");
     private static final Pattern YEAR_MONTH_PATTERN = Pattern.compile("^(\\d{4})-(\\d{2})$");
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
@@ -41,6 +43,10 @@ public class GoogleParser implements BookParser {
     private static final int MAX_SEARCH_TERM_LENGTH = 60;
     private static final int MAX_RESULTS = 20;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final Pattern ISO_DATE_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+    private static final Pattern EDGE_CURL_PATTERN = Pattern.compile("&?edge=curl");
+    private static final Pattern ZOOM_PATTERN = Pattern.compile("zoom=\\d+");
+    private static final Pattern CATEGORY_SPLIT_PATTERN = Pattern.compile(" / ");
     private final ObjectMapper objectMapper;
     private final AppSettingService appSettingService;
     private final HttpClient httpClient;
@@ -51,6 +57,14 @@ public class GoogleParser implements BookParser {
         this.objectMapper = objectMapper;
         this.appSettingService = appSettingService;
         this.httpClient = httpClient;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        boolean enabled = getSettings().map(MetadataProviderSettings.Google::isEnabled).orElse(false);
+        String apiKey = getSettings().map(MetadataProviderSettings.Google::getApiKey).orElse(null);
+
+        return enabled && apiKey != null && !apiKey.isBlank();
     }
 
     @Override
@@ -136,6 +150,9 @@ public class GoogleParser implements BookParser {
     }
 
     private List<BookMetadata> fetchFromApi(String query, boolean isIsbnSearch) {
+        var googleSettings = getSettings();
+        String apiKey = googleSettings.map(MetadataProviderSettings.Google::getApiKey).orElse(null);
+
         try {
             waitForRateLimit();
 
@@ -149,12 +166,17 @@ public class GoogleParser implements BookParser {
             
             URI uri = uriBuilder.build().toUri();
 
-            log.info("Google Books API URL: {}", uri);
+            log.debug("Google Books API URL: {}", uri);
 
-            HttpRequest request = HttpRequest.newBuilder()
+            var requestBuilder = HttpRequest.newBuilder()
                     .uri(uri)
-                    .GET()
-                    .build();
+                    .GET();
+
+            if (apiKey != null && !apiKey.isBlank()) {
+                requestBuilder.setHeader(HEADER_API_KEY, apiKey);
+            }
+
+            HttpRequest request = requestBuilder.build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -269,7 +291,7 @@ public class GoogleParser implements BookParser {
                 .isbn10(isbns.get("ISBN_10"))
                 .pageCount(pageCount)
                 .thumbnailUrl(extractBestCoverImage(volumeInfo.getImageLinks()))
-                .language(normalizeLanguage(volumeInfo.getLanguage()))
+                .language(LanguageNormalizer.normalize(volumeInfo.getLanguage()))
                 .externalUrl(externalUrl)
                 .seriesName(seriesData.name)
                 .seriesNumber(seriesData.number)
@@ -285,7 +307,7 @@ public class GoogleParser implements BookParser {
             Float seriesNumber = null;
             
             if (seriesInfo.getVolumeSeries() != null && !seriesInfo.getVolumeSeries().isEmpty()) {
-                Integer orderNum = seriesInfo.getVolumeSeries().get(0).getOrderNumber();
+                Integer orderNum = seriesInfo.getVolumeSeries().getFirst().getOrderNumber();
                 if (orderNum != null) {
                     seriesNumber = orderNum.floatValue();
                 }
@@ -294,7 +316,7 @@ public class GoogleParser implements BookParser {
             if (seriesNumber == null && seriesInfo.getBookDisplayNumber() != null) {
                 try {
                     seriesNumber = Float.parseFloat(seriesInfo.getBookDisplayNumber());
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                     // Not a valid number, ignore
                 }
             }
@@ -408,7 +430,7 @@ public class GoogleParser implements BookParser {
                 .flatMap(cat -> {
                     // Split hierarchical categories (e.g., "Fiction / Fantasy / General")
                     if (cat.contains(" / ")) {
-                        return Arrays.stream(cat.split(" / "))
+                        return Arrays.stream(CATEGORY_SPLIT_PATTERN.split(cat))
                                 .map(String::trim)
                                 .filter(s -> !s.equalsIgnoreCase("General"));
                     }
@@ -427,13 +449,6 @@ public class GoogleParser implements BookParser {
         return cleaned.isEmpty() ? null : cleaned;
     }
 
-    private String normalizeLanguage(String language) {
-        if (language == null || language.isBlank()) {
-            return null;
-        }
-        // Google uses ISO 639-1 codes, just ensure lowercase
-        return language.toLowerCase().trim();
-    }
 
     private String getExternalUrl(GoogleBooksApiResponse.Item.VolumeInfo volumeInfo) {
         // Prefer canonical volume link, then info link
@@ -471,10 +486,10 @@ public class GoogleParser implements BookParser {
         imageUrl = imageUrl.replace("http://", "https://");
         
         if (imageUrl.contains("zoom=")) {
-            imageUrl = imageUrl.replaceAll("zoom=\\d+", "zoom=0");
+            imageUrl = ZOOM_PATTERN.matcher(imageUrl).replaceAll("zoom=0");
         }
         
-        imageUrl = imageUrl.replaceAll("&?edge=curl", "");
+        imageUrl = EDGE_CURL_PATTERN.matcher(imageUrl).replaceAll("");
         
         return imageUrl;
     }
@@ -540,7 +555,7 @@ public class GoogleParser implements BookParser {
         
         try {
             // Try full date format first (YYYY-MM-DD)
-            if (input.length() == 10 && input.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            if (input.length() == 10 && ISO_DATE_PATTERN.matcher(input).matches()) {
                 return LocalDate.parse(input, DATE_FORMATTER);
             }
             
@@ -573,21 +588,28 @@ public class GoogleParser implements BookParser {
         }
     }
 
-    private String getApiUrl() {
-        MetadataProviderSettings.Google googleSettings = appSettingService.getAppSettings()
-                .getMetadataProviderSettings().getGoogle();
+    private Optional<MetadataProviderSettings.Google> getSettings() {
+        var appSettings = appSettingService.getAppSettings();
 
-        String language = googleSettings.getLanguage();
-        String apiKey = googleSettings.getApiKey();
+        if (
+                appSettings == null ||
+                appSettings.getMetadataProviderSettings() == null
+        ) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(appSettings.getMetadataProviderSettings().getGoogle());
+    }
+
+    private String getApiUrl() {
+        var googleSettings = getSettings();
+
+        String language = googleSettings.map(MetadataProviderSettings.Google::getLanguage).orElse(null);
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(GOOGLE_BOOKS_API_URL);
 
         if (language != null && !language.isEmpty()) {
             builder.queryParam("langRestrict", language);
-        }
-
-        if (apiKey != null && !apiKey.isBlank()) {
-            builder.queryParam("key", apiKey);
         }
 
         return builder.build().toUri().toString();
