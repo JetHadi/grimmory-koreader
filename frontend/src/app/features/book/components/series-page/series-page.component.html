@@ -1,14 +1,14 @@
 <ng-container *transloco="let t; prefix: 'book.seriesPage'">
 @if (isBooksLoading()) {
   <div class="loading-state">
-    <p-progressSpinner strokeWidth="4" fill="transparent" animationDuration=".8s">
-    </p-progressSpinner>
+    <p-progressSpinner strokeWidth="4" fill="transparent" animationDuration=".8s" />
     <p style="color: var(--primary-color);">
       {{ t('loadingSeriesDetails') }}
     </p>
   </div>
 } @else {
   @let books = filteredBooks();
+  <app-book-menu [books]="seriesBooks.items()" />
   <div class="series-wrapper">
     <p-tabs [value]="tab" lazy="true" scrollable>
       <p-tablist>
@@ -21,12 +21,12 @@
           {{ t('bookListTab') }}
         </p-tab>
       </p-tablist>
-      <p-tabpanels class="tabpanels-responsive">
+      <p-tabpanels class="tabpanels-responsive virtual-scroller">
         <p-tabpanel value="view">
 
           @if (books[0]; as firstBook) {
             <div class="series-main">
-              <div class="series-details">
+              <div #seriesDetails class="series-details">
 
                 <!-- HERO: Cover + Identity info -->
                 <div class="series-hero">
@@ -186,8 +186,8 @@
                           class="next-up-card"
                           role="button"
                           tabindex="0"
-                          (click)="readBook(nextUp.book.id)"
-                          (keydown.enter)="readBook(nextUp.book.id)">
+                          (click)="readBook(nextUp.book)"
+                          (keydown.enter)="readBook(nextUp.book)">
                           <app-cover
                             class="next-up-thumb"
                             aria-hidden="true"
@@ -207,8 +207,7 @@
                                 <p-progressBar
                                   [value]="nextUp.progressPercent"
                                   [showValue]="false"
-                                  class="next-up-progress">
-                                </p-progressBar>
+                                  class="next-up-progress" />
                                 <span class="next-up-percent">{{ nextUp.progressPercent }}%</span>
                               </div>
                             }
@@ -223,7 +222,7 @@
                               <div class="read-progress-bar">
                                 @for (seg of segments; track seg.status) {
                                   <div class="read-progress-segment"
-                                    [ngStyle]="{'width': seg.percent + '%', 'background-color': getStatusColor(seg.status)}"
+                                    [style]="{'width': seg.percent + '%', 'background-color': getStatusColor(seg.status)}"
                                     [pTooltip]="getStatusLabel(seg.status) + ': ' + seg.count">
                                   </div>
                                 }
@@ -231,9 +230,9 @@
                               <div class="read-progress-legend">
                                 @for (seg of segments; track seg.status) {
                                   <span class="legend-item"
-                                    [ngStyle]="{'border-color': getStatusColor(seg.status)}">
+                                    [style.border-color]="getStatusColor(seg.status)">
                                     <span class="legend-dot"
-                                      [ngStyle]="{'background-color': getStatusColor(seg.status)}"></span>
+                                      [style.background-color]="getStatusColor(seg.status)"></span>
                                     {{ getStatusLabel(seg.status) }} ({{ seg.count }})
                                   </span>
                                 }
@@ -259,15 +258,15 @@
                     <span>{{ t('synopsis') }}</span>
                   </div>
                   <div class="description-body">
-                    <div #descriptionContent [ngClass]="{ 'description-content-collapsed': !isExpanded() }"
+                    <div #descriptionContent [class.description-content-collapsed]="!isExpanded()"
                       class="description-content">
                       <div class="description-html"
                         [innerHTML]="firstDescription() || t('noDescription')"></div>
                     </div>
                     @if (isExpanded() || isOverflowing()) {
-                      <button class="expand-toggle" (click)="toggleExpand()">
+                      <button type="button" class="expand-toggle" (click)="toggleExpand()">
                         {{ isExpanded() ? t('showLess') : t('showMore') }}
-                        <i class="pi" [ngClass]="isExpanded() ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                        <i class="pi" [class]="isExpanded() ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
                       </button>
                     }
                   </div>
@@ -277,26 +276,23 @@
                   <i class="pi pi-objects-column"></i>
                   {{ t('booksInSeries') }}
                 </h3>
-                <div
-                  #seriesGrid
-                  class="series-items-grid"
-                  [style.--series-grid-columns]="seriesGridColumns()"
-                  [style.--series-grid-card-width.px]="seriesGridCardWidth()"
-                  [style.--series-grid-card-height.px]="seriesGridCardHeight()"
-                  [style.--series-grid-gap.px]="seriesGridGap()">
-                  @for (book of books; track book.id; let index = $index) {
-                    <app-book-card
-                      [index]="index"
-                      [book]="book"
-                      [isCheckboxEnabled]="true"
-                      [seriesViewEnabled]="seriesViewEnabled"
-                      [onBookSelect]="onSeriesBookCardSelect"
-                      [isSeriesCollapsed]="seriesCardsCollapsed"
-                      (checkboxClick)="onCheckboxClicked($event)"
-                      [isSelected]="isBookSelected(book)"
-                      [useSquareCovers]="seriesCardsUseSquareCovers"
-                      [overlayPreferenceService]="bookCardOverlayPreferenceService">
-                    </app-book-card>
+                <div #seriesGridContent class="virtual-content" [style.height.px]="seriesVirtualGrid.virtualizer.getTotalSize()">
+                  @for (virtualItem of seriesVirtualGrid.virtualizer.getVirtualItems(); track virtualItem.key) {
+                    @if (seriesBooks.items()[virtualItem.index]; as book) {
+                      <div
+                        class="virtual-cell"
+                        [style.width.px]="seriesVirtualGrid.itemWidth()"
+                        [style.height.px]="virtualItem.size"
+                        [style.transform]="seriesVirtualGrid.itemTransform(virtualItem)">
+                        <app-book-card
+                          [book]="book"
+                          [showFormatPill]="true"
+                          [detailMode]="'link'"
+                          (action)="readBook(book)"
+                          [menuOpen]="menuOpenBookId() === book.id"
+                          (menuRequested)="bookMenu()?.openFor(book, $event)" />
+                      </div>
+                    }
                   }
                 </div>
 
@@ -345,7 +341,7 @@
                 @if (getBookProgress(book); as progress) {
                   <div class="list-progress-row">
                     <div class="list-progress-bar">
-                      <div class="list-progress-fill" [ngStyle]="{'width': progress + '%'}"></div>
+                      <div class="list-progress-fill" [style.width]="progress + '%'"></div>
                     </div>
                     <span class="list-progress-text">{{ progress }}%</span>
                   </div>
@@ -354,7 +350,7 @@
                   <div class="list-rating-row">
                     @for (star of [1,2,3,4,5]; track star) {
                       <i class="pi list-star"
-                        [ngClass]="book.personalRating! >= star * 2 ? 'pi-star-fill' : (book.personalRating! >= star * 2 - 1 ? 'pi-star-half-fill' : 'pi-star')">
+                        [class]="book.personalRating! >= star * 2 ? 'pi-star-fill' : (book.personalRating! >= star * 2 - 1 ? 'pi-star-half-fill' : 'pi-star')">
                       </i>
                     }
                     <span class="list-rating-value">{{ book.personalRating }}/10</span>
@@ -364,7 +360,7 @@
               <div class="list-right-col">
                 <div class="list-badges">
                   <span class="list-status-badge"
-                    [ngStyle]="{'background-color': getStatusColor(book.readStatus)}">
+                    [style.background-color]="getStatusColor(book.readStatus)">
                     {{ getStatusLabel(book.readStatus) }}
                   </span>
                   @if (book.primaryFile?.bookType; as bookType) {
@@ -377,11 +373,11 @@
                   }
                 </div>
                 <div class="list-actions">
-                  <button class="list-action-btn btn-read" (click)="readBook(book.id); $event.stopPropagation()"
+                  <button type="button" class="list-action-btn btn-read" (click)="readBook(book); $event.stopPropagation()"
                     [pTooltip]="t('readButton')" tooltipPosition="top">
                     <i class="pi pi-book"></i>
                   </button>
-                  <button class="list-action-btn btn-details" (click)="viewBookDetails(book.id); $event.stopPropagation()"
+                  <button type="button" class="list-action-btn btn-details" (click)="viewBookDetails(book.id); $event.stopPropagation()"
                     [pTooltip]="t('viewDetails')" tooltipPosition="top">
                     <i class="pi pi-info-circle"></i>
                   </button>
@@ -389,7 +385,7 @@
               </div>
             </div>
           }
-          @if (books.length === 0) {
+          @empty {
             <div class="empty-state">{{ t('noBooksFound') }}</div>
           }
         </div>
@@ -397,108 +393,6 @@
 
     </p-tabpanels>
   </p-tabs>
-  @if (selectedBooks().size > 0) {
-    @if (currentUser(); as user) {
-      <div class="book-browser-footer" [animate.enter]="'slide-in-up'" [animate.leave]="'slide-out-down'">
-        <div class="footer-content">
-          <div class="footer-left">
-            <div class="selected-count-badge">
-              <i class="pi pi-check-circle badge-icon"></i>
-              <span class="badge-count" style="color: var(--primary-color)">{{ selectedBooks().size }}</span>
-              <span class="badge-label">{{ t('selected') }}</span>
-            </div>
-          </div>
-          <div class="footer-center">
-              <div class="footer-action-group">
-                @if (hasMetadataMenuItems) {
-                  <p-tieredMenu #metadataMenu [model]="metadataMenuItems()" [popup]="true" appendTo="body"/>
-                  <p-button
-                    (click)="metadataMenu.toggle($event)"
-                    [pTooltip]="t('tooltip.metadataActions')"
-                    tooltipPosition="top"
-                    outlined="true"
-                    severity="info"
-                    icon="pi pi-database">
-                  </p-button>
-                }
-                <p-button
-                  icon="pi pi-bookmark-fill"
-                  outlined="true"
-                  severity="info"
-                  (onClick)="openShelfAssigner()"
-                  [pTooltip]="t('tooltip.assignToShelf')"
-                  tooltipPosition="top">
-                </p-button>
-                @if (user.permissions.canBulkLockUnlockMetadata) {
-                  <p-button
-                    outlined="true"
-                    icon="pi pi-lock"
-                    severity="info"
-                  (click)="lockUnlockMetadata()"
-                  [pTooltip]="t('tooltip.lockUnlockMetadata')"
-                  tooltipPosition="top">
-                  </p-button>
-                }
-                @if (user.permissions.canMoveOrganizeFiles && appSettings()?.diskType === 'LOCAL') {
-                  <p-button
-                    outlined="true"
-                    icon="pi pi-arrows-h"
-                    severity="info"
-                    (click)="moveFiles()"
-                    [pTooltip]="t('tooltip.organizeFiles')"
-                    tooltipPosition="top">
-                  </p-button>
-                }
-                @if (hasMoreActionsItems) {
-                  <div class="more-actions-wrapper">
-                    <p-button
-                      (click)="moreActionsMenu.toggle($event)"
-                      [pTooltip]="t('tooltip.moreActions')"
-                      tooltipPosition="top"
-                      outlined="true"
-                      severity="info"
-                      icon="pi pi-ellipsis-v">
-                    </p-button>
-                    <p-tieredMenu #moreActionsMenu [model]="moreActionsMenuItems()" [popup]="true" appendTo="body"/>
-                  </div>
-                }
-              </div>
-            <p-divider layout="vertical"></p-divider>
-            <div class="footer-action-group">
-              <p-button
-                outlined="true"
-                icon="pi pi-check-square"
-                severity="success"
-                (click)="selectAllBooks()"
-                [pTooltip]="t('tooltip.selectAll')"
-                tooltipPosition="top">
-              </p-button>
-              <p-button
-                outlined="true"
-                icon="pi pi-times"
-                severity="warn"
-                (click)="deselectAllBooks()"
-                [pTooltip]="t('tooltip.deselectAll')"
-                tooltipPosition="top">
-              </p-button>
-            </div>
-            @if (user.permissions.admin || user.permissions.canDeleteBook) {
-              <p-divider layout="vertical"></p-divider>
-              <p-button
-                outlined="true"
-                icon="pi pi-trash"
-                severity="danger"
-                (click)="confirmDeleteBooks()"
-                [pTooltip]="t('tooltip.deleteSelected')"
-                tooltipPosition="top">
-              </p-button>
-            }
-          </div>
-          <div class="footer-right"></div>
-        </div>
-      </div>
-    }
-  }
 </div>
 }
 </ng-container>

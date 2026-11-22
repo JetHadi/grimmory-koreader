@@ -17,10 +17,10 @@ import {ConfirmationService} from '@openng/optimus-ui/api';
 import {
   LucideBookOpen,
   LucidePlay,
-  LucideSquareArrowOutUpRight,
+  LucideSquareArrowUpRightExit,
   type LucideIconData,
 } from '@lucide/angular';
-import {injectMutation, injectQuery} from '@tanstack/angular-query-experimental';
+import {injectMutation, injectQuery} from '@tanstack/angular-query';
 import {API_CONFIG} from '../../../../core/config/api-config';
 
 import {AppMenuComponent, type ContextMenuRequest} from '../../../../shared/ui/menu/app-menu.component';
@@ -34,11 +34,9 @@ import {
   type ShelfMembershipItem,
 } from '../../../../shared/components/shelf-menu/shelf-membership-menu.component';
 import {UserService} from '../../../settings/user-management/user.service';
-import {MetadataRefreshSubmissionService} from '../../../metadata/data/metadata-refresh-submission.service';
-import {BookBackgroundSubmissionService} from '../../data/book-background-submission.service';
+import {MetadataSourceCommandService} from '../../../metadata/sources/metadata-source-command.service';
 import {BookCommandService} from '../../data/book-command.service';
-import {BookShelfCommandService} from '../../data/book-shelf-command.service';
-import {type UpdateBookShelfMembershipResult} from '../../data/book-shelf-command.models';
+import {ShelfCommandService} from '../../../shelf/data/shelf-command.service';
 import {
   injectPendingBookShelfMembership,
   overlayShelfIds,
@@ -58,14 +56,15 @@ import {
   type BookReadStatusTarget,
 } from '../book-read-status-options';
 import {
+  type BookDetail,
   type BookFileResponse,
   type BookSummary,
-  type KnownBookReadStatus,
+  type BookReadStatus,
 } from '../../data/book-response.models';
-import {ShelfDefinitionQueryService} from '../../data/shelf-definition-query.service';
+import {ShelfQueryService} from '../../../shelf/data/shelf-query.service';
 import {AppSettingsService} from '../../../../shared/service/app-settings.service';
 import {legacyBookCachePatches, withLegacyBookCache} from '../../service/book-command-legacy-adapter';
-import {BookDialogHelperService} from '../book-browser/book-dialog-helper.service';
+import {BookDialogHelperService} from '../../service/book-dialog-helper.service';
 import {FileDownloadService} from '../../../../shared/service/file-download.service';
 import {BookNavigationService} from '../../service/book-navigation.service';
 import {
@@ -101,24 +100,22 @@ const BOOK_MENU_READ_ACTION_LABEL_KEYS: Readonly<Record<BookReadAction, string>>
   templateUrl: './book-menu.component.html',
 })
 export class BookMenuComponent {
-  readonly books = input<readonly BookSummary[]>([]);
-  readonly openInNewTab = input(false, {transform: booleanAttribute});
-
-  readonly deleted = output<readonly number[]>();
-
   private readonly userService = inject(UserService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileDownload = inject(FileDownloadService);
   private readonly bookNavigation = inject(BookNavigationService);
   private readonly dialogHelper = inject(BookDialogHelperService);
-  private readonly metadataRefresh = inject(MetadataRefreshSubmissionService);
-  private readonly backgroundSubmission = inject(BookBackgroundSubmissionService);
+  private readonly metadataSourceCommands = inject(MetadataSourceCommandService);
   private readonly bookCommands = inject(BookCommandService);
-  private readonly shelfCommands = inject(BookShelfCommandService);
-  private readonly shelfDefinitionQuery = inject(ShelfDefinitionQueryService);
+  private readonly shelfCommands = inject(ShelfCommandService);
+  private readonly shelfQuery = inject(ShelfQueryService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
+  readonly books = input<readonly BookSummary[]>([]);
+  readonly openInNewTab = input(false, {transform: booleanAttribute});
+
+  readonly deleted = output<readonly number[]>();
 
   private readonly rootMenu = viewChild.required(AppMenuComponent);
   private readonly bookSnapshot = signal<BookSummary | null>(null);
@@ -126,7 +123,7 @@ export class BookMenuComponent {
   private readonly openMenuBookId = signal<number | null>(null);
   readonly openBookId = this.openMenuBookId.asReadonly();
 
-  private readonly shelfDefinitionsQuery = injectQuery(() => this.shelfDefinitionQuery.definitions());
+  private readonly shelvesQuery = injectQuery(() => this.shelfQuery.shelves());
   private readonly pendingShelfMembership = injectPendingBookShelfMembership();
 
   private readonly shelfMembershipMutation = injectMutation(() => {
@@ -142,7 +139,7 @@ export class BookMenuComponent {
   });
   private readonly readStatusMutation = injectMutation(() => withLegacyBookCache(
     this.bookCommands.setReadStatus(), legacyBookCachePatches.readStatus));
-  private readonly refreshMetadataMutation = injectMutation(() => this.metadataRefresh.refreshMetadata());
+  private readonly refreshMetadataMutation = injectMutation(() => this.metadataSourceCommands.refreshMetadata());
   private readonly deleteBooksMutation = injectMutation(() => {
     const options = withLegacyBookCache(
       this.bookCommands.deleteBooks(), legacyBookCachePatches.deleteBooks);
@@ -156,7 +153,7 @@ export class BookMenuComponent {
   });
   private readonly deleteAdditionalFileMutation = injectMutation(() => withLegacyBookCache(
     this.bookCommands.deleteAdditionalFile(), legacyBookCachePatches.deleteAdditionalFile));
-  private readonly quickSendMutation = injectMutation(() => this.backgroundSubmission.quickSend());
+  private readonly quickSendMutation = injectMutation(() => this.bookCommands.quickSend());
   private readonly metadataLocksMutation = injectMutation(() => {
     const options = withLegacyBookCache(
       this.bookCommands.setAllMetadataLocks(), legacyBookCachePatches.metadataAllLocks);
@@ -170,7 +167,8 @@ export class BookMenuComponent {
   });
   private readonly resetProgressMutation = injectMutation(() => withLegacyBookCache(
     this.bookCommands.resetProgress(), legacyBookCachePatches.resetProgress));
-  private readonly changeCoversMutation = injectMutation(() => this.backgroundSubmission.changeCovers());
+  private readonly regenerateCoversMutation = injectMutation(() => this.bookCommands.bulkRegenerateCovers());
+  private readonly generateCoversMutation = injectMutation(() => this.bookCommands.bulkGenerateCovers());
 
   protected readonly readStatusTargets = BOOK_READ_STATUS_TARGETS;
   protected readonly clearReadStatus = CLEAR_BOOK_READ_STATUS;
@@ -192,7 +190,7 @@ export class BookMenuComponent {
     }
     const onShelfIds = overlayShelfIds(book, this.pendingShelfMembership().get(book.id));
     const currentUserId = this.userService.currentUser()?.id;
-    return (this.shelfDefinitionsQuery.data() ?? [])
+    return (this.shelvesQuery.data() ?? [])
       .filter(shelf => shelf.userId === currentUserId)
       .map(shelf => ({id: shelf.id, name: shelf.name, checked: onShelfIds.has(shelf.id)}));
   });
@@ -226,7 +224,7 @@ export class BookMenuComponent {
         return undefined;
     }
   });
-  protected readonly newTabIcon: LucideIconData = LucideSquareArrowOutUpRight.icon;
+  protected readonly newTabIcon: LucideIconData = LucideSquareArrowUpRightExit.icon;
   protected readonly digital = computed(() => {
     const book = this.book();
     return book != null
@@ -281,7 +279,7 @@ export class BookMenuComponent {
   }
 
   protected onRead(): void {
-    this.bookNavigation.readBook(this.book()!, this.shownFile());
+    this.bookNavigation.readBook(this.book()!, {bookType: this.shownFile()?.bookType});
   }
 
   protected onToggleShelf(shelfId: number, checked: boolean): void {
@@ -308,7 +306,7 @@ export class BookMenuComponent {
     void this.dialogHelper.openShelfCreatorDialog();
   }
 
-  protected onSetReadStatus(status: KnownBookReadStatus): void {
+  protected onSetReadStatus(status: BookReadStatus): void {
     this.readStatusMutation.mutate({bookIds: [this.book()!.id], status});
   }
 
@@ -325,7 +323,7 @@ export class BookMenuComponent {
   }
 
   protected onFetchMetadata(): void {
-    this.refreshMetadataMutation.mutate({bookIds: [this.book()!.id]});
+    this.refreshMetadataMutation.mutate({refreshType: 'BOOKS', bookIds: [this.book()!.id]});
   }
 
   protected onFetchMetadataWithOptions(): void {
@@ -337,7 +335,8 @@ export class BookMenuComponent {
   }
 
   protected onChangeCovers(kind: 'regenerate' | 'generate'): void {
-    this.changeCoversMutation.mutate({kind, bookIds: [this.book()!.id]});
+    const mutation = kind === 'regenerate' ? this.regenerateCoversMutation : this.generateCoversMutation;
+    mutation.mutate({bookIds: [this.book()!.id]});
   }
 
   protected onMetadataLockChange(locked: boolean): void {
@@ -418,11 +417,11 @@ export class BookMenuComponent {
     this.quickSendMutation.mutate({bookId});
   }
 
-  private updateShelfSnapshot(result: UpdateBookShelfMembershipResult): void {
+  private updateShelfSnapshot(books: readonly BookDetail[]): void {
     const snapshot = this.bookSnapshot();
-    const update = result.updatedBookShelves.find(item => item.bookId === snapshot?.id);
-    if (snapshot && update) {
-      this.bookSnapshot.set({...snapshot, shelves: [...update.shelves]});
+    const updated = books.find(book => book.id === snapshot?.id);
+    if (snapshot && updated) {
+      this.bookSnapshot.set({...snapshot, shelves: updated.shelves});
     }
   }
 }

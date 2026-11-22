@@ -23,6 +23,9 @@ import java.util.Set;
 public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpecificationExecutor<BookEntity> {
     Optional<BookEntity> findBookByIdAndLibraryId(long id, long libraryId);
 
+    @Query("SELECT COUNT(b) > 0 FROM BookEntity b JOIN b.metadata m WHERE b.library.id = :libraryId AND (b.deleted IS NULL OR b.deleted = false) AND (m.isbn13 = :isbn13 OR UPPER(m.isbn10) = :isbn10)")
+    boolean existsInLibraryByIsbn(@Param("libraryId") long libraryId, @Param("isbn13") String isbn13, @Param("isbn10") String isbn10);
+
     @EntityGraph(attributePaths = { "metadata", "metadata.authors", "bookFiles", "libraryPath" })
     @Query("SELECT b FROM BookEntity b WHERE b.id = :id AND (b.deleted IS NULL OR b.deleted = false)")
     Optional<BookEntity> findByIdForAudiobook(@Param("id") Long id);
@@ -92,14 +95,13 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
 
     @EntityGraph(attributePaths = {
         "metadata", "metadata.comicMetadata",
-        "metadata.comicMetadata.characters", "metadata.comicMetadata.teams", "metadata.comicMetadata.locations", "metadata.comicMetadata.creatorMappings",
         "metadata.authors", "metadata.categories", "metadata.moods", "metadata.tags",
         "shelves", "libraryPath", "library", "bookFiles"
     })
     @Query("SELECT b FROM BookEntity b WHERE b.library.id = :libraryId AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadataByLibraryId(@Param("libraryId") Long libraryId);
 
-    @EntityGraph(attributePaths = {"metadata", "bookFiles", "library"})
+    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "bookFiles", "library"})
     @Query("SELECT b FROM BookEntity b WHERE b.library.id = :libraryId AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllByLibraryIdWithFiles(@Param("libraryId") Long libraryId);
 
@@ -112,7 +114,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     List<BookEntity> findDeletedByLibraryIdWithFiles(@Param("libraryId") Long libraryId);
 
     // Only ToOne paths in EntityGraph; collections (authors, bookFiles) loaded via @BatchSize.
-    @EntityGraph(attributePaths = {"metadata", "libraryPath"})
+    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "libraryPath"})
     @Query("SELECT b FROM BookEntity b WHERE b.library.id = :libraryId AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllForDuplicateDetection(@Param("libraryId") Long libraryId);
 
@@ -123,7 +125,6 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
 
     @EntityGraph(attributePaths = {
         "metadata", "metadata.comicMetadata",
-        "metadata.comicMetadata.characters", "metadata.comicMetadata.teams", "metadata.comicMetadata.locations", "metadata.comicMetadata.creatorMappings",
         "metadata.authors", "metadata.categories", "metadata.moods", "metadata.tags",
         "shelves", "libraryPath", "library", "bookFiles"
     })
@@ -239,7 +240,14 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
             """)
     List<BookEntity> findFilelessBooksByLibraryId(@Param("libraryId") Long libraryId);
 
-    @Query("SELECT b.id as id, m.coverUpdatedOn as coverUpdatedOn FROM BookEntity b LEFT JOIN b.metadata m WHERE b.id IN :bookIds")
+    @Query("""
+            SELECT b.id as id,
+                   m.coverUpdatedOn as coverUpdatedOn,
+                   m.audiobookCoverUpdatedOn as audiobookCoverUpdatedOn
+            FROM BookEntity b
+            LEFT JOIN b.metadata m
+            WHERE b.id IN :bookIds
+            """)
     List<BookCoverUpdateProjection> findCoverUpdateInfoByIds(@Param("bookIds") Collection<Long> bookIds);
 
     @Modifying
@@ -471,6 +479,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     @Query("""
             SELECT DISTINCT b FROM BookEntity b
             LEFT JOIN FETCH b.metadata m
+            LEFT JOIN FETCH m.comicMetadata
             LEFT JOIN FETCH m.authors
             LEFT JOIN FETCH m.categories
             WHERE (b.deleted IS NULL OR b.deleted = false)

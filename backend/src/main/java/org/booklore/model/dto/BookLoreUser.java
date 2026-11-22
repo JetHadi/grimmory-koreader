@@ -30,7 +30,6 @@ public class BookLoreUser {
     private List<Library> assignedLibraries;
     private UserPermissions permissions;
     private UserSettings userSettings;
-
     @Data
     public static class UserPermissions {
         private boolean isAdmin;
@@ -115,6 +114,7 @@ public class BookLoreUser {
             private String sortDir;
             private List<SortCriterion> sortCriteria;
             private String view;
+            private String cardDetail;
             private Float coverSize;
             @JsonAlias("seriesCollapse")
             private Boolean seriesCollapsed;
@@ -140,6 +140,7 @@ public class BookLoreUser {
             private String sortDir;
             private List<SortCriterion> sortCriteria;
             private String view;
+            private String cardDetail;
             @JsonAlias("seriesCollapse")
             private Boolean seriesCollapsed;
             private Boolean overlayBookType;
@@ -260,6 +261,8 @@ public class BookLoreUser {
             private int order;
             private Integer maxItems;
             private Long magicShelfId;
+            private Long libraryId;
+            private Long shelfId;
             private String sortField;
             private String sortDirection;
         }

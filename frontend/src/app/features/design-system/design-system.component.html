@@ -56,7 +56,7 @@
         </app-menu>
       </app-split-button>
       <app-split-button tone="danger" variant="soft" label="Delete" (clicked)="logMenu('Delete')">
-        <svg lucideTrash2></svg>
+        <svg lucideTrash></svg>
         <app-menu ariaLabel="Delete options">
           <app-menu-item value="delete-this" (selected)="logMenu('Delete this')">Delete this</app-menu-item>
           <app-menu-separator />
@@ -609,7 +609,7 @@
     <div class="flex flex-wrap items-center gap-2">
       <app-tag size="sm" color="green" label="Small" />
       <app-tag size="md" color="green" label="Medium" />
-      <app-tag color="amber" label="With icon"><svg lucideTriangleAlert></svg></app-tag>
+      <app-tag color="amber" label="With icon"><svg lucideTriangleExclamationPoint></svg></app-tag>
       <app-tag color="sky">Projected content</app-tag>
     </div>
 

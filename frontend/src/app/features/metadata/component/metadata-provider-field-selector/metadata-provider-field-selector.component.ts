@@ -4,7 +4,7 @@ import {ToggleSwitch} from '@openng/optimus-ui/toggleswitch';
 import {FormsModule} from '@angular/forms';
 import {AppSettingsService} from '../../../../shared/service/app-settings.service';
 import {AppSettingKey, MetadataProviderSpecificFields} from '../../../../shared/model/app-settings.model';
-import {MetadataProviderFieldsService, providerFieldRecord} from '../../../../shared/metadata';
+import {METADATA_PROVIDER_FIELDS, providerFieldRecord} from '../../../../shared/metadata';
 import {MetadataCatalogService} from '../../../../shared/metadata/metadata-catalog.service';
 import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
 
@@ -16,29 +16,23 @@ import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
   styleUrl: './metadata-provider-field-selector.component.scss'
 })
 export class MetadataProviderFieldSelectorComponent {
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly t = inject(TranslocoService);
+  private readonly catalog = inject(MetadataCatalogService);
   @Input() selectedFields: string[] = [];
-
-  private appSettingsService = inject(AppSettingsService);
-  private t = inject(TranslocoService);
-  private catalog = inject(MetadataCatalogService);
-  private providerFields = inject(MetadataProviderFieldsService);
   private readonly activeLang = toSignal(this.t.langChanges$, {initialValue: this.t.getActiveLang()});
 
   readonly providerGroups = computed(() => {
     const lang = this.activeLang();
     return this.catalog.providers()
-      .filter(provider => provider.book)
       .map(provider => ({
         label: this.t.translate(provider.labelKey, {}, lang),
-        fields: this.providerFields.fields()
+        fields: METADATA_PROVIDER_FIELDS
           .filter(field => field.provider === provider.id)
-          .map(field => ({name: field.name, label: this.providerFields.label(field.name)})),
-      }));
+          .map(field => ({name: field.name, label: this.t.translate(field.labelKey, {}, lang)})),
+      }))
+      .filter(group => group.fields.length > 0);
   });
-
-  private readonly allFieldNames = computed<(keyof MetadataProviderSpecificFields)[]>(
-    () => this.providerFields.fields().map(field => field.name),
-  );
 
   private readonly syncSettingsEffect = effect(() => {
     const settings = this.appSettingsService.appSettings();
@@ -69,6 +63,6 @@ export class MetadataProviderFieldSelectorComponent {
   }
 
   private toFieldState(selectedFields: string[]): MetadataProviderSpecificFields {
-    return providerFieldRecord(this.providerFields.fields(), field => selectedFields.includes(field.name));
+    return providerFieldRecord(METADATA_PROVIDER_FIELDS, field => selectedFields.includes(field.name));
   }
 }

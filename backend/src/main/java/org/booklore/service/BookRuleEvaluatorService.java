@@ -40,17 +40,16 @@ public class BookRuleEvaluatorService {
             // content reflect unique BookEntity results.
             query.distinct(true);
 
-            Join<BookEntity, UserBookProgressEntity> progressJoin = root.join("userBookProgress", JoinType.LEFT);
+            Join<BookEntity, UserBookProgressEntity> progressJoin = joinProgress(root, cb, JoinType.LEFT, userId);
 
-            Predicate userPredicate = cb.or(
-                    cb.isNull(progressJoin.get("user").get("id")),
-                    cb.equal(progressJoin.get("user").get("id"), userId)
-            );
-
-            Predicate rulePredicate = buildPredicate(groupRule, query, cb, root, progressJoin, userId);
-
-            return cb.and(userPredicate, rulePredicate);
+            return buildPredicate(groupRule, query, cb, root, progressJoin, userId);
         };
+    }
+
+    private Join<BookEntity, UserBookProgressEntity> joinProgress(Root<BookEntity> root, CriteriaBuilder cb, JoinType joinType, Long userId) {
+        Join<BookEntity, UserBookProgressEntity> progressJoin = root.join("userBookProgress", JoinType.LEFT);
+        progressJoin = progressJoin.on(cb.equal(progressJoin.get("user").get("id"), userId));
+        return progressJoin;
     }
 
     private Predicate buildPredicate(GroupRule group, CriteriaQuery<?> query, CriteriaBuilder cb, Root<BookEntity> root, Join<BookEntity, UserBookProgressEntity> progressJoin, Long userId) {
@@ -269,7 +268,7 @@ public class BookRuleEvaluatorService {
             // String fields on BookMetadataEntity
             case "title", "subtitle", "description", "publisher", "language", "seriesName",
                  "isbn13", "isbn10", "asin", "contentRating", "narrator",
-                 "goodreadsId", "hardcoverId", "googleId", "audibleId", "applebooksId",
+                 "goodreadsId", "hardcoverId", "googleId", "audibleId", "applebooksId", "doubanId",
                  "lubimyczytacId", "ranobedbId", "comicvineId", "openlibraryId" ->
                     stringPresence(cb, root.get("metadata").get(metadataField));
 
@@ -278,6 +277,7 @@ public class BookRuleEvaluatorService {
                  "amazonRating", "goodreadsRating", "hardcoverRating", "ranobedbRating",
                  "lubimyczytacRating", "audibleRating",
                  "applebooksRating", "applebooksReviewCount",
+                 "doubanRating", "doubanReviewCount",
                  "amazonReviewCount", "goodreadsReviewCount", "hardcoverReviewCount", "audibleReviewCount" ->
                     cb.isNotNull(root.get("metadata").get(metadataField));
 
@@ -333,7 +333,8 @@ public class BookRuleEvaluatorService {
     private Predicate seriesHasReadStatus(CriteriaQuery<?> query, CriteriaBuilder cb, Root<BookEntity> root, Long userId, List<String> statuses) {
         Subquery<Long> sub = query.subquery(Long.class);
         Root<BookEntity> subRoot = sub.from(BookEntity.class);
-        Join<Object, Object> subProgress = subRoot.join("userBookProgress", JoinType.INNER);
+
+        var subProgress = joinProgress(subRoot, cb, JoinType.INNER, userId);
 
         List<ReadStatus> readStatuses = statuses.stream()
                 .map(ReadStatus::valueOf)
@@ -341,7 +342,6 @@ public class BookRuleEvaluatorService {
 
         sub.select(cb.literal(1L)).where(
                 cb.equal(subRoot.get("metadata").get("seriesName"), root.get("metadata").get("seriesName")),
-                cb.equal(subProgress.get("user").get("id"), userId),
                 subProgress.get("readStatus").in(readStatuses)
         );
         return cb.exists(sub);
@@ -350,11 +350,15 @@ public class BookRuleEvaluatorService {
     private Predicate seriesAllRead(CriteriaQuery<?> query, CriteriaBuilder cb, Root<BookEntity> root, Long userId) {
         Subquery<Long> notReadSub = query.subquery(Long.class);
         Root<BookEntity> nrRoot = notReadSub.from(BookEntity.class);
-        Join<Object, Object> nrProgress = nrRoot.join("userBookProgress", JoinType.INNER);
+
+        var nrProgress = joinProgress(nrRoot, cb, JoinType.LEFT, userId);
+
         notReadSub.select(cb.literal(1L)).where(
                 cb.equal(nrRoot.get("metadata").get("seriesName"), root.get("metadata").get("seriesName")),
-                cb.equal(nrProgress.get("user").get("id"), userId),
-                cb.notEqual(nrProgress.get("readStatus"), ReadStatus.READ)
+                cb.or(
+                        cb.isNull(nrProgress.get("readStatus")),
+                        cb.notEqual(nrProgress.get("readStatus"), ReadStatus.READ)
+                )
         );
 
         return cb.and(
@@ -489,7 +493,7 @@ public class BookRuleEvaluatorService {
 
         Subquery<Long> lowerUnreadSub = query.subquery(Long.class);
         Root<BookEntity> luRoot = lowerUnreadSub.from(BookEntity.class);
-        Join<Object, Object> luProgress = luRoot.join("userBookProgress", JoinType.LEFT);
+        var luProgress = joinProgress(luRoot, cb, JoinType.LEFT, userId);
         lowerUnreadSub.select(cb.literal(1L)).where(
                 cb.equal(luRoot.get("metadata").get("seriesName"), root.get("metadata").get("seriesName")),
                 cb.isNotNull(luRoot.get("metadata").get("seriesNumber")),
@@ -497,22 +501,17 @@ public class BookRuleEvaluatorService {
                 cb.or(
                         cb.isNull(luProgress.get("readStatus")),
                         cb.notEqual(luProgress.get("readStatus"), ReadStatus.READ)
-                ),
-                cb.or(
-                        cb.isNull(luProgress.get("user").get("id")),
-                        cb.equal(luProgress.get("user").get("id"), userId)
                 )
         );
         Predicate noLowerUnread = cb.not(cb.exists(lowerUnreadSub));
 
         Subquery<Long> priorReadSub = query.subquery(Long.class);
         Root<BookEntity> prRoot = priorReadSub.from(BookEntity.class);
-        Join<Object, Object> prProgress = prRoot.join("userBookProgress", JoinType.INNER);
+        var prProgress = joinProgress(prRoot, cb, JoinType.INNER, userId);
         priorReadSub.select(cb.literal(1L)).where(
                 cb.equal(prRoot.get("metadata").get("seriesName"), root.get("metadata").get("seriesName")),
                 cb.isNotNull(prRoot.get("metadata").get("seriesNumber")),
                 cb.lt(prRoot.get("metadata").get("seriesNumber"), root.get("metadata").get("seriesNumber")),
-                cb.equal(prProgress.get("user").get("id"), userId),
                 cb.equal(prProgress.get("readStatus"), ReadStatus.READ)
         );
         Predicate hasPriorRead = cb.exists(priorReadSub);
@@ -802,6 +801,8 @@ public class BookRuleEvaluatorService {
             case AUDIBLE_REVIEW_COUNT -> root.get("metadata").get("audibleReviewCount");
             case APPLEBOOKS_RATING -> root.get("metadata").get("applebooksRating");
             case APPLEBOOKS_REVIEW_COUNT -> root.get("metadata").get("applebooksReviewCount");
+            case DOUBAN_RATING -> root.get("metadata").get("doubanRating");
+            case DOUBAN_REVIEW_COUNT -> root.get("metadata").get("doubanReviewCount");
             case ABRIDGED -> root.get("metadata").get("abridged");
             case AUDIOBOOK_DURATION -> root.join("bookFiles", JoinType.LEFT).get("durationSeconds");
             case AUDIOBOOK_CODEC -> root.join("bookFiles", JoinType.LEFT).get("codec");
@@ -959,6 +960,7 @@ public class BookRuleEvaluatorService {
             RuleField.LUBIMYCZYTAC_RATING, RuleField.RANOBEDB_RATING,
             RuleField.AUDIBLE_RATING, RuleField.AUDIBLE_REVIEW_COUNT,
             RuleField.APPLEBOOKS_RATING, RuleField.APPLEBOOKS_REVIEW_COUNT,
+            RuleField.DOUBAN_RATING, RuleField.DOUBAN_REVIEW_COUNT,
             RuleField.AUDIOBOOK_CHAPTER_COUNT, RuleField.AUDIOBOOK_BITRATE
     );
 

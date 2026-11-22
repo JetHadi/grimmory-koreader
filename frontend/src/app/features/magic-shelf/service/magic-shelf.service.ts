@@ -1,16 +1,14 @@
-import {computed, effect, inject, Injectable} from '@angular/core';
+import {computed, effect, inject, Service} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {lastValueFrom, Observable} from 'rxjs';
 import {tap} from 'rxjs/operators';
-import {injectQuery, queryOptions, QueryClient} from '@tanstack/angular-query-experimental';
+import {injectQuery, queryOptions, QueryClient} from '@tanstack/angular-query';
 
 import {API_CONFIG} from '../../../core/config/api-config';
-import {BookService} from '../../book/service/book.service';
-import {BookRuleEvaluatorService} from './book-rule-evaluator.service';
 import {AuthService} from '../../../shared/service/auth.service';
-import {GroupRule} from '../component/magic-shelf-component';
 import {IconType} from '../../../shared/icons/icon-selection';
 import {invalidateBookCollections} from '../../book/data/book-query-cache';
+import {shelfQueryKeys} from '../../shelf/data/shelf-query-keys';
 
 export interface MagicShelf {
   id?: number | null;
@@ -23,17 +21,12 @@ export interface MagicShelf {
 
 const MAGIC_SHELVES_QUERY_KEY = ['magicShelves'] as const;
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class MagicShelfService {
-  private readonly url = `${API_CONFIG.BASE_URL}/api/magic-shelves`;
-
   private readonly http = inject(HttpClient);
-  private readonly bookService = inject(BookService);
-  private readonly ruleEvaluatorService = inject(BookRuleEvaluatorService);
   private readonly authService = inject(AuthService);
   private readonly queryClient = inject(QueryClient);
+  private readonly url = `${API_CONFIG.BASE_URL}/api/magic-shelves`;
   private readonly token = this.authService.token;
 
   private readonly shelvesQuery = injectQuery(() => ({
@@ -90,9 +83,8 @@ export class MagicShelfService {
     return this.http.post<MagicShelf>(this.url, payload).pipe(
       tap(() => {
         void this.queryClient.invalidateQueries({queryKey: MAGIC_SHELVES_QUERY_KEY, exact: true});
-        if (data.id != null) {
-          void invalidateBookCollections(this.queryClient);
-        }
+        void this.queryClient.invalidateQueries({queryKey: shelfQueryKeys.all()});
+        void invalidateBookCollections(this.queryClient);
       })
     );
   }
@@ -101,40 +93,11 @@ export class MagicShelfService {
     return this.shelves().find(shelf => shelf.id === id);
   }
 
-  getBookCountValue(shelfId: number): number {
-    const shelf = this.findShelfById(shelfId);
-    if (!shelf) {
-      return 0;
-    }
-
-    let group: GroupRule;
-    try {
-      group = JSON.parse(shelf.filterJson);
-    } catch (error) {
-      console.error('Invalid filter JSON', error);
-      return 0;
-    }
-
-    const allBooks = this.bookService.books();
-    return allBooks.filter(book =>
-      this.ruleEvaluatorService.evaluateGroup(book, group, allBooks)
-    ).length;
-  }
-
-  readonly bookCountByMagicShelfId = computed(() => {
-    const counts = new Map<number, number>();
-    for (const shelf of this.shelves()) {
-      if (shelf.id != null) {
-        counts.set(shelf.id, this.getBookCountValue(shelf.id));
-      }
-    }
-    return counts;
-  });
-
   deleteShelf(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`).pipe(
       tap(() => {
         void this.queryClient.invalidateQueries({queryKey: MAGIC_SHELVES_QUERY_KEY, exact: true});
+        void this.queryClient.invalidateQueries({queryKey: shelfQueryKeys.all()});
         void invalidateBookCollections(this.queryClient);
       })
     );

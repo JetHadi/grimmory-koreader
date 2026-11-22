@@ -1,32 +1,27 @@
-import {
-  BookCollectionFilterParams,
-  BookPageParams,
-  BookQueryParams,
-} from './book-query-params';
+import {browseQueryKeys} from '../../../core/data/browse-query-keys';
+import {BookDuplicateRequest} from './book-query.models';
+import {BookQueryFacetKey, BookQuerySortKey} from './book-query-params';
+
+const browseKeys = browseQueryKeys<BookQueryFacetKey, BookQuerySortKey>('books');
 
 export const bookQueryKeys = {
-  all: () => ['books', 'query'] as const,
-  collections: () => [...bookQueryKeys.all(), 'collection'] as const,
-  boundedPages: () => [...bookQueryKeys.collections(), 'page', 'bounded'] as const,
-  boundedPage: (params: BookPageParams) =>
-    [...bookQueryKeys.boundedPages(), params] as const,
-  infinitePages: () => [...bookQueryKeys.collections(), 'page', 'infinite'] as const,
-  infinitePage: (params: BookPageParams) =>
-    [...bookQueryKeys.infinitePages(), params] as const,
-  facetQueries: () => [...bookQueryKeys.collections(), 'facets'] as const,
-  facets: (params: BookCollectionFilterParams) =>
-    [...bookQueryKeys.facetQueries(), params] as const,
-  idQueries: () => [...bookQueryKeys.collections(), 'ids'] as const,
-  ids: (params: BookQueryParams) =>
-    [...bookQueryKeys.idQueries(), params] as const,
-  details: () => [...bookQueryKeys.all(), 'detail'] as const,
+  ...browseKeys,
+  details: () => [...browseKeys.all(), 'detail'] as const,
   detailQueries: (bookId: number) =>
     [...bookQueryKeys.details(), bookId] as const,
   detail: (bookId: number, withDescription: boolean) =>
     [...bookQueryKeys.detailQueries(bookId), {withDescription}] as const,
-  recommendations: () => [...bookQueryKeys.all(), 'recommendation'] as const,
+  reviews: (bookId: number) =>
+    [...bookQueryKeys.detailQueries(bookId), 'reviews'] as const,
+  batches: () => [...browseKeys.collections(), 'batch'] as const,
+  batch: (ids: readonly number[]) =>
+    [...bookQueryKeys.batches(), ids] as const,
+  recommendations: () => [...browseKeys.all(), 'recommendation'] as const,
   recommendationQueries: (bookId: number) =>
     [...bookQueryKeys.recommendations(), bookId] as const,
   recommendation: (bookId: number, limit: number) =>
     [...bookQueryKeys.recommendationQueries(bookId), {limit}] as const,
+  duplicateQueries: () => [...browseKeys.collections(), 'duplicates'] as const,
+  duplicates: (request: BookDuplicateRequest) =>
+    [...bookQueryKeys.duplicateQueries(), request] as const,
 };

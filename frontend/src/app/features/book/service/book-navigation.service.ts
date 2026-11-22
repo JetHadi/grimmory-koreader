@@ -1,24 +1,33 @@
-import {computed, inject, Injectable, signal} from '@angular/core';
-import {Router} from '@angular/router';
+import {computed, inject, Service, signal} from '@angular/core';
+import {type Params, Router} from '@angular/router';
 
-import {type BookFileResponse, type BookFileType, type BookSummary} from '../data/book-response.models';
+import {UserService} from '../../settings/user-management/user.service';
+import {type BookFileType} from '../data/book-response.models';
+import {BookDialogHelperService} from './book-dialog-helper.service';
+
+export interface ReadableBook {
+  readonly id: number;
+  readonly primaryFile?: {readonly bookType?: BookFileType};
+}
+
+export interface ReadOptions {
+  readonly bookType?: BookFileType;
+  readonly streaming?: boolean;
+}
 
 export interface BookNavigationState {
   bookIds: number[];
   currentIndex: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Service()
 export class BookNavigationService {
   private readonly router = inject(Router);
+  private readonly userService = inject(UserService);
+  private readonly dialogHelper = inject(BookDialogHelperService);
 
   private readonly _navigationState = signal<BookNavigationState | null>(null);
   readonly navigationState = this._navigationState.asReadonly();
-
-  private readonly _availableBookIds = signal<number[]>([]);
-  readonly availableBookIds = this._availableBookIds.asReadonly();
 
   readonly canNavigatePrevious = computed(() => {
     const state = this.navigationState();
@@ -54,23 +63,34 @@ export class BookNavigationService {
       : null;
   });
 
-  setAvailableBookIds(bookIds: number[]): void {
-    this._availableBookIds.set(bookIds);
-  }
-
-  readBook(book: BookSummary, file: BookFileResponse | undefined = book.primaryFile): void {
-    const baseUrl = this.readerRoute(file?.bookType);
+  readBook(book: ReadableBook, {bookType = book.primaryFile?.bookType, streaming = false}: ReadOptions = {}): void {
+    const baseUrl = this.readerRoute(bookType);
     if (!baseUrl) {
       return;
     }
 
-    const path = [`/${baseUrl}/book/${book.id}`];
-    if (file?.bookType !== book.primaryFile?.bookType) {
-      void this.router.navigate(path, {queryParams: {bookType: file?.bookType}});
-      return;
+    const queryParams: Params = {};
+    if (bookType !== book.primaryFile?.bookType) {
+      queryParams['bookType'] = bookType;
+    }
+    if (streaming) {
+      queryParams['streaming'] = true;
     }
 
-    void this.router.navigate(path);
+    void this.router.navigate([`/${baseUrl}/book/${book.id}`], {queryParams});
+  }
+
+  openBook(bookId: number, contextIds: number[]): void {
+    if (contextIds.length > 0) {
+      this.setNavigationContext(contextIds, bookId);
+    }
+
+    const mode = this.userService.currentUser()?.userSettings.metadataCenterViewMode ?? 'route';
+    if (mode === 'route') {
+      void this.router.navigate(['/book', bookId]);
+      return;
+    }
+    void this.dialogHelper.openBookDetailsDialog(bookId);
   }
 
   setNavigationContext(bookIds: number[], currentBookId: number): void {

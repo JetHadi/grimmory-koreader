@@ -1,25 +1,29 @@
-import {inject, Injectable} from '@angular/core';
-import {Observable} from 'rxjs';
-import {HttpClient, HttpParams} from '@angular/common/http';
-import {catchError, map, tap} from 'rxjs/operators';
+import {inject, Service} from '@angular/core';
+import {Observable, of} from 'rxjs';
+import {HttpClient, HttpEventType, HttpParams, HttpRequest} from '@angular/common/http';
+import {catchError, filter, map, tap, mergeMap} from 'rxjs/operators';
 import {Book, BookMetadata, BulkMetadataUpdateRequest, MetadataUpdateWrapper} from '../model/book.model';
 import {API_CONFIG} from '../../../core/config/api-config';
 import {MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
-import {QueryClient} from '@tanstack/angular-query-experimental';
+import {QueryClient} from '@tanstack/angular-query';
 import {invalidateAllBookCaches, invalidateBooksById, patchBookMetadataInCache, patchBooksInCacheWith} from './legacy-book-cache';
+import {mitigateWebkitUploadBug} from '../../../shared/util/mitigate-webkit-upload-bug';
 
-@Injectable({
-  providedIn: 'root',
-})
+export interface MetadataValuesSelectAll {
+  selectAll: true;
+  search: string;
+  excludedValues: string[];
+}
+
+@Service()
 export class BookMetadataManageService {
+  private readonly http = inject(HttpClient);
+  private readonly messageService = inject(MessageService);
+  private readonly queryClient = inject(QueryClient);
+  private readonly t = inject(TranslocoService);
 
   private readonly url = `${API_CONFIG.BASE_URL}/api/v1/books`;
-
-  private http = inject(HttpClient);
-  private messageService = inject(MessageService);
-  private queryClient = inject(QueryClient);
-  private readonly t = inject(TranslocoService);
 
   updateBookMetadata(bookId: number | undefined, wrapper: MetadataUpdateWrapper, mergeCategories: boolean, replaceMode: 'REPLACE_ALL' | 'REPLACE_WHEN_PROVIDED' = 'REPLACE_ALL'): Observable<BookMetadata> {
     const params = new HttpParams().set('mergeCategories', mergeCategories.toString()).set('replaceMode', replaceMode);
@@ -85,16 +89,18 @@ export class BookMetadataManageService {
     );
   }
 
-  consolidateMetadata(metadataType: 'authors' | 'categories' | 'moods' | 'tags' | 'series' | 'publishers' | 'languages', targetValues: string[], valuesToMerge: string[]): Observable<unknown> {
-    return this.http.post(`${this.url}/metadata/manage/consolidate`, {metadataType, targetValues, valuesToMerge}).pipe(
+  consolidateMetadata(metadataType: 'authors' | 'categories' | 'moods' | 'tags' | 'series' | 'publishers' | 'languages', targetValues: string[], valuesToMerge: string[] | MetadataValuesSelectAll): Observable<unknown> {
+    const selection = Array.isArray(valuesToMerge) ? {valuesToMerge} : valuesToMerge;
+    return this.http.post(`${this.url}/metadata/manage/consolidate`, {metadataType, targetValues, ...selection}).pipe(
       tap(() => {
         invalidateAllBookCaches(this.queryClient);
       })
     );
   }
 
-  deleteMetadata(metadataType: 'authors' | 'categories' | 'moods' | 'tags' | 'series' | 'publishers' | 'languages', valuesToDelete: string[]): Observable<unknown> {
-    return this.http.post(`${this.url}/metadata/manage/delete`, {metadataType, valuesToDelete}).pipe(
+  deleteMetadata(metadataType: 'authors' | 'categories' | 'moods' | 'tags' | 'series' | 'publishers' | 'languages', valuesToDelete: string[] | MetadataValuesSelectAll): Observable<unknown> {
+    const selection = Array.isArray(valuesToDelete) ? {valuesToDelete} : valuesToDelete;
+    return this.http.post(`${this.url}/metadata/manage/delete`, {metadataType, ...selection}).pipe(
       tap(() => {
         invalidateAllBookCaches(this.queryClient);
       })
@@ -137,21 +143,6 @@ export class BookMetadataManageService {
     );
   }
 
-  generateCustomCoversForBooks(bookIds: number[]): Observable<void> {
-    return this.http.post<void>(`${this.url}/bulk-generate-custom-covers`, {bookIds}).pipe(
-      tap(() => {
-        invalidateBooksById(this.queryClient, bookIds);
-      })
-    );
-  }
-
-  regenerateCoversForBooks(bookIds: number[]): Observable<void> {
-    return this.http.post<void>(`${this.url}/bulk-regenerate-covers`, {bookIds}).pipe(
-      tap(() => {
-        invalidateBooksById(this.queryClient, bookIds);
-      })
-    );
-  }
 
   uploadAudiobookCoverFromUrl(bookId: number, url: string): Observable<BookMetadata> {
     return this.http.post<BookMetadata>(`${this.url}/${bookId}/metadata/audiobook-cover/from-url`, {url}).pipe(
@@ -164,11 +155,19 @@ export class BookMetadataManageService {
   uploadAudiobookCoverFromFile(bookId: number, file: File): Observable<void> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<void>(`${this.url}/${bookId}/metadata/audiobook-cover/upload`, formData).pipe(
-      tap(() => {
-        invalidateBooksById(this.queryClient, [bookId]);
-      })
+
+    const req = mitigateWebkitUploadBug(
+      new HttpRequest('POST', `${this.url}/${bookId}/metadata/audiobook-cover/upload`, formData)
     );
+
+    return this.http.request<void>(req)
+      .pipe(filter(e => e.type == HttpEventType.Response))
+      .pipe(mergeMap(() => of<void>(void 0)))
+      .pipe(
+        tap(() => {
+          invalidateBooksById(this.queryClient, [bookId]);
+        })
+      );
   }
 
   getUploadAudiobookCoverUrl(bookId: number): string {
@@ -192,7 +191,7 @@ export class BookMetadataManageService {
   }
 
   supportsDualCovers(book: Book): boolean {
-    const allFiles = [book.primaryFile, ...(book.alternativeFormats || [])].filter(f => f?.bookType);
+    const allFiles = [book.primaryFile, ...(book.alternativeFormats ?? [])].filter(f => f?.bookType);
     const hasAudiobook = allFiles.some(f => f!.bookType === 'AUDIOBOOK');
     const hasEbook = allFiles.some(f => f!.bookType !== 'AUDIOBOOK');
     return hasAudiobook && hasEbook;
@@ -202,10 +201,18 @@ export class BookMetadataManageService {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('bookIds', bookIds.join(','));
-    return this.http.post<void>(`${this.url}/bulk-upload-cover`, formData).pipe(
-      tap(() => {
-        invalidateBooksById(this.queryClient, bookIds);
-      })
+
+    const req = mitigateWebkitUploadBug(
+      new HttpRequest('POST', `${this.url}/bulk-upload-cover`, formData)
     );
+
+    return this.http.request<void>(req)
+      .pipe(filter(e => e.type == HttpEventType.Response))
+      .pipe(mergeMap(() => of<void>(void 0)))
+      .pipe(
+        tap(() => {
+          invalidateBooksById(this.queryClient, bookIds);
+        })
+      );
   }
 }

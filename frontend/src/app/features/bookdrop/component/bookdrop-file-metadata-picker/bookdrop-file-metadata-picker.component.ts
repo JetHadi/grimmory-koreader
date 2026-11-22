@@ -1,7 +1,6 @@
-import {Component, computed, effect, EventEmitter, inject, Input, Output, signal} from '@angular/core';
+import {Component, computed, effect, inject, Input, output, signal} from '@angular/core';
 import {FormGroup, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {Button} from '@openng/optimus-ui/button';
-import {NgClass} from '@angular/common';
 import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {InputText} from '@openng/optimus-ui/inputtext';
 import {BookMetadata} from '../../../book/model/book.model';
@@ -14,7 +13,7 @@ import {ConfirmationService} from '@openng/optimus-ui/api';
 import {CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray} from '@angular/cdk/drag-drop';
 import {AutoCompleteSelectEvent} from '@openng/optimus-ui/autocomplete';
 import {DatePicker} from '@openng/optimus-ui/datepicker';
-import {allMetadataFields, GENERIC_METADATA_FIELDS, getArrayFields, getBottomFields, getTextareaFields, MetadataFieldConfig, MetadataProviderFieldsService} from '../../../../shared/metadata';
+import {ALL_METADATA_FIELDS, GENERIC_METADATA_FIELDS, getArrayFields, getBottomFields, getTextareaFields, MetadataFieldConfig} from '../../../../shared/metadata';
 import {MetadataUtilsService} from '../../../../shared/metadata';
 import {MetadataProviderSpecificFields} from '../../../../shared/model/app-settings.model';
 import {AppSettingsService} from '../../../../shared/service/app-settings.service';
@@ -27,7 +26,6 @@ import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
     Button,
     Tooltip,
     InputText,
-    NgClass,
     FormsModule,
     Textarea,
     AutoComplete,
@@ -48,7 +46,6 @@ export class BookdropFileMetadataPickerComponent {
   protected readonly urlHelper = inject(UrlHelperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly t = inject(TranslocoService);
-  private readonly providerFields = inject(MetadataProviderFieldsService);
 
   @Input() fetchedMetadata!: BookMetadata;
   @Input() originalMetadata?: BookMetadata;
@@ -57,12 +54,11 @@ export class BookdropFileMetadataPickerComponent {
   @Input() savedFields: Record<string, boolean> = {};
   @Input() bookdropFileId!: number;
 
-  @Output() metadataCopied = new EventEmitter<boolean>();
+  readonly metadataCopied = output<boolean>();
 
   authorInputValue = '';
 
   private readonly enabledProviderFields = signal<MetadataProviderSpecificFields | null>(null);
-  private readonly allFields = computed(() => allMetadataFields(this.providerFields.fields()));
 
   metadataFieldsTop: MetadataFieldConfig[] = GENERIC_METADATA_FIELDS.filter(f =>
     ['title', 'subtitle', 'publisher'].includes(f.controlName)
@@ -76,7 +72,7 @@ export class BookdropFileMetadataPickerComponent {
 
   metadataDescription: MetadataFieldConfig[] = getTextareaFields();
 
-  readonly metadataFieldsBottom = computed(() => getBottomFields(this.allFields(), this.enabledProviderFields()));
+  readonly metadataFieldsBottom = computed(() => getBottomFields(ALL_METADATA_FIELDS, this.enabledProviderFields()));
 
   private readonly syncProviderFieldsEffect = effect(() => {
     const settings = this.appSettingsService.appSettings();
@@ -86,7 +82,7 @@ export class BookdropFileMetadataPickerComponent {
   });
 
   fieldLabel(field: MetadataFieldConfig): string {
-    return field.providerKey ? this.providerFields.label(field.providerKey) : field.label ?? field.controlName;
+    return field.labelKey ? this.t.translate(field.labelKey) : field.label ?? field.controlName;
   }
 
   copyMissing(): void {
@@ -206,7 +202,7 @@ export class BookdropFileMetadataPickerComponent {
     if (this.originalMetadata) {
       const patchData: Record<string, unknown> = {};
 
-      for (const field of this.allFields()) {
+      for (const field of ALL_METADATA_FIELDS) {
         const key = field.controlName as keyof BookMetadata;
         const value = this.originalMetadata[key];
 

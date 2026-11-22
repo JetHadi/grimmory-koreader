@@ -1,20 +1,19 @@
-FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-build
+FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-build
 
 ENV PNPM_HOME="/pnpm"
-ENV PATH="${PNPM_HOME}:${PATH}"
+ENV PATH="${PNPM_HOME}/bin:${PATH}"
 
 WORKDIR /workspace
 
-RUN npm install --ignore-scripts -g pnpm@11.19.0
+COPY package.json ./
+RUN PNPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")" && \
+    ENV="/root/.shrc" SHELL="/bin/sh" npx --yes get-pnpm "$PNPM_VERSION"
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,target=/pnpm/store \
-    pnpm config set store-dir /pnpm/store && \
     pnpm fetch
 
-COPY package.json ./
 COPY frontend/package.json ./frontend/
-COPY tools/release/package.json ./tools/release/
 RUN --mount=type=cache,target=/pnpm/store \
     pnpm install --offline --frozen-lockfile --ignore-scripts
 
@@ -89,6 +88,7 @@ ENV JAVA_TOOL_OPTIONS="-XX:+UseShenandoahGC \
     -XX:ShenandoahUncommitDelay=5000 \
     -XX:ShenandoahGuaranteedGCInterval=30000 \
     -XX:MaxDirectMemorySize=256m \
+    -XX:-UseBASE64Intrinsics \
     --enable-native-access=ALL-UNNAMED \
     --enable-preview"
 
@@ -128,4 +128,4 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=5 \
   CMD wget -q --spider http://localhost:${SERVER_PORT:-${BOOKLORE_PORT:-6060}}/api/v1/healthcheck
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["java", "--enable-native-access=ALL-UNNAMED", "--enable-preview", "-jar", "/app/app.jar"]
+CMD ["java", "--enable-native-access=ALL-UNNAMED", "--enable-preview", "-XX:-UseBASE64Intrinsics", "-jar", "/app/app.jar"]

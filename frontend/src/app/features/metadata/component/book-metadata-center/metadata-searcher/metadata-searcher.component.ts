@@ -6,7 +6,7 @@ import {InputText} from '@openng/optimus-ui/inputtext';
 import {MultiSelect} from '@openng/optimus-ui/multiselect';
 import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
-import {injectQuery, QueryClient} from '@tanstack/angular-query-experimental';
+import {injectQuery, QueryClient} from '@tanstack/angular-query';
 
 import {Book} from '../../../../book/model/book.model';
 import {AppSettingsService} from '../../../../../shared/service/app-settings.service';
@@ -14,11 +14,8 @@ import {MetadataPickerComponent} from '../metadata-picker/metadata-picker.compon
 import {CoverComponent} from '../../../../../shared/components/cover/cover.component';
 import {MetadataCatalogService} from '../../../../../shared/metadata/metadata-catalog.service';
 import type {MetadataProviderId} from '../../../../../shared/metadata/metadata-providers';
-import {
-  MetadataSourceQueryService,
-  type MetadataSearchParams,
-  type MetadataSearchResult,
-} from '../../../sources/metadata-source-query.service';
+import {MetadataSourceQueryService} from '../../../sources/metadata-source-query.service';
+import type {MetadataSearchParams, MetadataSearchResult} from '../../../sources/metadata-source-query.models';
 
 const NO_SEARCH: MetadataSearchParams = {bookId: 0, providers: []};
 
@@ -40,15 +37,14 @@ const NO_SEARCH: MetadataSearchParams = {bookId: 0, providers: []};
   standalone: true
 })
 export class MetadataSearcherComponent {
-  readonly book = input<Book | null>(null);
-  readonly isActiveTab = input(false);
-
   private readonly formBuilder = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly sources = inject(MetadataSourceQueryService);
   private readonly catalog = inject(MetadataCatalogService);
   private readonly queryClient = inject(QueryClient);
   private readonly t = inject(TranslocoService);
+  readonly book = input<Book | null>(null);
+  readonly isActiveTab = input(false);
   private readonly activeLang = toSignal(this.t.langChanges$, {initialValue: this.t.getActiveLang()});
   private readonly search = signal<MetadataSearchParams | null>(null);
   private resetForBookId: number | null = null;

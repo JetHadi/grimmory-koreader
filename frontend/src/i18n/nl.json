@@ -17,6 +17,7 @@
     "next": "Volgende",
     "submit": "Verzenden",
     "remove": "Verwijderen",
+    "clear": "",
     "edit": "Bewerken",
     "info": "",
     "select": "Selecteren",
@@ -83,19 +84,9 @@
     "main": {
       "pageTitle": "",
       "welcomeTitle": "Welkom bij Grimmory!",
-      "welcomeSubtitle": "Laten we je eerste bibliotheek maken",
       "welcomeDescription": "Een bibliotheek is waar je boeken leven. Start vandaag met je digitale collectie te bouwen!",
-      "createLibrary": "Maak jouw bibliotheek"
-    },
-    "scroller": {
-      "noBooksFound": "Geen boeken gevonden voor deze scroller.",
-      "loadError": "Boeken laden mislukt! Probeer de pagina te vernieuwen.",
-      "continueListening": "Luister Verder",
-      "continueReading": "Lees Verder",
-      "recentlyAdded": "Recent toegevoegd",
-      "discoverNew": "Ontdek Iets Nieuws",
-      "magicShelf": "Magische plank",
-      "default": ""
+      "createLibrary": "Maak jouw bibliotheek",
+      "customize": ""
     }
   },
   "settings": {
@@ -125,7 +116,7 @@
       "title": "Email Providers",
       "description": "",
       "addProvider": "Provider toevoegen",
-      "emptyTitle": "Geen e-mail provider geconfigureerd",
+      "emptyTitle": "Geen e-mailprovider geconfigureerd",
       "emptySubtitle": "",
       "default": "",
       "sharedTooltip": "",
@@ -140,11 +131,11 @@
       "password": "Wachtwoord",
       "fromAddress": "",
       "hostPlaceholder": "",
-      "portPlaceholder": "",
-      "usernamePlaceholder": "",
-      "passwordPlaceholder": "",
+      "portPlaceholder": "587",
+      "usernamePlaceholder": "gebruiker@voorbeeld.com",
+      "passwordPlaceholder": "Wachtwoord invoeren",
       "fromAddressPlaceholder": "",
-      "providerNamePlaceholder": "",
+      "providerNamePlaceholder": "Provider naam",
       "authentication": "",
       "startTls": "",
       "shared": "",
@@ -171,13 +162,13 @@
         "host": "",
         "hostPlaceholder": "",
         "hostRequired": "",
-        "port": "",
-        "portPlaceholder": "",
+        "port": "Poort",
+        "portPlaceholder": "bijv., 587, 465",
         "portRequired": "",
         "username": "",
-        "usernamePlaceholder": "",
-        "password": "",
-        "passwordPlaceholder": "",
+        "usernamePlaceholder": "Gebruikersnaam invoeren",
+        "password": "Wachtwoord",
+        "passwordPlaceholder": "Wachtwoord invoeren",
         "fromAddress": "",
         "fromAddressPlaceholder": "",
         "enableAuth": "",
@@ -281,21 +272,21 @@
       "justified": "",
       "textJustificationDesc": "Lijn tekst links uit of vul uit voor een schone rand aan beide zijden.",
       "hyphenation": "",
-      "off": "",
-      "on": "",
+      "off": "Uit",
+      "on": "Aan",
       "hyphenationDesc": "",
       "layout": "",
       "flow": "",
       "paginated": "",
       "scrolled": "",
       "flowDesc": "",
-      "maxColumns": "",
+      "maxColumns": "Max Kolommen",
       "maxColumnsDesc": "",
-      "columnGap": "",
+      "columnGap": "Kolom ruimte",
       "columnGapDesc": "",
-      "maxWidth": "",
+      "maxWidth": "Max Breedte",
       "maxWidthDesc": "",
-      "maxHeight": "",
+      "maxHeight": "Max Hoogte",
       "maxHeightDesc": "",
       "navigation": "",
       "tapToTurnPage": "",
@@ -333,7 +324,7 @@
       "scrollModeDesc": "",
       "stripMaxWidth": "",
       "stripMaxWidthDesc": "",
-      "backgroundColor": "",
+      "backgroundColor": "Achtergrond kleur",
       "backgroundColorDesc": "",
       "even": "",
       "odd": "",
@@ -347,9 +338,9 @@
       "paginated": "",
       "infinite": "",
       "longStrip": "",
-      "gray": "",
-      "black": "",
-      "white": ""
+      "gray": "Grijs",
+      "black": "Zwart",
+      "white": "Wit"
     },
     "streamingPdf": {
       "sectionTitle": "",
@@ -377,7 +368,7 @@
       "infinite": "",
       "gray": "",
       "black": "",
-      "white": ""
+      "white": "Wit"
     },
     "toast": {
       "preferencesUpdated": "",
@@ -392,13 +383,13 @@
       "supportedFormats": "",
       "yourLibrary": "",
       "preview": "",
-      "file": "",
+      "file": "Bestand",
       "size": "",
       "uploaded": "",
-      "deleteFont": "",
-      "deleteFontConfirm": "",
-      "deleteFontHeader": "",
-      "deleteSuccess": "",
+      "deleteFont": "Verwijder lettertype",
+      "deleteFontConfirm": "Weet je het zeker dat je het lettertype \"{{name}}\" wilt verwijderen?",
+      "deleteFontHeader": "Verwijder lettertype",
+      "deleteSuccess": "Lettertype \"{{name}}\" succesvol verwijderd",
       "deleteFailed": "",
       "deleteError": "",
       "loadError": "",
@@ -474,16 +465,16 @@
     },
     "dashboardScrollers": {
       "sectionTitle": "Dashboardconfiguratie",
-      "sectionDesc": "Voeg maximaal 5 scrollers toe uit verschillende boekcollecties en pas hun gedrag aan",
+      "sectionDesc": "Voeg scrollers toe uit verschillende boekcollecties en pas hun gedrag aan",
       "type": "",
       "selectType": "Selecteer type",
-      "magicShelf": "",
       "selectMagicShelf": "",
+      "selectLibrary": "",
+      "selectShelf": "",
       "sortField": "Sorteerveld",
       "selectField": "Selecteer veld",
       "direction": "Richting",
       "selectDirection": "Selecteer richting",
-      "maxItems": "Max. items",
       "addScroller": "Scroller toevoegen",
       "resetToDefault": "Naar standaard resetten",
       "saveSettings": "",
@@ -493,14 +484,15 @@
         "lastRead": "Verder lezen",
         "lastListened": "Verder luisteren",
         "latestAdded": "Recent toegevoegd",
+        "recentlyFinished": "",
         "random": "Ontdek iets nieuws",
+        "library": "",
+        "shelf": "",
         "magicShelf": "",
         "default": ""
       },
       "sortFields": {
         "title": "Titel",
-        "fileName": "Bestandsnaam",
-        "filePath": "Bestandspad",
         "addedOn": "Datum toegevoegd",
         "author": "Auteur",
         "authorSurnameVorname": "Auteur (Achternaam)",
@@ -513,7 +505,6 @@
         "readStatus": "Leesstatus",
         "dateFinished": "Datum voltooid",
         "readingProgress": "Leesvoortgang",
-        "bookType": "Boektype",
         "pageCount": "Pagina's"
       },
       "sortDirections": {
@@ -527,10 +518,9 @@
       "defaultPreferences": "",
       "defaultPreferencesDesc": "",
       "sortOrderLabel": "",
+      "formatOverlay": "",
       "ascending": "",
       "descending": "",
-      "remove": "",
-      "addSortField": "",
       "autoSave": "",
       "autoSaveDesc": "",
       "overrideManagement": "",
@@ -546,34 +536,6 @@
       "saveSettings": "",
       "saveSuccess": "",
       "saveSuccessDetail": "",
-      "sortTitle": "",
-      "sortFileName": "",
-      "sortFilePath": "",
-      "sortAuthor": "",
-      "sortAuthorSurname": "",
-      "sortSeriesName": "",
-      "sortSeriesNumber": "",
-      "sortLastRead": "",
-      "sortPersonalRating": "",
-      "sortAddedOn": "",
-      "sortFileSize": "",
-      "sortLocked": "",
-      "sortPublisher": "",
-      "sortPublishedDate": "",
-      "sortAmazonRating": "",
-      "sortAmazonCount": "",
-      "sortGoodreadsRating": "",
-      "sortGoodreadsCount": "",
-      "sortHardcoverRating": "",
-      "sortHardcoverCount": "",
-      "sortRanobedbRating": "",
-      "sortReadStatus": "",
-      "sortDateFinished": "",
-      "sortReadingProgress": "",
-      "sortBookType": "",
-      "sortNarrator": "",
-      "sortPages": "",
-      "sortRandom": "",
       "entityLibrary": "",
       "entityShelf": "",
       "entityMagicShelf": "",
@@ -583,25 +545,7 @@
       "sortSaved": "",
       "sortSavedDetail": "",
       "editSort": "",
-      "tableSortConfig": "",
-      "visibleSortFields": "",
-      "visibleSortFieldsDesc": "",
-      "sortFieldCount": "",
-      "resetToDefaults": ""
-    },
-    "filter": {
-      "sectionTitle": "",
-      "sectionDesc": "",
-      "filterMode": "",
-      "filterModeDesc": "",
-      "visibleFilters": "",
-      "visibleFiltersDesc": "",
-      "selectionCount": "",
-      "addFilter": "",
-      "resetToDefaults": "",
-      "modeAnd": "",
-      "modeOr": "",
-      "modeSingle": ""
+      "tableSortConfig": ""
     },
     "sidebarSort": {
       "sectionTitle": "",
@@ -750,9 +694,7 @@
         "language": "",
         "isbn13": "",
         "isbn10": "",
-        "pageCount": "",
-        "doubanRating": "",
-        "doubanReviewCount": ""
+        "pageCount": ""
       }
     },
     "fieldSelector": {
@@ -1162,6 +1104,7 @@
     "deleteSuccess": "",
     "deleteError": "",
     "opdsCopied": "",
+    "copyFailed": "",
     "komgaCopied": "",
     "sortUpdateSuccess": "",
     "sortUpdateError": "",
@@ -1416,8 +1359,6 @@
       "syncConfigDesc": "",
       "enableSync": "",
       "enableSyncDesc": "",
-      "syncWithGrimmory": "",
-      "syncWithGrimmoryDesc": "",
       "apiPath": "",
       "apiPathDesc": "",
       "username": "",
@@ -1500,9 +1441,6 @@
       "syncEnabled": "",
       "syncDisabled": "",
       "progressUpdated": "",
-      "twoWaySyncLabel": "",
-      "twoWaySyncDesc": "",
-      "twoWaySyncNote": "",
       "twoWaySyncKepubWarning": "",
       "twoWaySyncKepubWarningAdmin": "",
       "twoWaySyncEnabled": "",
@@ -1767,7 +1705,8 @@
       },
       "shelfMenu": {
         "addToShelf": "",
-        "newShelf": ""
+        "newShelf": "",
+        "removeFromAllShelves": ""
       },
       "spinner": {
         "loading": ""
@@ -1786,6 +1725,9 @@
         "parse": "",
         "pattern": "",
         "required": ""
+      },
+      "bulkActions": {
+        "selectAll": "Alles selecteren"
       }
     }
   },
@@ -1793,6 +1735,7 @@
     "commandPalette": {
       "placeholder": "",
       "empty": "",
+      "bookSearchError": "",
       "hintNavigate": "",
       "hintSelect": "",
       "ariaLabel": "",
@@ -2329,8 +2272,10 @@
       "fetching": "",
       "readyToSearch": "",
       "readyToSearchHint": "",
+      "noProviders": "",
       "noResultsFound": "",
       "noResultsHint": "",
+      "searchFailed": "",
       "selectOverlay": ""
     },
     "tabs": {
@@ -2443,6 +2388,8 @@
       "goToPreviousBook": "",
       "goToNextBook": "",
       "personalRating": "",
+      "ratingTooltip": "",
+      "ratingTooltipNoReviews": "",
       "loadingBookDetails": "",
       "readStatusUnread": "",
       "readStatusPaused": "",
@@ -2548,6 +2495,7 @@
       "byLabel": "",
       "coverFileLabel": "",
       "loading": "",
+      "readFailed": "",
       "syncStatusInSync": "",
       "syncStatusOutdated": "",
       "syncStatusConflict": "",
@@ -2581,6 +2529,7 @@
       "searchingForCovers": "",
       "noCoversFound": "",
       "noCoversFoundDescription": "",
+      "searchFailed": "",
       "coversFoundSingular": "",
       "coversFoundPlural": "",
       "resultsHint": "",
@@ -2725,10 +2674,31 @@
       "toast": {
         "providerRequiredSummary": "",
         "providerRequiredDetail": ""
-      }
+      },
+      "inactiveProvider": ""
     },
     "fetchOptions": {
       "startRefresh": ""
+    },
+    "providers": {
+      "openLibrary": "",
+      "amazon": "",
+      "google": "",
+      "goodReads": "",
+      "hardcover": "",
+      "comicvine": "",
+      "douban": "",
+      "lubimyczytac": "",
+      "ranobedb": "",
+      "audible": "",
+      "appleBooks": ""
+    },
+    "providerFields": {
+      "id": "",
+      "rating": "",
+      "reviewCount": "",
+      "asin": "",
+      "hardcoverBookId": ""
     }
   },
   "notebook": {
@@ -2766,71 +2736,31 @@
         "customCoverHeader": "Bevestig aangepaste omslag genereren"
       },
       "toast": {
-        "sortSavedSummary": "Sorteren op opgeslagen",
-        "sortSavedGlobalDetail": "Standaard sorteerconfiguratie opgeslagen.",
-        "sortSavedEntityDetail": "Sorteerconfiguratie opgeslagen voor deze {{ entityType }}.",
         "regenCoverStartedSummary": "Omslag regeneratie gestart",
         "regenCoverStartedDetail": "Omslagen voor {{ count }} boek(en) opnieuw genereren. Vernieuw de pagina wanneer u klaar bent.",
         "customCoverStartedSummary": "Aangepaste omslaggeneratie gestart",
         "customCoverStartedDetail": "Aangepaste omslagen genereren voor {{ count }} boek(en).",
         "failedSummary": "Mislukt",
         "regenCoverFailedDetail": "Het opnieuw genereren van de omslag kon niet worden gestart.",
-        "customCoverFailedDetail": "Het genereren van een aangepaste omslag kon niet worden gestart.",
-        "unshelveSuccessDetail": "Boekenplanken bijgewerkt",
-        "unshelveFailedDetail": "Kan boekenplanken niet bijwerken",
-        "noEligibleBooksSummary": "Geen in aanmerking komende boeken",
-        "noEligibleBooksDetail": "Geselecteerde boeken moeten boeken in één bestand zijn (geen alternatieve formaten).",
-        "multipleLibrariesSummary": "Meerdere bibliotheken",
-        "multipleLibrariesDetail": "Alle geselecteerde boeken moeten uit dezelfde bibliotheek komen."
+        "customCoverFailedDetail": "Het genereren van een aangepaste omslag kon niet worden gestart."
       },
       "loading": {
-        "deleting": "{{ count }} boek(en) verwijderen...",
-        "unshelving": ""
+        "deleting": "{{ count }} boek(en) verwijderen..."
       },
       "labels": {
         "allBooks": "",
-        "unshelvedBooks": "",
-        "unshelvedBooksFiltered": "",
-        "filteredSuffix": "",
-        "seriesCollapsedInfo": "",
-        "item": "",
-        "items": "",
-        "selected": "",
-        "setAsDefault": "",
-        "save": "",
-        "collapseSeries": "",
-        "gridColumns": "",
-        "bookTypeOverlay": "",
-        "noBooks": "",
-        "failedLibrary": "",
-        "failedShelf": "",
-        "failedBooks": "",
-        "activeFilters": "{{ count }} Actieve filters"
-      },
-      "tooltip": {
-        "clearFilters": "Toegepaste filters wissen",
-        "visibleColumns": "Zichtbare kolommen",
-        "selectSorting": "Selecteer sortering",
-        "toggleView": "Schakel tussen raster- en tabelweergave",
-        "search": "Zoeken",
-        "toggleSidebar": "Filters in zijbalk in-/uitschakelen",
-        "metadataActions": "Metadata-acties",
-        "assignToShelf": "Toewijzen aan plank",
-        "removeFromShelf": "Verwijder van deze plank",
-        "lockUnlockMetadata": "Metadata vergrendelen/ontgrendelen",
-        "organizeFiles": "Bestanden ordenen",
-        "attachToBook": "Toevoegen aan een ander boek",
-        "moreActions": "Meer acties",
-        "selectAll": "Selecteer alle boeken",
-        "deselectAll": "Alle boeken deselecteren",
-        "deleteSelected": "Geselecteerde boeken verwijderen"
-      },
-      "placeholder": {
-        "selectColumns": "Kolommen selecteren",
-        "search": "Titel, Auteur, Serie, Genre of ISBN..."
+        "unshelvedBooks": ""
       }
     },
     "card": {
+      "book": {
+        "physical": "",
+        "unknownTitle": ""
+      },
+      "aria": {
+        "bookMenu": "",
+        "coverAlt": ""
+      },
       "menu": {
         "assignShelf": "Toewijzen aan plank",
         "viewDetails": "Bekijk details",
@@ -2897,6 +2827,65 @@
         "readStatusMenu": ""
       }
     },
+    "row": {
+      "previous": "",
+      "next": ""
+    },
+    "menu": {
+      "label": "",
+      "openInNewTab": "",
+      "addToShelf": "",
+      "markAs": "",
+      "send": "",
+      "quickSend": "Snel verzenden",
+      "customSend": "Aangepast verzenden",
+      "download": "Downloaden",
+      "metadata": "",
+      "editMetadata": "Metadata bewerken",
+      "fetchMetadata": "",
+      "fetchMetadataWithOptions": "",
+      "searchProviders": "",
+      "restoreCover": "",
+      "generateCover": "",
+      "lockMetadata": "",
+      "more": "",
+      "organizeFile": "Bestand ordenen",
+      "resetGrimmoryProgress": "Voortgang Grimmory herstellen",
+      "resetKoreaderProgress": "Voortgang KOreader resetten",
+      "deleteEntireBook": "",
+      "confirm": {
+        "deleteBookMessage": "Weet u zeker dat u “{{ title }}” wilt verwijderen?\n\nHierdoor wordt het boekbestand permanent uit uw bestandssysteem verwijderd.\n\nDeze actie kan niet ongedaan worden gemaakt.",
+        "deleteBookHeader": "Verwijdering bevestigen",
+        "deleteFileMessage": "Weet u zeker dat u het extra bestand “{{ fileName }}” wilt verwijderen?",
+        "deleteFileHeader": "Bestandsverwijdering bevestigen",
+        "largeFileMessage": "Dit bestand is groter dan 25 MB. Sommige e-mailproviders kunnen grote bijlagen weigeren.\n\nWilt u het toch verzenden?",
+        "largeFileHeader": "Waarschuwing voor grote bestanden",
+        "sendAnyway": "Toch verzenden"
+      }
+    },
+    "readAction": {
+      "read": {
+        "short": "",
+        "long": ""
+      },
+      "continueReading": {
+        "short": "",
+        "long": "Lees Verder"
+      },
+      "play": {
+        "short": "",
+        "long": ""
+      },
+      "continueListening": {
+        "short": "",
+        "long": "Luister Verder"
+      }
+    },
+    "selectBook": "",
+    "viewMode": {
+      "grid": "",
+      "table": ""
+    },
     "notes": {
       "confirm": {
         "deleteMessage": "",
@@ -2941,32 +2930,6 @@
         "filesAttachedDetail": "",
         "attachmentFailedSummary": "",
         "attachmentFailedDetail": ""
-      }
-    },
-    "menu": {
-      "quickSend": "Snel verzenden",
-      "customSend": "Aangepast verzenden",
-      "download": "Downloaden",
-      "editMetadata": "Metadata bewerken",
-      "organizeFile": "Bestand ordenen",
-      "resetGrimmoryProgress": "Voortgang Grimmory herstellen",
-      "resetKoreaderProgress": "Voortgang KOreader resetten",
-      "confirm": {
-        "deleteBookMessage": "Weet u zeker dat u “{{ title }}” wilt verwijderen?\n\nHierdoor wordt het boekbestand permanent uit uw bestandssysteem verwijderd.\n\nDeze actie kan niet ongedaan worden gemaakt.",
-        "deleteBookHeader": "Verwijdering bevestigen",
-        "deleteFileMessage": "Weet u zeker dat u het extra bestand “{{ fileName }}” wilt verwijderen?",
-        "deleteFileHeader": "Bestandsverwijdering bevestigen",
-        "largeFileMessage": "Dit bestand is groter dan 25 MB. Sommige e-mailproviders kunnen grote bijlagen weigeren.\n\nWilt u het toch verzenden?",
-        "largeFileHeader": "Waarschuwing voor grote bestanden",
-        "sendAnyway": "Toch verzenden"
-      }
-    },
-    "readAction": {
-      "continueReading": {
-        "long": "Lees Verder"
-      },
-      "continueListening": {
-        "long": "Luister Verder"
       }
     },
     "menuService": {
@@ -3050,7 +3013,8 @@
         "customFetchMetadata": "",
         "autoFetchMetadata": "",
         "findDuplicates": "",
-        "deleteLibrary": ""
+        "deleteLibrary": "",
+        "manageLibrary": "Bibliotheek beheren"
       },
       "shelf": {
         "publicShelfPrefix": "",
@@ -3091,48 +3055,12 @@
         "deletingLibrary": "Bibliotheek ‘{{ name }}’ verwijderen..."
       }
     },
-    "columnPref": {
-      "columns": {
-        "readStatus": "Lezen",
-        "title": "Titel",
-        "authors": "Auteurs",
-        "publisher": "Uitgever",
-        "seriesName": "",
-        "seriesNumber": "",
-        "categories": "",
-        "publishedDate": "Gepubliceerd",
-        "lastReadTime": "Laatst gelezen",
-        "addedOn": "Toegevoegd",
-        "fileName": "Bestandsnaam",
-        "fileSizeKb": "Bestandsgrootte",
-        "language": "Taal",
-        "isbn": "",
-        "pageCount": "Pagina's",
-        "amazonRating": "",
-        "amazonReviewCount": "",
-        "goodreadsRating": "",
-        "goodreadsReviewCount": "",
-        "hardcoverRating": "",
-        "hardcoverReviewCount": "",
-        "ranobedbRating": ""
-      },
-      "toast": {
-        "savedSummary": "Voorkeuren opgeslagen",
-        "savedDetail": "De indeling van uw kolom is opgeslagen."
-      }
-    },
     "coverPref": {
       "toast": {
         "savedSummary": "Afmetingen omslag opgeslagen",
         "savedDetail": "Omslagformaat ingesteld op {{ scale }}x.",
         "saveFailedSummary": "Opslaan mislukt",
         "saveFailedDetail": "De voorkeur voor de omslaggrootte kon niet lokaal worden opgeslagen."
-      }
-    },
-    "filterPref": {
-      "toast": {
-        "saveFailedSummary": "Opslaan mislukt",
-        "saveFailedDetail": "De voorkeuren voor de zijbalkfilter konden niet lokaal worden opgeslagen."
       }
     },
     "reviews": {
@@ -3221,7 +3149,9 @@
       "validationReady": "",
       "cancelButton": "",
       "addButton": "",
-      "fetchMetadataTooltip": ""
+      "fetchMetadataTooltip": "",
+      "metadataNotFound": "",
+      "metadataLookupFailed": ""
     },
     "bulkIsbnImport": {
       "title": "",
@@ -3292,41 +3222,7 @@
       }
     },
     "filter": {
-      "title": "",
       "showingFirst100": "",
-      "footerNote": "",
-      "labels": {
-        "author": "",
-        "category": "",
-        "series": "",
-        "bookType": "",
-        "readStatus": "",
-        "personalRating": "",
-        "publisher": "",
-        "matchScore": "",
-        "library": "",
-        "shelf": "",
-        "shelfStatus": "",
-        "tag": "",
-        "publishedDate": "",
-        "fileSize": "",
-        "amazonRating": "",
-        "goodreadsRating": "",
-        "hardcoverRating": "",
-        "lubimyczytacRating": "",
-        "ranobedbRating": "",
-        "audibleRating": "",
-        "language": "",
-        "pageCount": "",
-        "mood": "",
-        "ageRating": "",
-        "contentRating": "",
-        "narrator": "",
-        "comicCharacter": "",
-        "comicTeam": "",
-        "comicLocation": "",
-        "comicCreator": ""
-      },
       "readStatus": {
         "unread": "",
         "reading": "",
@@ -3379,14 +3275,6 @@
       "shelfStatus": {
         "shelved": "",
         "unshelved": ""
-      },
-      "comicRoles": {
-        "penciller": "",
-        "inker": "",
-        "colorist": "",
-        "letterer": "",
-        "coverArtist": "",
-        "editor": ""
       }
     },
     "shelfAssigner": {
@@ -3449,27 +3337,6 @@
         "updateFailedDetail": ""
       }
     },
-    "table": {
-      "label": "",
-      "bookCoverAlt": "",
-      "selectBook": "",
-      "selectBookFallback": "",
-      "noRating": "",
-      "ratingOutOf": "",
-      "statusWithPrefix": "{{ status }}",
-      "locked": "",
-      "unlocked": "",
-      "toast": {
-        "metadataLockedSummary": "",
-        "metadataLockedDetail": "",
-        "metadataUnlockedSummary": "",
-        "metadataUnlockedDetail": "",
-        "lockFailedSummary": "",
-        "lockFailedDetail": "",
-        "unlockFailedSummary": "",
-        "unlockFailedDetail": ""
-      }
-    },
     "lockUnlockDialog": {
       "title": "",
       "selectedCount": "",
@@ -3490,42 +3357,7 @@
       }
     },
     "sorting": {
-      "sortOrder": "",
-      "removeTooltip": "",
-      "addSortFieldPlaceholder": "",
-      "saveAsDefault": "",
-      "ascendingTooltip": "",
-      "descendingTooltip": "",
-      "options": {
-        "title": "",
-        "fileName": "",
-        "filePath": "",
-        "author": "",
-        "authorSurnameVorname": "",
-        "seriesName": "",
-        "seriesNumber": "",
-        "lastReadTime": "",
-        "personalRating": "",
-        "addedOn": "",
-        "fileSizeKb": "",
-        "locked": "",
-        "publisher": "",
-        "publishedDate": "",
-        "readStatus": "",
-        "dateFinished": "",
-        "readingProgress": "",
-        "bookType": "",
-        "amazonRating": "",
-        "amazonReviewCount": "",
-        "goodreadsRating": "",
-        "goodreadsReviewCount": "",
-        "hardcoverRating": "",
-        "hardcoverReviewCount": "",
-        "ranobedbRating": "",
-        "narrator": "",
-        "pageCount": "",
-        "random": ""
-      }
+      "saveAsDefault": ""
     },
     "fileAttacher": {
       "title": "",
@@ -3689,6 +3521,53 @@
         "mergeFailedDetail": "",
         "mergePartialDetail": ""
       }
+    },
+    "fields": {
+      "random": "",
+      "title": "Titel",
+      "author": "",
+      "authorSurname": "",
+      "genre": "",
+      "series": "",
+      "seriesNumber": "Series number",
+      "publisher": "Uitgever",
+      "tag": "",
+      "mood": "",
+      "language": "Taal",
+      "narrator": "",
+      "fileType": "",
+      "readStatus": "",
+      "personalRating": "",
+      "amazonRating": "",
+      "amazonReviewCount": "Amazon reviews",
+      "goodreadsRating": "",
+      "goodreadsReviewCount": "Goodreads reviews",
+      "hardcoverRating": "",
+      "hardcoverReviewCount": "Hardcover reviews",
+      "ranobedbRating": "",
+      "pageCount": "Pagina's",
+      "publishedDate": "",
+      "publishedYear": "",
+      "addedOn": "Datum toegevoegd",
+      "lastReadTime": "Laatst gelezen",
+      "dateFinished": "",
+      "readingProgress": "",
+      "fileName": "Bestandsnaam",
+      "fileSize": "Bestandsgrootte",
+      "isbn": "",
+      "library": "",
+      "shelf": "",
+      "ageRating": "",
+      "contentRating": "",
+      "matchScore": "",
+      "shelfStatus": "",
+      "comicCharacter": "",
+      "comicTeam": "",
+      "comicLocation": "",
+      "comicCreator": "",
+      "lubimyczytacRating": "",
+      "audibleReviewCount": "",
+      "audibleRating": ""
     }
   },
   "readerAudiobook": {
@@ -4183,416 +4062,81 @@
     "main": {
       "title": "Bibliotheek statistieken",
       "selectLibrary": "Selecteer een bibliotheek",
-      "totalBooks": "Totaal boeken",
-      "books": "Boeken",
-      "totalAuthors": "Totaal auteurs",
-      "authors": "Auteurs",
-      "totalSeries": "Totaal reeksen",
-      "series": "Reeksen",
-      "totalPublishers": "",
-      "publishers": "",
-      "totalSize": "",
-      "librarySize": "",
-      "loading": "",
-      "noData": "",
-      "noDataHint": "",
-      "dragToReorder": ""
-    },
-    "config": {
-      "title": "",
-      "close": "",
-      "enableAll": "",
-      "disableAll": "",
-      "resetOrder": "",
-      "smallCharts": "",
-      "largeCharts": "",
-      "xlargeCharts": ""
+      "books": "Boeken"
     },
     "chartNames": {
       "bookFormats": "",
       "languages": "",
       "metadataScore": "",
-      "pageCount": "",
-      "publicationTimeline": "",
-      "readingJourney": "",
-      "topItems": "",
-      "authorUniverse": "",
-      "publicationTrend": ""
+      "publicationTimeline": ""
     },
     "bookFormats": {
-      "title": "",
-      "description": "",
-      "noData": "",
-      "tooltipLabel": ""
+      "title": ""
     },
-    "language": {
-      "title": "",
-      "description": "",
-      "noData": "",
-      "tooltipLabel": ""
+    "languages": {
+      "title": ""
     },
     "metadataScore": {
-      "title": "",
-      "description": "",
-      "noData": "",
-      "tooltipLabel": "",
-      "excellent": "",
-      "good": "",
-      "fair": "",
-      "poor": "",
-      "veryPoor": ""
+      "title": ""
     },
     "pageCount": {
-      "title": "",
-      "description": "",
-      "noData": "",
       "tooltipTitle": "",
-      "tooltipLabel": "",
-      "tooltipLabelPlural": "",
       "axisPageCount": "",
       "axisBooks": ""
     },
     "publicationTimeline": {
       "title": "",
-      "description": "",
-      "booksWithDates": "",
-      "noData": "",
-      "tooltipBook": "",
-      "tooltipBooks": "",
       "axisNumberOfBooks": "",
       "insightOldest": "",
-      "insightAverageYear": "",
-      "insightMedian": "",
       "insightNewest": "",
-      "insightTimeSpan": "",
-      "insightYearsOfLiterature": "",
-      "insightPeakDecade": "",
-      "insightPeakDecadeBooks": "",
-      "insightGoldenEra": "",
-      "insightGoldenEraRange": "",
-      "insightMostCommonYear": "",
-      "insightMostCommonYearBooks": "",
-      "insightRarityScore": "",
-      "insightRarePicks": ""
-    },
-    "publicationTrend": {
-      "title": "",
-      "description": "",
-      "noData": "",
-      "tooltipTitle": "",
-      "tooltipBook": "",
-      "tooltipBooks": "",
-      "axisPublicationYear": "",
-      "axisBooks": "",
-      "insightPeakYear": "",
-      "insightPeakYearBooks": "",
-      "insightLast10Years": "",
-      "insightLast10YearsBooks": "",
-      "insightAvgPerYear": "",
-      "insightBooksPerYear": "",
-      "insightBest5YearSpan": "",
-      "insightMostBooksPublished": "",
-      "insightTimeSpan": "",
-      "insightYearsCovered": "",
-      "insightCentury21": "",
-      "insightCentury21Books": "",
-      "insightClassics": "",
-      "insightClassicsPre1970": "",
-      "insightUniqueYears": ""
-    },
-    "readingJourney": {
-      "title": "",
-      "description": "",
-      "noData": "",
-      "noDataHint": "",
-      "axisMonth": "",
-      "axisCumulativeBooks": "",
-      "legendBooksAdded": "",
-      "legendBooksFinished": "",
-      "tooltipBacklog": "",
-      "insightCurrentBacklog": "",
-      "insightBacklogPercent": "",
-      "insightAvgTimeToFinish": "",
-      "insightDaysAfterAdding": "",
-      "insightBestReadingMonth": "",
-      "insightPeakAcquisition": "",
-      "insightFinishRate": "",
-      "insightBooksPerMonthAvg": "",
-      "insightLongestStreak": "",
-      "insightConsecutiveMonths": "",
-      "insightLast3Months": "",
-      "insightRecentlyFinished": "",
-      "insightCompletion": "",
-      "insightBooksFinished": "",
-      "recentActivityBooks": "",
-      "recentActivityNone": ""
+      "booksCount": ""
     },
     "topItems": {
-      "titlePrefix": "",
-      "descriptionPrefix": "",
-      "descriptionSuffix": "",
-      "shown": "",
-      "noDataPrefix": "",
-      "noDataSuffix": "",
-      "noDataHintPrefix": "",
-      "noDataHintSuffix": "",
-      "axisNumberOfBooks": "",
-      "dataTypes": {
-        "authors": "",
-        "categories": "",
-        "series": "",
-        "publishers": "",
-        "tags": "",
-        "moods": ""
-      },
-      "readStatus": {
-        "read": "",
-        "reading": "",
-        "reReading": "",
-        "unread": "",
-        "partiallyRead": "",
-        "paused": "",
-        "wontRead": "",
-        "abandoned": "",
-        "notSet": ""
-      },
-      "insightTop": "",
-      "insightTopValue": "",
-      "insightMostCompleted": "",
-      "insightMostCompletedValue": "",
-      "insightTop5Coverage": "",
-      "insightTop5CoverageValue": "",
-      "insightAvgPer": "",
-      "insightAvgPerValue": "",
-      "tooltipBooks": "",
-      "tooltipBook": ""
-    },
-    "authorUniverse": {
-      "title": "",
-      "description": "",
-      "authorsBadge": "",
-      "legendNote": "",
-      "noData": "",
-      "axisBooks": "",
-      "axisRating": "",
-      "legend75to100": "",
-      "legend50to74": "",
-      "legend25to49": "",
-      "legend1to24": "",
-      "legendUnread": "",
-      "tooltipBooks": "",
-      "tooltipTotalPages": "",
-      "tooltipAvgRating": "",
-      "tooltipNoRatings": "",
-      "tooltipRead": "",
-      "tooltipGenres": "",
-      "insightMostCollected": "",
-      "insightHighestRated": "",
-      "insightMostPages": "",
-      "insightMostRead": "",
-      "insightHiddenGem": "",
-      "insightBiggestBacklog": "",
-      "insightTop3Concentration": "",
-      "insightLongestReads": "Langste lectuur: {{ name }} (gem. {{ pages }} pagina's/boek)",
-      "insightMostVersatile": "Meest veelzijdig: {{ name }} ({{ count }} genres)",
-      "insightUntouchedAuthor": "Onaangeroerde auteur: {{ name }} ({{ count }} ongelezen boeken)",
-      "insightOverallProgress": "Totale voortgang: {{ percent }}% pagina's gelezen over alle auteurs"
+      "axisNumberOfBooks": ""
     },
     "libraryFilter": {
-      "allLibraries": "Alle bibliotheken",
-      "libraryFallback": "Bibliotheek {{ id }}"
+      "allLibraries": "Alle bibliotheken"
     }
   },
   "statsUser": {
     "main": {
       "title": "{{ name }}'s Lees Statistieken",
-      "titleBarTitle": "Lees Statistieken",
-      "customizeLayout": "Lay-out aanpassen",
-      "chartConfig": "",
-      "resetLayout": "Lay-out opnieuw instellen",
-      "hideAll": "Alles verbergen",
-      "showAll": "Alles weergeven",
-      "close": "Sluiten"
+      "titleBarTitle": "Lees Statistieken"
     },
     "chartNames": {
-      "heatmap": "",
       "favoriteDays": "Favoriete leesdagen",
-      "peakHours": "",
-      "timeline": "Tijdlijn leessessie",
-      "readingHeatmap": "",
-      "personalRating": "Persoonlijke beoordelingsverdeling",
-      "readingProgress": "Verdeling van de leesvoortgang",
-      "readStatus": "Verdeling van leesstatus",
-      "genreStats": "",
-      "completionTimeline": "Tijdlijn voor voltooiing",
+      "sessionTimeline": "Tijdlijn leessessie",
       "readingClock": "Leesklok",
-      "pageTurner": "",
-      "completionRace": "Leeswedstrijd",
-      "readingSurvival": "",
-      "bookLength": "Ideale lengte van een boek",
-      "ratingTaste": "Beoordeling Smaakvergelijking",
-      "seriesProgress": "Voortgangsregistratie van de serie",
-      "readingDna": "",
-      "readingHabits": "",
-      "bookFlow": "",
-      "readingDebt": "",
-      "publicationEra": "",
-      "sessionArchetypes": ""
+      "bookFlow": ""
     },
-    "sessionHeatmap": {
+    "sessionActivity": {
       "title": "",
-      "tooltip": "",
-      "description": "",
-      "previousYear": "",
-      "nextYear": "",
       "currentStreak": "",
       "longestStreak": "",
       "totalDays": "",
-      "consistency": "",
-      "readingSessions": "",
-      "readingSession": "",
-      "readingSessions_plural": "",
-      "milestone7DayStreak": "",
-      "milestone30DayStreak": "",
-      "milestone100ReadingDays": "",
-      "milestone365ReadingDays": "",
-      "milestoneYearOfReading": ""
+      "readingSessions": ""
     },
     "sessionTimeline": {
       "title": "",
-      "tooltip": "",
-      "description": "",
-      "previousWeek": "",
-      "nextWeek": "",
-      "week": "",
-      "selectYear": "",
-      "selectWeek": "",
-      "readingSession": "",
-      "tooltipTime": "",
-      "tooltipDuration": "",
-      "tooltipFormat": "",
-      "unknown": ""
+      "readingSession": ""
     },
-    "genreStats": {
+    "readingByGenre": {
       "title": "",
-      "tooltip": "",
-      "description": "",
       "axisGenres": "",
-      "axisTimeRead": "",
-      "readingTime": "",
-      "day": "",
-      "days": "",
-      "hr": "",
-      "hrs": "",
-      "min": "",
-      "sec": ""
-    },
-    "completionTimeline": {
-      "title": "",
-      "description": "",
-      "previousYear": "",
-      "nextYear": "",
-      "axisMonth": "",
-      "axisNumberOfBooks": "",
-      "completed": "",
-      "activeReading": "",
-      "paused": "",
-      "discontinued": "",
-      "tooltipBook": "",
-      "tooltipBooks": ""
+      "readingTime": ""
     },
     "favoriteDays": {
       "title": "",
-      "tooltip": "",
-      "description": "",
-      "selectYear": "",
-      "selectMonth": "",
-      "allYears": "",
-      "allMonths": "",
-      "january": "",
-      "february": "",
-      "march": "",
-      "april": "",
-      "may": "",
-      "june": "",
-      "july": "",
-      "august": "",
-      "september": "",
-      "october": "",
-      "november": "",
-      "december": "",
-      "axisDayOfWeek": "",
-      "axisNumberOfSessions": "",
-      "axisDurationHours": "",
-      "sessions": "",
-      "durationHours": "",
-      "tooltipSessions": "",
-      "tooltipSessionsPlural": ""
-    },
-    "peakHours": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "selectYear": "",
-      "selectMonth": "",
-      "allYears": "",
-      "allMonths": "",
-      "january": "",
-      "february": "",
-      "march": "",
-      "april": "",
-      "may": "",
-      "june": "",
-      "july": "",
-      "august": "",
-      "september": "",
-      "october": "",
-      "november": "",
-      "december": "",
-      "axisHourOfDay": "",
-      "axisNumberOfSessions": "",
-      "axisAvgDuration": "",
-      "sessions": "",
-      "avgDurationMin": "",
-      "tooltipSessions": "",
-      "tooltipSessionsPlural": "",
-      "tooltipMin": ""
+      "axisDayOfWeek": ""
     },
     "personalRating": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
       "axisPersonalRating": "",
       "axisNumberOfBooks": "",
-      "booksByPersonalRating": "",
-      "tooltipTitle": "",
-      "tooltipBook": "",
-      "tooltipBooks": ""
+      "tooltipTitle": ""
     },
-    "readStatus": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "unread": "",
-      "currentlyReading": "",
-      "reReading": "",
-      "read": "",
-      "partiallyRead": "",
-      "paused": "",
-      "wontRead": "",
-      "abandoned": "",
-      "noStatus": "",
-      "tooltipLabel": ""
-    },
+    "readStatus": {},
     "readingDna": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "personalityTraits": "",
-      "readingDnaProfile": "",
       "tooltipPersonality": "",
-      "tooltipScore": "",
-      "tooltipDefaultDescription": "",
       "traits": {
         "adventurous": "",
         "perfectionist": "",
@@ -4647,14 +4191,7 @@
       }
     },
     "readingHabits": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "habitPatterns": "",
-      "readingHabitsProfile": "",
       "tooltipHabit": "",
-      "tooltipScore": "",
-      "tooltipDefaultDescription": "",
       "habits": {
         "consistency": "",
         "multitasking": "",
@@ -4700,72 +4237,22 @@
           "low": "",
           "mid": "",
           "high": ""
-        },
-        "momentum": {
-          "low": "",
-          "mid": "",
-          "high": ""
         }
       }
     },
-    "readingHeatmap": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksRead": "",
-      "tooltipBook": "",
-      "tooltipBooks": ""
+    "booksFinished": {},
+    "booksAddedVsFinished": {
+      "axisMonth": "",
+      "axisCumulativeBooks": "",
+      "legendBooksAdded": "",
+      "legendBooksFinished": "",
+      "insightCurrentBacklog": ""
     },
-    "readingProgress": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksByProgress": "",
-      "notStarted": "",
-      "justStarted": "",
-      "gettingIntoIt": "",
-      "halfwayThrough": "",
-      "almostFinished": "",
-      "completed": "",
-      "tooltipLabel": ""
-    },
-    "ratingTaste": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksAnalyzed": "",
-      "axisExternalRating": "",
-      "axisPersonalRating": "",
-      "tooltipUnknownBook": "",
-      "tooltipYourRating": "",
-      "tooltipExternalRating": "",
-      "tooltipDifference": "",
-      "tooltipCategory": "",
-      "quadrantHiddenGems": "",
-      "quadrantPopularFavorites": "",
-      "quadrantAgreedMisses": "",
-      "quadrantOverrated": "",
-      "quadrantDescHiddenGems": "",
-      "quadrantDescPopularFavorites": "",
-      "quadrantDescAgreedMisses": "",
-      "quadrantDescOverrated": "",
-      "tasteProfile": "",
-      "avgDeviation": "",
-      "uniqueTaste": "",
-      "mainstream": "",
-      "balanced": ""
-    },
+    "ratingComparison": {},
     "seriesProgress": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "series": "",
-      "avgCompletion": "",
-      "topRated": "",
       "seriesBreakdown": "",
       "ofTotal": "",
       "searchSeries": "",
-      "allStatus": "",
       "inProgress": "",
       "completed": "",
       "notStarted": "",
@@ -4780,158 +4267,31 @@
       "abandoned": "",
       "wontRead": "",
       "unread": "",
-      "booksRead": "",
-      "inSeriesHint": "",
       "next": "",
-      "axisCompletion": "",
-      "tooltipRead": "",
-      "tooltipSeriesTotal": "",
-      "tooltipYourRating": "",
       "noMatchingSearch": "",
-      "pageInfo": "",
-      "noData": "",
-      "noDataHint": ""
+      "pageInfo": ""
     },
-    "pageTurner": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "mostGripping": "",
-      "avgGripScore": "",
-      "guiltyPleasure": "",
-      "sessionDurationTrend": "",
-      "gapBetweenSessionsTrend": "",
-      "finishBurst": "",
-      "increasing": "",
-      "decreasing": "",
-      "steady": "",
-      "shrinking": "",
-      "growing": "",
-      "axisGripScore": "",
-      "gripScore": "",
-      "tooltipGripScore": "",
-      "tooltipSessions": "",
-      "tooltipAvgSession": "",
-      "tooltipRating": ""
-    },
-    "completionRace": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "previousYear": "",
-      "nextYear": "",
-      "books": "",
-      "sessions": "",
-      "avgDays": "",
-      "medianDays": "",
-      "fastest": "",
-      "slowest": "",
-      "axisDaysSinceFirstSession": "",
-      "axisProgress": "",
-      "tooltipDayProgress": "",
-      "noData": "",
-      "noDataHint": ""
-    },
-    "readingSurvival": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "started": "",
+    "readingDropOff": {
       "completionRate": "",
-      "medianDropout": "",
-      "dangerZone": "",
-      "survivalRate": "",
-      "axisProgressThreshold": "",
-      "axisBooksSurviving": "",
-      "tooltipProgress": "",
-      "tooltipSurvival": "",
-      "noData": "",
-      "noDataHint": ""
+      "tooltipProgress": ""
     },
     "readingClock": {
       "title": "",
-      "tooltip": "",
-      "description": "",
-      "peakHour": "",
-      "totalRead": "",
-      "readerType": "",
-      "nightOwl": "",
-      "earlyBird": "",
-      "balanced": "",
-      "tooltipReading": "",
-      "noData": "",
-      "noDataHint": ""
+      "peakHour": ""
     },
-    "bookLength": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksAnalyzed": "",
-      "sweetSpot": "",
-      "highestRated": "",
+    "ratingsByLength": {
       "axisPageCount": "",
-      "axisPersonalRating": "",
-      "tooltipUnknownBook": "",
-      "tooltipPages": "",
-      "tooltipRating": "",
-      "tooltipStatus": "",
-      "statusRead": "",
-      "statusReading": "",
-      "statusAbandoned": "",
-      "statusOther": "",
-      "trend": ""
+      "axisPersonalRating": ""
     },
     "bookFlow": {
       "title": "",
-      "tooltip": "",
-      "description": "",
       "totalBooks": "",
-      "busiestQuarter": "",
-      "topStatus": "",
-      "avgRating": "",
-      "completionRate": "",
       "colAdded": "",
       "colStatus": "",
-      "colRating": "",
-      "noData": "",
-      "noDataHint": ""
+      "colRating": ""
     },
-    "readingDebt": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksAdded": "",
-      "booksFinished": "",
-      "backlog": "",
-      "currentBacklog": "",
-      "trendLabel": "",
-      "growing": "",
-      "shrinking": "",
-      "noData": "",
-      "noDataHint": ""
-    },
-    "publicationEra": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "bestDecade": "",
-      "avgRating": "",
-      "booksRated": "",
-      "noData": "",
-      "noDataHint": ""
-    },
-    "sessionArchetypes": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "sessions": "",
-      "dominantType": "",
-      "archetype_morning": "",
-      "archetype_afternoon": "",
-      "archetype_evening": "",
-      "archetype_night": "",
-      "noData": "",
-      "noDataHint": ""
+    "ratingsByDecade": {
+      "bestDecade": ""
     }
   },
   "magicShelf": {
@@ -5353,6 +4713,114 @@
         "matchSuccessDetail": "",
         "matchFailedSummary": "",
         "matchFailedDetail": ""
+      }
+    }
+  },
+  "browse": {
+    "showAll": "Alles weergeven",
+    "showMore": "",
+    "showFewer": "",
+    "clearFilters": "",
+    "filter": "",
+    "moreActions": "Meer acties",
+    "sort": {
+      "multiSort": "",
+      "addField": "",
+      "apply": "",
+      "moveUp": "",
+      "moveDown": "",
+      "flipDirection": ""
+    },
+    "chips": {
+      "removeSearch": "",
+      "removeExcluded": ""
+    },
+    "rail": {
+      "searchValues": "",
+      "searchFields": "",
+      "searchScope": {
+        "allBooks": "",
+        "library": "",
+        "shelf": "",
+        "magicShelf": "",
+        "unshelved": "",
+        "dashboardRow": ""
+      },
+      "noMatches": "",
+      "minUnit": "",
+      "maxUnit": "",
+      "min": "",
+      "max": "",
+      "excluded": "",
+      "exclude": "",
+      "excludeValue": "",
+      "matchOptions": "",
+      "matchAny": "",
+      "matchAll": "",
+      "all": ""
+    },
+    "book": {
+      "empty": "",
+      "filteredEmpty": "",
+      "loadError": "",
+      "pageError": ""
+    },
+    "table": {
+      "moreValues": ""
+    },
+    "toolbar": {
+      "columnGroups": {
+        "reading": "",
+        "publishing": "",
+        "file": "",
+        "categorization": "",
+        "ratings": ""
+      },
+      "sort": "",
+      "sortAria": "",
+      "sortAscending": "",
+      "sortDescending": "",
+      "shuffleAgain": "",
+      "viewMode": "Weergave",
+      "density": "",
+      "smallerCards": "",
+      "largerCards": "",
+      "columns": "",
+      "resetColumns": "Naar standaard resetten"
+    },
+    "bulk": {
+      "markAsMessage": "",
+      "editAll": "",
+      "editOneByOne": "",
+      "selectionEmpty": "",
+      "selectionLoadError": "",
+      "organizeFiles": "Bestanden ordenen",
+      "updateReadStatus": "",
+      "lockUnlockMetadata": "Metadata vergrendelen/ontgrendelen"
+    },
+    "filterPage": {
+      "show": ""
+    }
+  },
+  "stats": {
+    "config": {
+      "title": "",
+      "resetOrder": ""
+    },
+    "filter": {
+      "allYears": "",
+      "selectYear": "",
+      "allMonths": "",
+      "selectMonth": "",
+      "week": "",
+      "previousWeek": "",
+      "nextWeek": "",
+      "dataTypes": {
+        "authors": "",
+        "series": "",
+        "publishers": "",
+        "tags": "",
+        "moods": ""
       }
     }
   }

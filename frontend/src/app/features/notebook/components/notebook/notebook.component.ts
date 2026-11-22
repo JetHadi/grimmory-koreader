@@ -54,9 +54,6 @@ const EMPTY_PAGE: NotebookPage = {
 })
 export class NotebookComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
-  private readonly searchSubject = new Subject<void>();
-  private readonly loadTrigger$ = new Subject<void>();
-  private readonly bookFilterSubject = new Subject<string>();
   private readonly router = inject(Router);
   private readonly notebookService = inject(NotebookService);
   private readonly urlHelper = inject(UrlHelperService);
@@ -64,10 +61,13 @@ export class NotebookComponent implements OnInit {
   private readonly t = inject(TranslocoService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly messageService = inject(MessageService);
+  private readonly searchSubject = new Subject<void>();
+  private readonly loadTrigger$ = new Subject<void>();
+  private readonly bookFilterSubject = new Subject<string>();
 
   filteredGroups: BookGroup[] = [];
   totalEntries = 0;
-  loading = signal(true);
+  readonly loading = signal(true);
   exporting = false;
   deletingEntryKey: string | null = null;
 
@@ -84,7 +84,7 @@ export class NotebookComponent implements OnInit {
   pageSize = 50;
   first = 0;
 
-  private collapsedGroups = new Set<number>();
+  private readonly collapsedGroups = new Set<number>();
 
   ngOnInit(): void {
     this.pageTitle.setPageTitle(this.t.translate('notebook.pageTitle'));
@@ -250,12 +250,12 @@ export class NotebookComponent implements OnInit {
     }
 
     if (entry.pageNumber != null) {
-      this.router.navigateByUrl(this.urlHelper.getPdfReaderUrl(entry.bookId, entry.pageNumber));
+      void this.router.navigate(['/pdf-reader/book', entry.bookId], entry.pageNumber > 0 ? {queryParams: {page: entry.pageNumber}} : undefined);
       return;
     }
 
     if (entry.cfi) {
-      this.router.navigateByUrl(this.urlHelper.getEbookReaderUrl(entry.bookId, entry.cfi));
+      void this.router.navigate(['/ebook-reader/book', entry.bookId], {queryParams: {cfi: entry.cfi}});
     }
   }
 

@@ -10,7 +10,7 @@ import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
 import {Library} from '../../book/model/library.model';
 import {LibraryService} from '../../book/service/library.service';
 import {MetadataRefreshOptions} from '../../metadata/model/request/metadata-refresh-options.model';
-import {MetadataProviderFieldsService, providerFieldRecord} from '../../../shared/metadata';
+import {METADATA_PROVIDER_FIELDS, providerFieldRecord} from '../../../shared/metadata';
 import {AppSettingKey, AppSettings} from '../../../shared/model/app-settings.model';
 import {AppSettingsService} from '../../../shared/service/app-settings.service';
 import {ExternalDocLinkComponent} from '../../../shared/components/external-doc-link/external-doc-link.component';
@@ -25,13 +25,12 @@ import {SidecarService} from '../../metadata/service/sidecar.service';
   styleUrls: ['./library-metadata-settings.component.scss']
 })
 export class LibraryMetadataSettingsComponent {
-  private libraryService = inject(LibraryService);
-  private appSettingsService = inject(AppSettingsService);
-  private messageService = inject(MessageService);
-  private sidecarService = inject(SidecarService);
-  private t = inject(TranslocoService);
-  private destroyRef = inject(DestroyRef);
-  private providerFields = inject(MetadataProviderFieldsService);
+  private readonly libraryService = inject(LibraryService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly messageService = inject(MessageService);
+  private readonly sidecarService = inject(SidecarService);
+  private readonly t = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
 
   defaultMetadataOptions: MetadataRefreshOptions = this.getDefaultMetadataOptions();
   libraryMetadataOptions: Record<number, MetadataRefreshOptions> = {};
@@ -198,7 +197,7 @@ export class LibraryMetadataSettingsComponent {
     const settings = this.appSettingsService.appSettings();
     return settings?.libraryMetadataRefreshOptions?.find(
       option => option.libraryId === libraryId
-    ) || null;
+    ) ?? null;
   }
 
   private getDefaultMetadataOptions(): MetadataRefreshOptions {
@@ -225,7 +224,7 @@ export class LibraryMetadataSettingsComponent {
         pageCount: {p1: null, p2: null, p3: null, p4: null},
         moods: {p1: null, p2: null, p3: null, p4: null},
         tags: {p1: null, p2: null, p3: null, p4: null},
-        ...providerFieldRecord(this.providerFields.fields(), () => ({p1: null, p2: null, p3: null, p4: null})),
+        ...providerFieldRecord(METADATA_PROVIDER_FIELDS, () => ({p1: null, p2: null, p3: null, p4: null})),
       }
     };
   }

@@ -2,7 +2,7 @@ import {inject} from '@angular/core';
 import {AuthService, websocketInitializer} from '../../shared/service/auth.service';
 import {AppSettingsService} from '../../shared/service/app-settings.service';
 import {AuthInitializationService} from './auth-initialization-service';
-import {QueryClient} from '@tanstack/angular-query-experimental';
+import {QueryClient} from '@tanstack/angular-query';
 
 const SETTINGS_TIMEOUT_MS = 10000;
 
@@ -13,7 +13,7 @@ export function initializeAuthFactory() {
     const authInitService = inject(AuthInitializationService);
     const queryClient = inject(QueryClient);
 
-    const settingsPromise = queryClient.fetchQuery(appSettingsService.getPublicSettingsQueryOptions());
+    const settingsPromise = queryClient.query(appSettingsService.getPublicSettingsQueryOptions());
     const timeoutPromise = new Promise<null>(resolve =>
       setTimeout(() => resolve(null), SETTINGS_TIMEOUT_MS)
     );

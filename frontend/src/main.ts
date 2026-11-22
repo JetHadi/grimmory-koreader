@@ -1,4 +1,4 @@
-import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ErrorHandler, inject, isDevMode, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
 import { DialogService } from '@openng/optimus-ui/dynamicdialog';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
@@ -20,7 +20,7 @@ import { StartupService } from './app/shared/service/startup.service';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTransloco } from '@jsverse/transloco';
 import { AVAILABLE_LANGS, TranslocoInlineLoader } from './app/core/config/transloco-loader';
-import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query';
 import { provideLucideConfig } from '@lucide/angular';
 
 document.addEventListener('touchstart', () => undefined, { passive: true });
@@ -29,7 +29,7 @@ bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
     provideLucideConfig({ size: '1em', strokeWidth: 2 }),
-    provideTanStackQuery(new QueryClient({
+    provideTanStackQuery(() => new QueryClient({
       defaultOptions: {
         queries: {
           staleTime: Infinity,
@@ -43,7 +43,7 @@ bootstrapApplication(AppComponent, {
       const startup = inject(StartupService);
       return Promise.resolve(initializeAuth()).then(() => startup.load());
     }),
-    provideHttpClient(withXhr(), withInterceptors([AuthInterceptorService])),
+    provideHttpClient(withInterceptors([AuthInterceptorService])),
     provideRouter(routes),
     DialogService,
     MessageService,
@@ -84,4 +84,4 @@ bootstrapApplication(AppComponent, {
       inject(PwaUpdateService);
     })
   ]
-}).catch(err => console.error(err));
+}).catch((err: unknown) => console.error(err));

@@ -17,6 +17,7 @@
     "next": "次へ",
     "submit": "送信",
     "remove": "削除",
+    "clear": "",
     "edit": "編集",
     "info": "情報",
     "select": "選択",
@@ -83,19 +84,9 @@
     "main": {
       "pageTitle": "ダッシュボード",
       "welcomeTitle": "Grimmoryへようこそ！",
-      "welcomeSubtitle": "最初のライブラリを作成しましょう",
       "welcomeDescription": "ライブラリはすべての本が保管される場所です。今日からデジタルコレクションを始めましょう！",
-      "createLibrary": "ライブラリを作成"
-    },
-    "scroller": {
-      "noBooksFound": "このスクローラーに本が見つかりません。",
-      "loadError": "本の読み込みに失敗しました。ページを更新してください。",
-      "continueListening": "聴き続ける",
-      "continueReading": "読み続ける",
-      "recentlyAdded": "最近追加",
-      "discoverNew": "新しい本を発見",
-      "magicShelf": "マジックシェルフ",
-      "default": "スクローラー"
+      "createLibrary": "ライブラリを作成",
+      "customize": ""
     }
   },
   "settings": {
@@ -474,16 +465,16 @@
     },
     "dashboardScrollers": {
       "sectionTitle": "ダッシュボード設定",
-      "sectionDesc": "異なるブックコレクションから最大5つのスクローラーを追加し、動作をカスタマイズできます",
+      "sectionDesc": "異なるブックコレクションからスクローラーを追加し、動作をカスタマイズできます",
       "type": "タイプ",
       "selectType": "タイプを選択",
-      "magicShelf": "マジックシェルフ",
       "selectMagicShelf": "マジックシェルフを選択",
+      "selectLibrary": "",
+      "selectShelf": "",
       "sortField": "ソートフィールド",
       "selectField": "フィールドを選択",
       "direction": "方向",
       "selectDirection": "方向を選択",
-      "maxItems": "最大アイテム数",
       "addScroller": "スクローラーを追加",
       "resetToDefault": "デフォルトに戻す",
       "saveSettings": "",
@@ -493,14 +484,15 @@
         "lastRead": "読み続ける",
         "lastListened": "聴き続ける",
         "latestAdded": "最近追加",
+        "recentlyFinished": "",
         "random": "新しい本を発見",
+        "library": "",
+        "shelf": "",
         "magicShelf": "マジックシェルフ",
         "default": "スクローラー"
       },
       "sortFields": {
         "title": "タイトル",
-        "fileName": "ファイル名",
-        "filePath": "ファイルパス",
         "addedOn": "追加日",
         "author": "著者",
         "authorSurnameVorname": "著者（姓）",
@@ -513,7 +505,6 @@
         "readStatus": "読書状態",
         "dateFinished": "完了日",
         "readingProgress": "読書進捗",
-        "bookType": "本の種類",
         "pageCount": "ページ数"
       },
       "sortDirections": {
@@ -525,12 +516,11 @@
       "sectionTitle": "ライブラリとシェルフの表示・ソート設定",
       "sectionDesc": "ブラウザでのソートと表示モード（グリッドまたはテーブル）のデフォルトおよびライブラリ/シェルフごとの設定を構成します。",
       "defaultPreferences": "デフォルト設定",
-      "defaultPreferencesDesc": "すべてのライブラリとシェルフのデフォルト表示モードとマルチフィールドソートを設定します。ドラッグでソートの優先順位を並べ替えます。",
+      "defaultPreferencesDesc": "すべてのライブラリとシェルフのデフォルト表示モードとマルチフィールドソートを設定します。",
       "sortOrderLabel": "ソート順（ドラッグで並べ替え）",
+      "formatOverlay": "本の種類オーバーレイ",
       "ascending": "昇順",
       "descending": "降順",
-      "remove": "削除",
-      "addSortField": "ソートフィールドを追加...",
       "autoSave": "ナビゲーション時に自動保存",
       "autoSaveDesc": "メタデータエディタで次の本や前の本に移動する際に変更を自動保存します。",
       "overrideManagement": "オーバーライド管理",
@@ -546,34 +536,6 @@
       "saveSettings": "設定を保存",
       "saveSuccess": "設定を保存しました",
       "saveSuccessDetail": "ソートと表示の設定が正常に保存されました。",
-      "sortTitle": "タイトル",
-      "sortFileName": "ファイル名",
-      "sortFilePath": "ファイルパス",
-      "sortAuthor": "著者",
-      "sortAuthorSurname": "著者（姓）",
-      "sortSeriesName": "シリーズ名",
-      "sortSeriesNumber": "シリーズ番号",
-      "sortLastRead": "最終閲覧",
-      "sortPersonalRating": "個人評価",
-      "sortAddedOn": "追加日",
-      "sortFileSize": "ファイルサイズ",
-      "sortLocked": "ロック",
-      "sortPublisher": "出版社",
-      "sortPublishedDate": "出版日",
-      "sortAmazonRating": "Amazon評価",
-      "sortAmazonCount": "Amazon件数",
-      "sortGoodreadsRating": "Goodreads評価",
-      "sortGoodreadsCount": "Goodreads件数",
-      "sortHardcoverRating": "Hardcover評価",
-      "sortHardcoverCount": "Hardcover件数",
-      "sortRanobedbRating": "Ranobedb評価",
-      "sortReadStatus": "読書状態",
-      "sortDateFinished": "完了日",
-      "sortReadingProgress": "読書進捗",
-      "sortBookType": "本の種類",
-      "sortNarrator": "ナレーター",
-      "sortPages": "ページ数",
-      "sortRandom": "ランダム",
       "entityLibrary": "ライブラリ",
       "entityShelf": "シェルフ",
       "entityMagicShelf": "マジックシェルフ",
@@ -583,25 +545,7 @@
       "sortSaved": "ソートを保存しました",
       "sortSavedDetail": "この{{entityType}}のソート設定が保存されました。",
       "editSort": "ソートを編集",
-      "tableSortConfig": "ソート設定",
-      "visibleSortFields": "表示するソートフィールド",
-      "visibleSortFieldsDesc": "ブックブラウザのソートドロップダウンに表示するソートフィールドを選択し、ドラッグで並べ替えます。",
-      "sortFieldCount": "{{count}} / {{total}} 選択中",
-      "resetToDefaults": "デフォルトに戻す"
-    },
-    "filter": {
-      "sectionTitle": "フィルター設定",
-      "sectionDesc": "サイドバーに表示されるフィルターコントロールのデフォルトオプションを設定します。",
-      "filterMode": "フィルターモード",
-      "filterModeDesc": "右側のフィルターサイドバーから選択したフィルターを組み合わせるデフォルトモードを選択します。",
-      "visibleFilters": "表示フィルター",
-      "visibleFiltersDesc": "サイドバーに表示するフィルターを選択し、ドラッグで並べ替えます。{{min}}～{{max}}個のフィルター。",
-      "selectionCount": "{{count}} / {{total}} 選択中",
-      "addFilter": "フィルターを追加...",
-      "resetToDefaults": "デフォルトに戻す",
-      "modeAnd": "AND",
-      "modeOr": "OR",
-      "modeSingle": "単一"
+      "tableSortConfig": "ソート設定"
     },
     "sidebarSort": {
       "sectionTitle": "サイドバーのライブラリとシェルフのソート設定",
@@ -712,7 +656,7 @@
     },
     "publicReviews": {
       "sectionTitle": "パブリックレビュー",
-      "sectionDesc": "外部プラットフォームからのユーザーレビューの自動ダウンロードを設定します。オフラインアクセス用にAmazon、Goodreads、Hardcoverからレビューを取得できます。",
+      "sectionDesc": "オフラインアクセス用に、外部プラットフォームからのユーザーレビューの自動ダウンロードを設定します。",
       "downloadLabel": "パブリックレビューをダウンロード",
       "autoDownloadLabel": "本を開いた時に自動ダウンロード",
       "autoDownloadDesc": "本の詳細ページを開いた際にレビューを自動的に取得します。無効にすると、レビューは手動またはメタデータ更新時にのみダウンロードされます。",
@@ -750,9 +694,7 @@
         "language": "",
         "isbn13": "",
         "isbn10": "",
-        "pageCount": "",
-        "doubanRating": "",
-        "doubanReviewCount": ""
+        "pageCount": ""
       }
     },
     "fieldSelector": {
@@ -1162,6 +1104,7 @@
     "deleteSuccess": "ユーザーが正常に削除されました",
     "deleteError": "ユーザーの削除に失敗しました",
     "opdsCopied": "OPDSエンドポイントをクリップボードにコピーしました",
+    "copyFailed": "",
     "komgaCopied": "Komga APIエンドポイントをクリップボードにコピーしました",
     "sortUpdateSuccess": "ソート順が正常に更新されました",
     "sortUpdateError": "ソート順の更新に失敗しました",
@@ -1416,8 +1359,6 @@
       "syncConfigDesc": "GrimmoryライブラリとKOReaderデバイス間の同期を有効にして設定します。",
       "enableSync": "KOReader同期を有効化",
       "enableSyncDesc": "読書進捗を自動的に同期するには同期をオンにしてください。",
-      "syncWithGrimmory": "Grimmory電子書籍リーダーと読書進捗を同期",
-      "syncWithGrimmoryDesc": "Grimmoryの電子書籍リーダーとKOReader間の双方向同期を有効にします。<strong>注意：</strong>進捗の同期は近似的であり、正確なページや位置ではなくチャプター単位で更新される場合があります。",
       "apiPath": "KOReader APIパス",
       "apiPathDesc": "KOReader同期サービスのAPIエンドポイントパス。",
       "username": "KOReaderユーザー名",
@@ -1500,9 +1441,6 @@
       "syncEnabled": "Kobo同期が有効になりました",
       "syncDisabled": "Kobo同期が無効になりました",
       "progressUpdated": "進捗しきい値が正常に更新されました",
-      "twoWaySyncLabel": "双方向読書進捗同期",
-      "twoWaySyncDesc": "GrimmoryのWebリーダーとKoboデバイス間の双方向同期を有効にします。どちらのプラットフォームでの読書進捗も、もう一方に反映されます。",
-      "twoWaySyncNote": "注意：位置形式が異なるため、同期精度はベストエフォートです。ほとんどの場合、チャプターレベルで正確になります。",
       "twoWaySyncKepubWarning": "",
       "twoWaySyncKepubWarningAdmin": "",
       "twoWaySyncEnabled": "双方向進捗同期が有効になりました",
@@ -1767,7 +1705,8 @@
       },
       "shelfMenu": {
         "addToShelf": "",
-        "newShelf": ""
+        "newShelf": "",
+        "removeFromAllShelves": ""
       },
       "spinner": {
         "loading": ""
@@ -1786,6 +1725,9 @@
         "parse": "",
         "pattern": "",
         "required": ""
+      },
+      "bulkActions": {
+        "selectAll": "すべて選択"
       }
     }
   },
@@ -1793,6 +1735,7 @@
     "commandPalette": {
       "placeholder": "",
       "empty": "",
+      "bookSearchError": "",
       "hintNavigate": "",
       "hintSelect": "",
       "ariaLabel": "",
@@ -2329,8 +2272,10 @@
       "fetching": "取得中...",
       "readyToSearch": "検索の準備ができました",
       "readyToSearchHint": "上に検索条件を入力して「検索」をクリックするとメタデータを検索できます",
+      "noProviders": "",
       "noResultsFound": "結果が見つかりません",
       "noResultsHint": "検索条件を調整するか、別のプロバイダーを選択してみてください",
+      "searchFailed": "",
       "selectOverlay": "選択"
     },
     "tabs": {
@@ -2443,6 +2388,8 @@
       "goToPreviousBook": "前の本へ",
       "goToNextBook": "次の本へ",
       "personalRating": "個人評価",
+      "ratingTooltip": "",
+      "ratingTooltipNoReviews": "",
       "loadingBookDetails": "書籍詳細を読み込み中...",
       "readStatusUnread": "未読",
       "readStatusPaused": "一時停止",
@@ -2548,6 +2495,7 @@
       "byLabel": "作成者：",
       "coverFileLabel": "カバーファイル：",
       "loading": "サイドカーデータを読み込み中...",
+      "readFailed": "",
       "syncStatusInSync": "同期済み",
       "syncStatusOutdated": "古い",
       "syncStatusConflict": "競合",
@@ -2581,6 +2529,7 @@
       "searchingForCovers": "カバーを検索中...",
       "noCoversFound": "カバーが見つかりません",
       "noCoversFoundDescription": "検索条件を調整するか、スペルを確認してみてください。",
+      "searchFailed": "",
       "coversFoundSingular": "{{ count }}件のカバーが見つかりました",
       "coversFoundPlural": "{{ count }}件のカバーが見つかりました",
       "resultsHint": "画像をクリックしてプレビュー、または選択して適用",
@@ -2725,10 +2674,31 @@
       "toast": {
         "providerRequiredSummary": "エラー",
         "providerRequiredDetail": "有効な各ブックフィールドに少なくとも1つのプロバイダー（P1～P4）を選択する必要があります。"
-      }
+      },
+      "inactiveProvider": ""
     },
     "fetchOptions": {
       "startRefresh": "更新を開始"
+    },
+    "providers": {
+      "openLibrary": "",
+      "amazon": "",
+      "google": "",
+      "goodReads": "",
+      "hardcover": "",
+      "comicvine": "",
+      "douban": "",
+      "lubimyczytac": "",
+      "ranobedb": "",
+      "audible": "",
+      "appleBooks": ""
+    },
+    "providerFields": {
+      "id": "",
+      "rating": "",
+      "reviewCount": "",
+      "asin": "",
+      "hardcoverBookId": ""
     }
   },
   "notebook": {
@@ -2766,75 +2736,29 @@
         "customCoverHeader": "カスタムカバー生成の確認"
       },
       "toast": {
-        "sortSavedSummary": "ソートを保存しました",
-        "sortSavedGlobalDetail": "デフォルトのソート設定が保存されました。",
-        "sortSavedEntityDetail": "この{{ entityType }}のソート設定が保存されました。",
         "regenCoverStartedSummary": "カバー再生成を開始しました",
         "regenCoverStartedDetail": "{{ count }}冊の本のカバーを再生成中です。完了後にページを更新してください。",
         "customCoverStartedSummary": "カスタムカバー生成を開始しました",
         "customCoverStartedDetail": "{{ count }}冊の本のカスタムカバーを生成中です。",
         "failedSummary": "失敗",
         "regenCoverFailedDetail": "カバー再生成を開始できませんでした。",
-        "customCoverFailedDetail": "カスタムカバー生成を開始できませんでした。",
-        "unshelveSuccessDetail": "本のシェルフが更新されました",
-        "unshelveFailedDetail": "本のシェルフの更新に失敗しました",
-        "noEligibleBooksSummary": "対象の本がありません",
-        "noEligibleBooksDetail": "選択した本は単一ファイルの本（代替フォーマットなし）である必要があります。",
-        "multipleLibrariesSummary": "複数のライブラリ",
-        "multipleLibrariesDetail": "選択した本はすべて同じライブラリのものである必要があります。"
+        "customCoverFailedDetail": "カスタムカバー生成を開始できませんでした。"
       },
       "loading": {
-        "deleting": "{{ count }}冊の本を削除中...",
-        "unshelving": "{{ count }}冊の本をシェルフから削除中..."
+        "deleting": "{{ count }}冊の本を削除中..."
       },
       "labels": {
         "allBooks": "すべての本",
-        "unshelvedBooks": "未分類の本",
-        "unshelvedBooksFiltered": "未分類の本（フィルター適用中）",
-        "filteredSuffix": "（フィルター適用中）",
-        "seriesCollapsedInfo": "{{ count }}{{ itemWord }}を表示中（シリーズを折りたたみ）",
-        "item": "件",
-        "items": "件",
-        "selected": "選択中",
-        "setAsDefault": "デフォルトに設定しますか？",
-        "save": "保存",
-        "collapseSeries": "シリーズを折りたたむ",
-        "gridColumns": "グリッド列数",
-        "bookTypeOverlay": "本の種類オーバーレイ",
-        "noBooks": "このコレクションには本がありません！",
-        "failedLibrary": "ライブラリの本の読み込みに失敗しました！",
-        "failedShelf": "シェルフの本の読み込みに失敗しました！",
-        "failedBooks": "",
-        "activeFilters": "{{ count }}件のアクティブフィルター"
-      },
-      "tooltip": {
-        "clearFilters": "適用されたフィルターをクリア",
-        "visibleColumns": "表示列",
-        "selectSorting": "ソートを選択",
-        "toggleView": "グリッドとテーブル表示を切替",
-        "search": "検索",
-        "toggleSidebar": "サイドバーフィルターの切替",
-        "metadataActions": "メタデータ操作",
-        "assignToShelf": "シェルフに割り当て",
-        "removeFromShelf": "このシェルフから削除",
-        "lockUnlockMetadata": "メタデータのロック/解除",
-        "organizeFiles": "ファイルを整理",
-        "attachToBook": "別の本に添付",
-        "moreActions": "その他の操作",
-        "selectAll": "すべての本を選択",
-        "deselectAll": "すべての本の選択を解除",
-        "deleteSelected": "選択した本を削除"
-      },
-      "placeholder": {
-        "selectColumns": "列を選択",
-        "search": "タイトル、著者、シリーズ、ジャンル、またはISBN..."
+        "unshelvedBooks": "未分類の本"
       }
     },
     "card": {
       "book": {
+        "physical": "",
         "unknownTitle": "不明なタイトル"
       },
       "aria": {
+        "bookMenu": "",
         "coverAlt": "{{ title }}のカバー"
       },
       "menu": {
@@ -2903,26 +2827,45 @@
         "readStatusMenu": ""
       }
     },
+    "row": {
+      "previous": "",
+      "next": ""
+    },
     "menu": {
+      "label": "",
+      "openInNewTab": "",
+      "addToShelf": "",
+      "markAs": "",
+      "send": "",
       "quickSend": "クイック送信",
       "customSend": "カスタム送信",
       "download": "ダウンロード",
       "metadata": "メタデータ",
       "editMetadata": "メタデータを編集",
+      "fetchMetadata": "",
+      "fetchMetadataWithOptions": "",
+      "searchProviders": "",
+      "restoreCover": "",
+      "generateCover": "",
+      "lockMetadata": "",
       "more": "その他",
       "organizeFile": "ファイルを整理",
       "resetGrimmoryProgress": "Grimmory進捗をリセット",
       "resetKoreaderProgress": "KOReader進捗をリセット",
+      "deleteEntireBook": "",
       "confirm": {
         "deleteBookMessage": "「{{ title }}」を削除してもよろしいですか？\n\nファイルシステムからブックファイルが完全に削除されます。\n\nこの操作は元に戻せません。",
         "deleteBookHeader": "削除の確認",
         "deleteFileMessage": "追加ファイル「{{ fileName }}」を削除してもよろしいですか？",
         "deleteFileHeader": "ファイル削除の確認",
+        "largeFileMessage": "",
+        "largeFileHeader": "",
         "sendAnyway": "無視して送信"
       }
     },
     "readAction": {
       "read": {
+        "short": "",
         "long": "本を読む"
       },
       "continueReading": {
@@ -2937,6 +2880,11 @@
         "short": "続ける",
         "long": "聴き続ける"
       }
+    },
+    "selectBook": "",
+    "viewMode": {
+      "grid": "グリッド",
+      "table": "テーブル"
     },
     "notes": {
       "confirm": {
@@ -3065,7 +3013,8 @@
         "customFetchMetadata": "メタデータをカスタム取得",
         "autoFetchMetadata": "メタデータを自動取得",
         "findDuplicates": "重複を検索",
-        "deleteLibrary": "ライブラリを削除"
+        "deleteLibrary": "ライブラリを削除",
+        "manageLibrary": "ライブラリを管理"
       },
       "shelf": {
         "publicShelfPrefix": "公開シェルフ - ",
@@ -3106,48 +3055,12 @@
         "deletingLibrary": "ライブラリ「{{ name }}」を削除中..."
       }
     },
-    "columnPref": {
-      "columns": {
-        "readStatus": "読了",
-        "title": "タイトル",
-        "authors": "著者",
-        "publisher": "出版社",
-        "seriesName": "シリーズ",
-        "seriesNumber": "シリーズ #",
-        "categories": "ジャンル",
-        "publishedDate": "出版日",
-        "lastReadTime": "最終閲覧",
-        "addedOn": "追加日",
-        "fileName": "ファイル名",
-        "fileSizeKb": "ファイルサイズ",
-        "language": "言語",
-        "isbn": "",
-        "pageCount": "ページ数",
-        "amazonRating": "",
-        "amazonReviewCount": "",
-        "goodreadsRating": "",
-        "goodreadsReviewCount": "",
-        "hardcoverRating": "",
-        "hardcoverReviewCount": "",
-        "ranobedbRating": ""
-      },
-      "toast": {
-        "savedSummary": "設定を保存しました",
-        "savedDetail": "列レイアウトが保存されました。"
-      }
-    },
     "coverPref": {
       "toast": {
         "savedSummary": "カバーサイズを保存しました",
         "savedDetail": "カバーサイズが{{ scale }}xに設定されました。",
         "saveFailedSummary": "保存に失敗しました",
         "saveFailedDetail": "カバーサイズの設定をローカルに保存できませんでした。"
-      }
-    },
-    "filterPref": {
-      "toast": {
-        "saveFailedSummary": "保存に失敗しました",
-        "saveFailedDetail": "サイドバーフィルターの設定をローカルに保存できませんでした。"
       }
     },
     "reviews": {
@@ -3236,7 +3149,9 @@
       "validationReady": "作成の準備ができました",
       "cancelButton": "キャンセル",
       "addButton": "物理本を追加",
-      "fetchMetadataTooltip": ""
+      "fetchMetadataTooltip": "",
+      "metadataNotFound": "",
+      "metadataLookupFailed": ""
     },
     "bulkIsbnImport": {
       "title": "",
@@ -3307,41 +3222,7 @@
       }
     },
     "filter": {
-      "title": "フィルター",
       "showingFirst100": "最初の100件を表示",
-      "footerNote": "注意: フィルターカテゴリごとに上位100件が表示されます",
-      "labels": {
-        "author": "著者",
-        "category": "ジャンル",
-        "series": "シリーズ",
-        "bookType": "本の種類",
-        "readStatus": "読書状態",
-        "personalRating": "個人評価",
-        "publisher": "出版社",
-        "matchScore": "メタデータマッチスコア",
-        "library": "ライブラリ",
-        "shelf": "シェルフ",
-        "shelfStatus": "シェルフ状態",
-        "tag": "タグ",
-        "publishedDate": "出版年",
-        "fileSize": "ファイルサイズ",
-        "amazonRating": "Amazon評価",
-        "goodreadsRating": "Goodreads評価",
-        "hardcoverRating": "Hardcover評価",
-        "lubimyczytacRating": "Lubimyczytac評価",
-        "ranobedbRating": "Ranobedb評価",
-        "audibleRating": "Audible評価",
-        "language": "言語",
-        "pageCount": "ページ数",
-        "mood": "ムード",
-        "ageRating": "年齢制限",
-        "contentRating": "コンテンツレーティング",
-        "narrator": "ナレーター",
-        "comicCharacter": "コミックキャラクター",
-        "comicTeam": "コミックチーム",
-        "comicLocation": "コミックロケーション",
-        "comicCreator": "コミッククリエイター"
-      },
       "readStatus": {
         "unread": "未読",
         "reading": "読書中",
@@ -3394,14 +3275,6 @@
       "shelfStatus": {
         "shelved": "シェルフに登録済み",
         "unshelved": "未分類"
-      },
-      "comicRoles": {
-        "penciller": "ペンシラー",
-        "inker": "インカー",
-        "colorist": "カラリスト",
-        "letterer": "レタラー",
-        "coverArtist": "カバーアーティスト",
-        "editor": "エディター"
       }
     },
     "shelfAssigner": {
@@ -3464,27 +3337,6 @@
         "updateFailedDetail": "シェルフの更新中にエラーが発生しました。もう一度お試しください。"
       }
     },
-    "table": {
-      "label": "",
-      "bookCoverAlt": "ブックカバー",
-      "selectBook": "",
-      "selectBookFallback": "書籍を選択",
-      "noRating": "評価なし",
-      "ratingOutOf": "",
-      "statusWithPrefix": "状態: {{ status }}",
-      "locked": "ロック済み",
-      "unlocked": "ロック解除",
-      "toast": {
-        "metadataLockedSummary": "メタデータをロックしました",
-        "metadataLockedDetail": "ブックメタデータが正常にロックされました。",
-        "metadataUnlockedSummary": "メタデータのロックを解除しました",
-        "metadataUnlockedDetail": "ブックメタデータのロックが正常に解除されました。",
-        "lockFailedSummary": "ロックに失敗しました",
-        "lockFailedDetail": "メタデータのロック中にエラーが発生しました。",
-        "unlockFailedSummary": "ロック解除に失敗しました",
-        "unlockFailedDetail": "メタデータのロック解除中にエラーが発生しました。"
-      }
-    },
     "lockUnlockDialog": {
       "title": "メタデータのロック/解除",
       "selectedCount": "{{ count }}冊選択中",
@@ -3505,42 +3357,7 @@
       }
     },
     "sorting": {
-      "sortOrder": "ソート順",
-      "removeTooltip": "削除",
-      "addSortFieldPlaceholder": "ソートフィールドを追加...",
-      "saveAsDefault": "デフォルトとして保存",
-      "ascendingTooltip": "昇順 - クリックで変更",
-      "descendingTooltip": "降順 - クリックで変更",
-      "options": {
-        "title": "タイトル",
-        "fileName": "ファイル名",
-        "filePath": "ファイルパス",
-        "author": "著者",
-        "authorSurnameVorname": "著者（姓）",
-        "seriesName": "シリーズ名",
-        "seriesNumber": "シリーズ番号",
-        "lastReadTime": "最終閲覧",
-        "personalRating": "個人評価",
-        "addedOn": "追加日",
-        "fileSizeKb": "ファイルサイズ",
-        "locked": "ロック",
-        "publisher": "出版社",
-        "publishedDate": "出版日",
-        "readStatus": "読書状態",
-        "dateFinished": "完了日",
-        "readingProgress": "読書進捗",
-        "bookType": "本の種類",
-        "amazonRating": "Amazon評価",
-        "amazonReviewCount": "",
-        "goodreadsRating": "Goodreads評価",
-        "goodreadsReviewCount": "",
-        "hardcoverRating": "Hardcover評価",
-        "hardcoverReviewCount": "",
-        "ranobedbRating": "Ranobedb評価",
-        "narrator": "ナレーター",
-        "pageCount": "ページ数",
-        "random": "ランダム"
-      }
+      "saveAsDefault": "{{scope}}のデフォルトとして保存"
     },
     "fileAttacher": {
       "title": "ファイルを別の本に添付",
@@ -3704,6 +3521,53 @@
         "mergeFailedDetail": "このグループのマージができませんでした。",
         "mergePartialDetail": "{{ success }}件マージ成功、{{ failed }}件失敗。"
       }
+    },
+    "fields": {
+      "random": "ランダム",
+      "title": "タイトル",
+      "author": "著者",
+      "authorSurname": "著者（姓）",
+      "genre": "ジャンル",
+      "series": "シリーズ",
+      "seriesNumber": "シリーズ番号",
+      "publisher": "出版社",
+      "tag": "タグ",
+      "mood": "ムード",
+      "language": "言語",
+      "narrator": "ナレーター",
+      "fileType": "本の種類",
+      "readStatus": "読書状態",
+      "personalRating": "個人評価",
+      "amazonRating": "Amazon評価",
+      "amazonReviewCount": "Amazon #",
+      "goodreadsRating": "Goodreads評価",
+      "goodreadsReviewCount": "Goodreads #",
+      "hardcoverRating": "Hardcover評価",
+      "hardcoverReviewCount": "Hardcover #",
+      "ranobedbRating": "Ranobedb評価",
+      "pageCount": "ページ数",
+      "publishedDate": "出版日",
+      "publishedYear": "出版年",
+      "addedOn": "追加日",
+      "lastReadTime": "最終閲覧",
+      "dateFinished": "完了日",
+      "readingProgress": "読書進捗",
+      "fileName": "ファイル名",
+      "fileSize": "ファイルサイズ",
+      "isbn": "",
+      "library": "ライブラリ",
+      "shelf": "シェルフ",
+      "ageRating": "年齢制限",
+      "contentRating": "コンテンツレーティング",
+      "matchScore": "メタデータマッチスコア",
+      "shelfStatus": "シェルフ状態",
+      "comicCharacter": "コミックキャラクター",
+      "comicTeam": "コミックチーム",
+      "comicLocation": "コミックロケーション",
+      "comicCreator": "コミッククリエイター",
+      "lubimyczytacRating": "Lubimyczytac評価",
+      "audibleReviewCount": "Audibleレビュー数",
+      "audibleRating": "Audible評価"
     }
   },
   "readerAudiobook": {
@@ -4198,416 +4062,80 @@
     "main": {
       "title": "ライブラリ統計",
       "selectLibrary": "ライブラリを選択",
-      "totalBooks": "総書籍数",
-      "books": "書籍",
-      "totalAuthors": "総著者数",
-      "authors": "著者",
-      "totalSeries": "総シリーズ数",
-      "series": "シリーズ",
-      "totalPublishers": "総出版社数",
-      "publishers": "出版社",
-      "totalSize": "合計サイズ",
-      "librarySize": "ライブラリサイズ",
-      "loading": "統計を読み込み中...",
-      "noData": "データがありません。",
-      "noDataHint": "ライブラリにメタデータ付きの書籍が含まれていることを確認してください。",
-      "dragToReorder": "ドラッグして並べ替え"
-    },
-    "config": {
-      "title": "チャート設定",
-      "close": "閉じる",
-      "enableAll": "すべて有効",
-      "disableAll": "すべて無効",
-      "resetOrder": "順序をリセット",
-      "smallCharts": "小チャート",
-      "largeCharts": "大チャート",
-      "xlargeCharts": "特大チャート"
+      "books": "書籍"
     },
     "chartNames": {
       "bookFormats": "書籍フォーマット",
       "languages": "言語",
       "metadataScore": "メタデータスコア",
-      "pageCount": "ページ数",
-      "publicationTimeline": "出版タイムライン",
-      "readingJourney": "読書ジャーニー",
-      "topItems": "トップアイテム（著者/カテゴリなど）",
-      "authorUniverse": "著者ユニバース",
-      "publicationTrend": "出版トレンド"
+      "publicationTimeline": "出版タイムライン"
     },
     "bookFormats": {
-      "title": "書籍フォーマット",
-      "description": "ライブラリ内のファイルタイプの分布",
-      "noData": "書籍がありません。",
-      "tooltipLabel": "{{ label }}: {{ value }}冊 ({{ percentage }}%)"
+      "title": "書籍フォーマット"
     },
-    "language": {
-      "title": "言語",
-      "description": "コレクション内の言語分布",
-      "noData": "言語データがありません。",
-      "tooltipLabel": "{{ label }}: {{ value }}冊 ({{ percentage }}%)"
+    "languages": {
+      "title": "言語"
     },
     "metadataScore": {
-      "title": "メタデータスコア",
-      "description": "ライブラリ内の書籍メタデータの品質",
-      "noData": "メタデータスコアのデータがありません。",
-      "tooltipLabel": "{{ value }}冊 ({{ percentage }}%)",
-      "excellent": "優秀 (90-100%)",
-      "good": "良好 (70-89%)",
-      "fair": "普通 (50-69%)",
-      "poor": "不良 (25-49%)",
-      "veryPoor": "非常に不良 (0-24%)"
+      "title": "メタデータスコア"
     },
     "pageCount": {
-      "title": "ページ数分布",
-      "description": "ライブラリ内の書籍の長さの分布",
-      "noData": "ページ数データがありません。",
       "tooltipTitle": "{{ label }}ページ",
-      "tooltipLabel": "{{ value }}冊",
-      "tooltipLabelPlural": "{{ value }}冊",
       "axisPageCount": "ページ数",
       "axisBooks": "書籍"
     },
     "publicationTimeline": {
       "title": "出版タイムライン",
-      "description": "あなたの書籍はいつ出版されましたか？",
-      "booksWithDates": "{{ count }}冊に日付情報あり",
-      "noData": "出版日データがありません。",
-      "tooltipBook": "{{ value }}冊",
-      "tooltipBooks": "{{ value }}冊",
       "axisNumberOfBooks": "書籍数",
       "insightOldest": "最古",
-      "insightAverageYear": "平均年",
-      "insightMedian": "中央値: {{ year }}",
       "insightNewest": "最新",
-      "insightTimeSpan": "期間",
-      "insightYearsOfLiterature": "年間の文学",
-      "insightPeakDecade": "ピーク年代",
-      "insightPeakDecadeBooks": "{{ count }}冊",
-      "insightGoldenEra": "",
-      "insightGoldenEraRange": "",
-      "insightMostCommonYear": "",
-      "insightMostCommonYearBooks": "",
-      "insightRarityScore": "",
-      "insightRarePicks": ""
-    },
-    "publicationTrend": {
-      "title": "出版トレンド",
-      "description": "出版年ごとの書籍数でコレクションの傾向を表示",
-      "noData": "出版日データがありません。",
-      "tooltipTitle": "{{ year }}年",
-      "tooltipBook": "{{ value }}冊出版",
-      "tooltipBooks": "{{ value }}冊出版",
-      "axisPublicationYear": "出版年",
-      "axisBooks": "書籍",
-      "insightPeakYear": "ピーク年",
-      "insightPeakYearBooks": "{{ count }}冊",
-      "insightLast10Years": "直近10年",
-      "insightLast10YearsBooks": "{{ count }}冊",
-      "insightAvgPerYear": "年間平均",
-      "insightBooksPerYear": "冊/年",
-      "insightBest5YearSpan": "最多5年間",
-      "insightMostBooksPublished": "最多出版数",
-      "insightTimeSpan": "期間",
-      "insightYearsCovered": "年間カバー",
-      "insightCentury21": "21世紀",
-      "insightCentury21Books": "{{ count }}冊",
-      "insightClassics": "クラシック",
-      "insightClassicsPre1970": "{{ count }}冊（1970年以前）",
-      "insightUniqueYears": "ユニークな年数"
-    },
-    "readingJourney": {
-      "title": "読書ジャーニー",
-      "description": "追加された書籍と読了書籍の推移（差がバックログ）",
-      "noData": "読書ジャーニーのデータがありません。",
-      "noDataHint": "ここに表示するには、書籍にaddedOnまたはdateFinishedの日付が必要です。",
-      "axisMonth": "月",
-      "axisCumulativeBooks": "累計書籍数",
-      "legendBooksAdded": "追加された書籍",
-      "legendBooksFinished": "読了した書籍",
-      "tooltipBacklog": "バックログ: {{ count }}冊",
-      "insightCurrentBacklog": "現在のバックログ",
-      "insightBacklogPercent": "{{ percent }}%が未読",
-      "insightAvgTimeToFinish": "平均読了期間",
-      "insightDaysAfterAdding": "追加後の日数",
-      "insightBestReadingMonth": "最多読了月",
-      "insightPeakAcquisition": "最多取得月",
-      "insightFinishRate": "読了率",
-      "insightBooksPerMonthAvg": "冊/月（平均）",
-      "insightLongestStreak": "最長連続記録",
-      "insightConsecutiveMonths": "連続月数",
-      "insightLast3Months": "直近3か月",
-      "insightRecentlyFinished": "最近の読了",
-      "insightCompletion": "完了",
-      "insightBooksFinished": "冊を読了",
-      "recentActivityBooks": "{{ count }}冊",
-      "recentActivityNone": "活動なし"
+      "booksCount": "{{ count }}冊"
     },
     "topItems": {
-      "titlePrefix": "トップ15",
-      "descriptionPrefix": "最も多い",
-      "descriptionSuffix": "（ライブラリ内）",
-      "shown": "表示中",
-      "noDataPrefix": "",
-      "noDataSuffix": "のデータがありません。",
-      "noDataHintPrefix": "書籍に",
-      "noDataHintSuffix": "のメタデータがあることを確認してください。",
-      "axisNumberOfBooks": "書籍数",
-      "dataTypes": {
-        "authors": "著者",
-        "categories": "カテゴリ",
-        "series": "シリーズ",
-        "publishers": "出版社",
-        "tags": "タグ",
-        "moods": "ムード"
-      },
-      "readStatus": {
-        "read": "読了",
-        "reading": "読書中",
-        "reReading": "再読中",
-        "unread": "未読",
-        "partiallyRead": "一部読了",
-        "paused": "一時停止",
-        "wontRead": "読まない",
-        "abandoned": "中断",
-        "notSet": "未設定"
-      },
-      "insightTop": "トップ{{ type }}",
-      "insightTopValue": "{{ name }}（{{ count }}冊）",
-      "insightMostCompleted": "最多読了",
-      "insightMostCompletedValue": "{{ name }}（{{ percent }}%読了）",
-      "insightTop5Coverage": "トップ5カバー率",
-      "insightTop5CoverageValue": "ライブラリの{{ percent }}%",
-      "insightAvgPer": "{{ type }}あたりの平均",
-      "insightAvgPerValue": "{{ avg }}冊",
-      "tooltipBooks": "{{ status }}: {{ value }}冊",
-      "tooltipBook": "{{ status }}: {{ value }}冊"
-    },
-    "authorUniverse": {
-      "title": "著者ユニバース",
-      "description": "著者を書籍数、評価、読書進捗で探索",
-      "authorsBadge": "{{ count }}人の著者",
-      "legendNote": "バブルサイズ = 総ページ数 • 位置 = 書籍数 vs 評価 • 色 = 読了率",
-      "noData": "著者データがありません。著者は表示するために最低2冊の書籍が必要です。",
-      "axisBooks": "ライブラリ内の書籍数",
-      "axisRating": "平均評価",
-      "legend75to100": "75-100% 読了",
-      "legend50to74": "50-74% 読了",
-      "legend25to49": "25-49% 読了",
-      "legend1to24": "1-24% 読了",
-      "legendUnread": "未読",
-      "tooltipBooks": "書籍数: {{ count }}",
-      "tooltipTotalPages": "総ページ数: {{ count }}",
-      "tooltipAvgRating": "平均評価: {{ rating }}",
-      "tooltipNoRatings": "評価なし",
-      "tooltipRead": "読了: {{ read }}/{{ total }} ({{ percent }}%)",
-      "tooltipGenres": "ジャンル: {{ genres }}",
-      "insightMostCollected": "最多収集: {{ name }}（{{ count }}冊）",
-      "insightHighestRated": "最高評価: {{ name }}（{{ rating }}）",
-      "insightMostPages": "最多ページ: {{ name }}（{{ count }}ページ）",
-      "insightMostRead": "最多読了: {{ name }}（{{ percent }}%完了）",
-      "insightHiddenGem": "隠れた名作: {{ name }}（{{ count }}冊で{{ rating }}）",
-      "insightBiggestBacklog": "最大バックログ: {{ name }}（{{ count }}冊未読）",
-      "insightTop3Concentration": "トップ3の集中度: コレクションの{{ percent }}%",
-      "insightLongestReads": "最長読書: {{ name }}（平均{{ pages }}ページ/冊）",
-      "insightMostVersatile": "最多ジャンル: {{ name }}（{{ count }}ジャンル）",
-      "insightUntouchedAuthor": "未読の著者: {{ name }}（{{ count }}冊未読）",
-      "insightOverallProgress": "全体の進捗: 全著者で{{ percent }}%のページを読了"
+      "axisNumberOfBooks": "書籍数"
     },
     "libraryFilter": {
-      "allLibraries": "すべてのライブラリ",
-      "libraryFallback": "ライブラリ {{ id }}"
+      "allLibraries": "すべてのライブラリ"
     }
   },
   "statsUser": {
     "main": {
       "title": "{{ name }}さんの読書統計",
-      "titleBarTitle": "統計情報の読み方",
-      "customizeLayout": "レイアウトをカスタマイズ",
-      "chartConfig": "チャート設定",
-      "resetLayout": "レイアウトをリセット",
-      "hideAll": "すべて非表示",
-      "showAll": "すべて表示",
-      "close": "閉じる"
+      "titleBarTitle": "統計情報の読み方"
     },
     "chartNames": {
-      "heatmap": "読書セッションヒートマップ",
       "favoriteDays": "お気に入りの読書曜日",
-      "peakHours": "ピーク読書時間",
-      "timeline": "読書セッションタイムライン",
-      "readingHeatmap": "読書活動ヒートマップ",
-      "personalRating": "個人評価の分布",
-      "readingProgress": "読書進捗の分布",
-      "readStatus": "読書ステータスの分布",
-      "genreStats": "ジャンル統計",
-      "completionTimeline": "読了タイムライン",
+      "sessionTimeline": "読書セッションタイムライン",
       "readingClock": "読書クロック",
-      "pageTurner": "ページターナースコア",
-      "completionRace": "読了レース",
-      "readingSurvival": "読書サバイバルカーブ",
-      "bookLength": "書籍の長さのスイートスポット",
-      "ratingTaste": "評価テイスト比較",
-      "seriesProgress": "シリーズ進捗トラッカー",
-      "readingDna": "読書DNAプロフィール",
-      "readingHabits": "読書習慣分析",
-      "bookFlow": "",
-      "readingDebt": "",
-      "publicationEra": "",
-      "sessionArchetypes": ""
+      "bookFlow": ""
     },
-    "sessionHeatmap": {
+    "sessionActivity": {
       "title": "読書セッション活動",
-      "tooltip": "選択した年の読書セッションの日別ヒートマップです。セルが濃いほどその日のセッションが多いことを示します。連続記録は全期間の連続読書日数を追跡します。連続記録や合計日数のしきい値に達するとマイルストーンが解除されます。",
-      "description": "年間を通じた読書セッションの日別概要",
-      "previousYear": "前年",
-      "nextYear": "翌年",
       "currentStreak": "現在の連続記録",
       "longestStreak": "最長連続記録",
-      "totalDays": "合計日数",
-      "consistency": "一貫性",
-      "readingSessions": "読書セッション",
-      "readingSession": "{{ count }}回の読書セッション",
-      "readingSessions_plural": "{{ count }}回の読書セッション",
-      "milestone7DayStreak": "7日連続",
-      "milestone30DayStreak": "30日連続",
-      "milestone100ReadingDays": "読書100日",
-      "milestone365ReadingDays": "読書365日",
-      "milestoneYearOfReading": "読書の1年"
+      "readingSessions": "読書セッション"
     },
     "sessionTimeline": {
       "title": "読書セッションタイムライン",
-      "tooltip": "読書セッションを曜日ごとに表示します。各ブロックはセッションを表し、サイズは時間に比例します。ホバーすると書籍タイトル、読んだページ数、所要時間が表示されます。週ナビゲーターで読書履歴を週ごとに閲覧できます。",
-      "description": "読書セッションとパターンの週間概要",
-      "previousWeek": "前の週",
-      "nextWeek": "次の週",
-      "week": "第{{ number }}週",
-      "selectYear": "年を選択",
-      "selectWeek": "週を選択",
-      "readingSession": "読書セッション",
-      "tooltipTime": "時間:",
-      "tooltipDuration": "所要時間:",
-      "tooltipFormat": "フォーマット:",
-      "unknown": "不明"
+      "readingSession": "読書セッション"
     },
-    "genreStats": {
+    "readingByGenre": {
       "title": "ジャンル別読書",
-      "tooltip": "総読書時間でトップジャンルをランキングします。各バーはそのジャンルの書籍にかけた時間を表示し、読書時間の配分が分かります。",
-      "description": "総読書時間によるトップジャンル",
       "axisGenres": "ジャンル",
-      "axisTimeRead": "読書時間",
-      "readingTime": "読書時間",
-      "day": "日",
-      "days": "日",
-      "hr": "時間",
-      "hrs": "時間",
-      "min": "分",
-      "sec": "秒"
-    },
-    "completionTimeline": {
-      "title": "読書進捗",
-      "description": "月別の書籍読了統計",
-      "previousYear": "前年",
-      "nextYear": "翌年",
-      "axisMonth": "月",
-      "axisNumberOfBooks": "書籍数",
-      "completed": "読了",
-      "activeReading": "読書中",
-      "paused": "一時停止",
-      "discontinued": "中断",
-      "tooltipBook": "{{ label }}: {{ value }}冊",
-      "tooltipBooks": "{{ label }}: {{ value }}冊"
+      "readingTime": "読書時間"
     },
     "favoriteDays": {
       "title": "お気に入りの読書曜日",
-      "tooltip": "曜日ごとの読書セッション数と総読書時間を棒グラフで表示します。年と月でフィルタリングして季節的なパターンを発見できます。最も生産的な読書曜日を見つけるのに役立ちます。",
-      "description": "曜日別の読書セッションと所要時間",
-      "selectYear": "年を選択",
-      "selectMonth": "月を選択",
-      "allYears": "全年",
-      "allMonths": "全月",
-      "january": "1月",
-      "february": "2月",
-      "march": "3月",
-      "april": "4月",
-      "may": "5月",
-      "june": "6月",
-      "july": "7月",
-      "august": "8月",
-      "september": "9月",
-      "october": "10月",
-      "november": "11月",
-      "december": "12月",
-      "axisDayOfWeek": "曜日",
-      "axisNumberOfSessions": "セッション数",
-      "axisDurationHours": "所要時間（時間）",
-      "sessions": "セッション",
-      "durationHours": "所要時間（時間）",
-      "tooltipSessions": "{{ label }}: {{ value }}回のセッション",
-      "tooltipSessionsPlural": "{{ label }}: {{ value }}回のセッション"
-    },
-    "peakHours": {
-      "title": "ピーク読書時間",
-      "tooltip": "1日の各時間帯（0時から23時）の読書セッション数と総読書時間を表示します。年と月でフィルタリングして習慣の変化を確認できます。ピーク時間は最も多く読書した時間帯をハイライトします。",
-      "description": "時間帯別の読書活動",
-      "selectYear": "年を選択",
-      "selectMonth": "月を選択",
-      "allYears": "全年",
-      "allMonths": "全月",
-      "january": "1月",
-      "february": "2月",
-      "march": "3月",
-      "april": "4月",
-      "may": "5月",
-      "june": "6月",
-      "july": "7月",
-      "august": "8月",
-      "september": "9月",
-      "october": "10月",
-      "november": "11月",
-      "december": "12月",
-      "axisHourOfDay": "時間帯",
-      "axisNumberOfSessions": "セッション数",
-      "axisAvgDuration": "平均所要時間（分）",
-      "sessions": "セッション",
-      "avgDurationMin": "平均所要時間（分）",
-      "tooltipSessions": "{{ label }}: {{ value }}回のセッション",
-      "tooltipSessionsPlural": "{{ label }}: {{ value }}回のセッション",
-      "tooltipMin": "{{ label }}: {{ value }}分"
+      "axisDayOfWeek": "曜日"
     },
     "personalRating": {
-      "title": "個人評価の分布",
-      "tooltip": "1から10までの各評価に何冊の書籍を付けたかを表示します。寛大に評価する傾向があるか、厳しいか、特定のスコアに集中しているかが分かります。個人評価のある書籍のみが含まれます。",
-      "description": "あなたの評価別の書籍数（1〜10）",
       "axisPersonalRating": "個人評価",
       "axisNumberOfBooks": "書籍数",
-      "booksByPersonalRating": "個人評価別の書籍",
-      "tooltipTitle": "個人評価: {{ label }}",
-      "tooltipBook": "{{ value }}冊",
-      "tooltipBooks": "{{ value }}冊"
+      "tooltipTitle": "個人評価: {{ label }}"
     },
-    "readStatus": {
-      "title": "読書ステータスの分布",
-      "tooltip": "ライブラリ全体を読書ステータス別に分類します。読了、読書中、一部読了、一時停止、中断、読まない、未読。コレクションのどれだけを消化したかの概要が分かります。",
-      "description": "読書ステータス別の書籍",
-      "unread": "未読",
-      "currentlyReading": "読書中",
-      "reReading": "再読中",
-      "read": "読了",
-      "partiallyRead": "一部読了",
-      "paused": "一時停止",
-      "wontRead": "読まない",
-      "abandoned": "中断",
-      "noStatus": "ステータスなし",
-      "tooltipLabel": "{{ label }}: {{ value }}冊 ({{ percentage }}%)"
-    },
+    "readStatus": {},
     "readingDna": {
-      "title": "読書DNAプロフィール",
-      "tooltip": "8つの次元で読書パーソナリティをプロファイリングするレーダーチャートです。スコアはライブラリのジャンル、評価、ページ数、出版日、読書進捗から算出されます。各特性は正確な結果のために重複しない基準を使用しています。",
-      "description": "8つの次元で見るあなた独自の読書パーソナリティ",
-      "personalityTraits": "あなたの読書パーソナリティ特性",
-      "readingDnaProfile": "読書DNAプロフィール",
       "tooltipPersonality": "{{ label }}パーソナリティ",
-      "tooltipScore": "スコア: {{ score }}/100",
-      "tooltipDefaultDescription": "あなたの読書パーソナリティ特性",
       "traits": {
         "adventurous": "冒険的",
         "perfectionist": "完璧主義",
@@ -4662,14 +4190,7 @@
       }
     },
     "readingHabits": {
-      "title": "読書習慣分析",
-      "tooltip": "8つの次元で読書行動を分析するレーダーチャートです。一貫性は時間の経過に伴う読了の規則性を測定します。完読主義は読了率と中断率を追跡します。方法論はシリーズを順番に読んでいるかを確認します。スコアは読書活動、日付、進捗データから算出されます。",
-      "description": "8つの次元で見るあなたの行動的読書パターン",
-      "habitPatterns": "あなたの読書習慣パターン",
-      "readingHabitsProfile": "読書習慣プロフィール",
       "tooltipHabit": "{{ label }}習慣",
-      "tooltipScore": "スコア: {{ score }}/100",
-      "tooltipDefaultDescription": "あなたの読書習慣パターン",
       "habits": {
         "consistency": "一貫性",
         "multitasking": "マルチタスク",
@@ -4715,72 +4236,22 @@
           "low": "システムなしに気ままに書籍を選んでいます",
           "mid": "読書の選択にいくらか体系的なパターンが見られます",
           "high": "シリーズ、著者、ジャンルを体系的に読み進めています"
-        },
-        "momentum": {
-          "low": "最近の読書活動は落ち着いています",
-          "mid": "安定した読書ペースを維持しています",
-          "high": "現在、活発な読書の勢いに乗っています"
         }
       }
     },
-    "readingHeatmap": {
-      "title": "読書活動ヒートマップ",
-      "tooltip": "過去10年間の月別にライブラリに追加された書籍数を表示するグリッドです。セルが濃いほど書籍が多いことを示します。長期的な取得傾向や季節的な読書の波を視覚化するのに役立ちます。",
-      "description": "過去10年間の月別読書活動",
-      "booksRead": "読了書籍",
-      "tooltipBook": "{{ value }}冊を読了",
-      "tooltipBooks": "{{ value }}冊を読了"
+    "booksFinished": {},
+    "booksAddedVsFinished": {
+      "axisMonth": "月",
+      "axisCumulativeBooks": "累計書籍数",
+      "legendBooksAdded": "追加された書籍",
+      "legendBooksFinished": "読了した書籍",
+      "insightCurrentBacklog": "現在のバックログ"
     },
-    "readingProgress": {
-      "title": "読書進捗の分布",
-      "tooltip": "各進捗区間に何冊の書籍があるかを表示します。未開始（0%）、読み始め（1-25%）、途中（26-50%）、大部分読了（51-75%）、もうすぐ完了（76-99%）、完了（100%）。進捗は全読書セッションでの最も進んだ地点に基づきます。",
-      "description": "読了状況別の書籍",
-      "booksByProgress": "進捗別の書籍",
-      "notStarted": "未開始",
-      "justStarted": "読み始め",
-      "gettingIntoIt": "読み進め中",
-      "halfwayThrough": "中盤",
-      "almostFinished": "もうすぐ完了",
-      "completed": "完了",
-      "tooltipLabel": "{{ value }}冊{{ plural }}（{{ description }}） - {{ percentage }}%"
-    },
-    "ratingTaste": {
-      "title": "評価テイスト比較",
-      "tooltip": "各点は外部評価（X軸、Goodreads/Amazonなど）とあなたの個人評価（Y軸）でプロットされた書籍です。対角線上の書籍はあなたと世間の評価が一致しています。線より上はあなたの評価が高く、下は低いことを意味します。象限はあなたのテイストパターンを示します。",
-      "description": "外部評価（Goodreads、Amazonなど）とあなたの個人評価を比較",
-      "booksAnalyzed": "冊を分析",
-      "axisExternalRating": "外部評価（1-5スケール）",
-      "axisPersonalRating": "あなたの個人評価（1-10から正規化）",
-      "tooltipUnknownBook": "不明な書籍",
-      "tooltipYourRating": "あなたの評価: {{ rating }}/10 ({{ normalized }}/5)",
-      "tooltipExternalRating": "外部評価: {{ rating }}/5",
-      "tooltipDifference": "差: {{ diff }}（5段階スケール）",
-      "tooltipCategory": "カテゴリ: {{ category }}",
-      "quadrantHiddenGems": "隠れた名作",
-      "quadrantPopularFavorites": "人気のお気に入り",
-      "quadrantAgreedMisses": "共通の低評価",
-      "quadrantOverrated": "過大評価",
-      "quadrantDescHiddenGems": "あなたが世間より高く評価した書籍",
-      "quadrantDescPopularFavorites": "あなたも世間も高く評価した書籍",
-      "quadrantDescAgreedMisses": "あなたも世間も楽しめなかった書籍",
-      "quadrantDescOverrated": "人気があるがあなたを失望させた書籍",
-      "tasteProfile": "あなたのテイストプロフィール",
-      "avgDeviation": "平均偏差:",
-      "uniqueTaste": "独自のテイスト",
-      "mainstream": "メインストリーム",
-      "balanced": "バランス型"
-    },
+    "ratingComparison": {},
     "seriesProgress": {
-      "title": "シリーズ進捗トラッカー",
-      "tooltip": "ライブラリ内の各シリーズを積み上げ棒グラフで表示します。読了、読書中、未読の巻数で構成されます。シリーズは読了率でソートされます。遅れているシリーズや読了間近のシリーズを発見できます。",
-      "description": "シリーズ全体の読書進捗を追跡",
-      "series": "シリーズ",
-      "avgCompletion": "平均読了率",
-      "topRated": "最高評価",
       "seriesBreakdown": "シリーズ内訳",
       "ofTotal": "{{ filtered }} / {{ total }}",
       "searchSeries": "シリーズを検索...",
-      "allStatus": "すべてのステータス",
       "inProgress": "進行中",
       "completed": "完了",
       "notStarted": "未開始",
@@ -4795,158 +4266,31 @@
       "abandoned": "中断",
       "wontRead": "読まない",
       "unread": "未読",
-      "booksRead": "{{ read }}/{{ owned }}冊読了",
-      "inSeriesHint": "（全{{ total }}巻）",
       "next": "次:",
-      "axisCompletion": "読了率 %",
-      "tooltipRead": "読了: {{ read }}/{{ owned }}冊所有",
-      "tooltipSeriesTotal": "シリーズ合計: {{ total }}冊",
-      "tooltipYourRating": "あなたの評価: {{ rating }}/10",
       "noMatchingSearch": "「{{ term }}」に一致するシリーズがありません",
-      "pageInfo": "{{ current }} / {{ total }}ページ",
-      "noData": "ライブラリにシリーズが見つかりません。",
-      "noDataHint": "ここに表示するには、書籍にシリーズメタデータが必要です。"
+      "pageInfo": "{{ current }} / {{ total }}ページ"
     },
-    "pageTurner": {
-      "title": "ページターナースコア",
-      "tooltip": "各書籍は読書行動の変化に基づいて「引き込み度スコア」（0-100）を取得します。セッションが長くなったか、セッション間の間隔が縮まったか、終盤に読書量が増えたかを測定します。スコアが高いほど、読み進めるにつれて引き込まれた書籍です。",
-      "description": "読書パターンに基づく各書籍の引き込み度",
-      "mostGripping": "最も引き込まれた",
-      "avgGripScore": "平均引き込み度",
-      "guiltyPleasure": "ギルティプレジャー",
-      "sessionDurationTrend": "セッション時間の傾向",
-      "gapBetweenSessionsTrend": "セッション間隔の傾向",
-      "finishBurst": "終盤の加速",
-      "increasing": "増加",
-      "decreasing": "減少",
-      "steady": "安定",
-      "shrinking": "短縮",
-      "growing": "延長",
-      "axisGripScore": "引き込み度スコア (0-100)",
-      "gripScore": "引き込み度スコア",
-      "tooltipGripScore": "引き込み度スコア: {{ score }}/100",
-      "tooltipSessions": "セッション数: {{ count }}",
-      "tooltipAvgSession": "平均セッション: {{ minutes }}分",
-      "tooltipRating": "評価: {{ rating }}/10"
-    },
-    "completionRace": {
-      "title": "読了レース",
-      "tooltip": "各線は読了した書籍の読書ジャーニーを表します。X軸は読み始めてからの日数、Y軸は0%から100%への進捗を示します。急な線ほど速く読了したことを意味します。「読了」マークが付いたトラッキング済みセッションのある書籍のみが含まれます。",
-      "description": "異なる書籍をどれだけ速く読了したかを比較",
-      "previousYear": "前年",
-      "nextYear": "翌年",
-      "books": "書籍",
-      "sessions": "セッション",
-      "avgDays": "平均日数",
-      "medianDays": "中央値日数",
-      "fastest": "最速",
-      "slowest": "最遅",
-      "axisDaysSinceFirstSession": "最初のセッションからの日数",
-      "axisProgress": "進捗 (%)",
-      "tooltipDayProgress": "{{ day }}日目: {{ progress }}%進捗",
-      "noData": "{{ year }}年に読書セッション付きの読了書籍が見つかりません。",
-      "noDataHint": "読了レースを表示するには、トラッキング済みの読書セッションで書籍を読了してください。"
-    },
-    "readingSurvival": {
-      "title": "読書サバイバルカーブ",
-      "tooltip": "生存分析に着想を得たもので、読み始めたすべての書籍から各進捗マイルストーンに到達した割合を示します。特定のしきい値での急激な低下は、そこで書籍を中断する傾向があることを示します。「危険ゾーン」は最も急な落ち込みをハイライトします。",
-      "description": "読み始めた書籍のうち、各進捗しきい値に到達した割合",
-      "started": "開始済み",
+    "readingDropOff": {
       "completionRate": "読了率",
-      "medianDropout": "中央値脱落",
-      "dangerZone": "危険ゾーン",
-      "survivalRate": "生存率",
-      "axisProgressThreshold": "進捗しきい値",
-      "axisBooksSurviving": "残存書籍 %",
-      "tooltipProgress": "{{ label }}進捗",
-      "tooltipSurvival": "{{ value }}%の書籍がこの地点に到達",
-      "noData": "読書進捗のある書籍が見つかりません。",
-      "noDataHint": "サバイバルカーブを表示するには、書籍の読書を開始してください。"
+      "tooltipProgress": "{{ label }}進捗"
     },
     "readingClock": {
       "title": "読書クロック",
-      "tooltip": "時計の各セグメントは1日の1時間（0時から23時）を表します。各セグメントのサイズは全期間を通じてその時間帯に費やした総読書時間を示します。暖色は最も活発な時間帯を示します。夜型（20時〜2時に最も読書）、朝型（5時〜11時）、またはバランス型に分類されます。",
-      "description": "1日を通していつ読書しているか",
-      "peakHour": "ピーク時間",
-      "totalRead": "総読書時間",
-      "readerType": "読者タイプ",
-      "nightOwl": "夜型",
-      "earlyBird": "朝型",
-      "balanced": "バランス型",
-      "tooltipReading": "{{ time }}の読書",
-      "noData": "読書セッションデータが見つかりません。",
-      "noDataHint": "読書クロックを表示するには、読書セッションを記録してください。"
+      "peakHour": "ピーク時間"
     },
-    "bookLength": {
-      "title": "書籍の長さのスイートスポット",
-      "tooltip": "各点はあなたが評価した書籍で、ページ数（X軸）と個人評価（Y軸）でプロットされます。色は読書ステータスを示します。緑 = 読了、青 = 読書中、赤 = 中断。トレンド線は長い書籍と短い書籍のどちらをより高く評価する傾向があるかを示します。「スイートスポット」は平均評価が最も高いページ数範囲です。",
-      "description": "書籍の長さとあなたの個人評価の関係",
-      "booksAnalyzed": "冊を分析",
-      "sweetSpot": "スイートスポット",
-      "highestRated": "最高評価",
+    "ratingsByLength": {
       "axisPageCount": "ページ数",
-      "axisPersonalRating": "個人評価",
-      "tooltipUnknownBook": "不明な書籍",
-      "tooltipPages": "ページ数: {{ count }}",
-      "tooltipRating": "評価: {{ rating }}/10",
-      "tooltipStatus": "ステータス: {{ status }}",
-      "statusRead": "読了",
-      "statusReading": "読書中",
-      "statusAbandoned": "中断",
-      "statusOther": "その他",
-      "trend": "トレンド"
+      "axisPersonalRating": "個人評価"
     },
     "bookFlow": {
       "title": "",
-      "tooltip": "",
-      "description": "",
       "totalBooks": "",
-      "busiestQuarter": "",
-      "topStatus": "",
-      "avgRating": "",
-      "completionRate": "",
       "colAdded": "",
       "colStatus": "",
-      "colRating": "",
-      "noData": "",
-      "noDataHint": ""
+      "colRating": ""
     },
-    "readingDebt": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "booksAdded": "",
-      "booksFinished": "",
-      "backlog": "",
-      "currentBacklog": "",
-      "trendLabel": "",
-      "growing": "",
-      "shrinking": "",
-      "noData": "",
-      "noDataHint": ""
-    },
-    "publicationEra": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "bestDecade": "",
-      "avgRating": "",
-      "booksRated": "",
-      "noData": "",
-      "noDataHint": ""
-    },
-    "sessionArchetypes": {
-      "title": "",
-      "tooltip": "",
-      "description": "",
-      "sessions": "",
-      "dominantType": "",
-      "archetype_morning": "",
-      "archetype_afternoon": "",
-      "archetype_evening": "",
-      "archetype_night": "",
-      "noData": "",
-      "noDataHint": ""
+    "ratingsByDecade": {
+      "bestDecade": ""
     }
   },
   "magicShelf": {
@@ -5368,6 +4712,114 @@
         "matchSuccessDetail": "",
         "matchFailedSummary": "",
         "matchFailedDetail": ""
+      }
+    }
+  },
+  "browse": {
+    "showAll": "すべて表示",
+    "showMore": "",
+    "showFewer": "",
+    "clearFilters": "",
+    "filter": "",
+    "moreActions": "その他の操作",
+    "sort": {
+      "multiSort": "",
+      "addField": "",
+      "apply": "",
+      "moveUp": "",
+      "moveDown": "",
+      "flipDirection": ""
+    },
+    "chips": {
+      "removeSearch": "",
+      "removeExcluded": ""
+    },
+    "rail": {
+      "searchValues": "",
+      "searchFields": "",
+      "searchScope": {
+        "allBooks": "",
+        "library": "",
+        "shelf": "",
+        "magicShelf": "",
+        "unshelved": "",
+        "dashboardRow": ""
+      },
+      "noMatches": "",
+      "minUnit": "",
+      "maxUnit": "",
+      "min": "",
+      "max": "",
+      "excluded": "",
+      "exclude": "",
+      "excludeValue": "",
+      "matchOptions": "",
+      "matchAny": "",
+      "matchAll": "",
+      "all": ""
+    },
+    "book": {
+      "empty": "",
+      "filteredEmpty": "",
+      "loadError": "",
+      "pageError": ""
+    },
+    "table": {
+      "moreValues": ""
+    },
+    "toolbar": {
+      "columnGroups": {
+        "reading": "",
+        "publishing": "",
+        "file": "ファイル",
+        "categorization": "",
+        "ratings": "評価"
+      },
+      "sort": "",
+      "sortAria": "",
+      "sortAscending": "",
+      "sortDescending": "",
+      "shuffleAgain": "",
+      "viewMode": "表示",
+      "density": "サイズ",
+      "smallerCards": "",
+      "largerCards": "",
+      "columns": "",
+      "resetColumns": "デフォルトに戻す"
+    },
+    "bulk": {
+      "markAsMessage": "",
+      "editAll": "",
+      "editOneByOne": "",
+      "selectionEmpty": "",
+      "selectionLoadError": "",
+      "organizeFiles": "ファイルを整理",
+      "updateReadStatus": "読書状態を更新",
+      "lockUnlockMetadata": "メタデータのロック/解除"
+    },
+    "filterPage": {
+      "show": ""
+    }
+  },
+  "stats": {
+    "config": {
+      "title": "チャート設定",
+      "resetOrder": "順序をリセット"
+    },
+    "filter": {
+      "allYears": "全年",
+      "selectYear": "年を選択",
+      "allMonths": "全月",
+      "selectMonth": "月を選択",
+      "week": "第{{ number }}週",
+      "previousWeek": "前の週",
+      "nextWeek": "次の週",
+      "dataTypes": {
+        "authors": "著者",
+        "series": "シリーズ",
+        "publishers": "出版社",
+        "tags": "タグ",
+        "moods": "ムード"
       }
     }
   }

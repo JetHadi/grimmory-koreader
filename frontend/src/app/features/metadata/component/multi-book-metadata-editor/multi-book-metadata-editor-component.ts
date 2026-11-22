@@ -6,7 +6,7 @@ import {UserService} from '../../../settings/user-management/user.service';
 import {MetadataEditorComponent} from '../book-metadata-center/metadata-editor/metadata-editor.component';
 import {MetadataSearcherComponent} from '../book-metadata-center/metadata-searcher/metadata-searcher.component';
 import {Button} from '@openng/optimus-ui/button';
-import {injectQuery} from '@tanstack/angular-query-experimental';
+import {injectQuery} from '@tanstack/angular-query';
 
 @Component({
   selector: 'app-multi-book-metadata-editor-component',
@@ -33,9 +33,9 @@ export class MultiBookMetadataEditorComponent {
   bookIds: number[] = this.config.data?.bookIds ?? [];
   loading = false;
 
-  private currentIndex = signal(0);
-  private currentBookId = computed(() => this.bookIds[this.currentIndex()] ?? null);
-  private bookDetailQuery = injectQuery(() => ({
+  private readonly currentIndex = signal(0);
+  private readonly currentBookId = computed(() => this.bookIds[this.currentIndex()] ?? null);
+  private readonly bookDetailQuery = injectQuery(() => ({
     ...this.bookService.bookDetailQueryOptions(this.currentBookId() ?? -1, true),
     enabled: this.currentBookId() != null,
   }));

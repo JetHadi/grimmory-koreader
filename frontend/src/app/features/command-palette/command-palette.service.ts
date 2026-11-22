@@ -1,11 +1,11 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Service, signal } from '@angular/core';
 import { MessageService } from '@openng/optimus-ui/api';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
-import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { injectQuery, QueryClient } from '@tanstack/angular-query';
 
-import { BookDialogHelperService } from '../book/components/book-browser/book-dialog-helper.service';
+import { BookDialogHelperService } from '../book/service/book-dialog-helper.service';
 import { BookPageParams, EMPTY_FACET_SELECTION } from '../book/data/book-query-params';
 import { BookSummary } from '../book/data/book-response.models';
 import { BookQueryService } from '../book/data/book-query.service';
@@ -39,7 +39,7 @@ interface CommandPaletteOverlayController {
 const BOOK_RESULT_LIMIT = 50;
 const MIN_BOOK_SEARCH_LENGTH = 2;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CommandPaletteService {
   private readonly router = inject(Router);
   private readonly t = inject(TranslocoService);
@@ -68,7 +68,6 @@ export class CommandPaletteService {
   private readonly bookSearchParams = computed<BookPageParams>(() => ({
     query: this.debouncedBookQuery(),
     facets: EMPTY_FACET_SELECTION,
-    facetLogic: 'or',
     sort: [{key: 'title', direction: 'asc'}],
     size: BOOK_RESULT_LIMIT,
   }));

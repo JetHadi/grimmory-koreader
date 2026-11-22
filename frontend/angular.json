@@ -137,7 +137,6 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "runnerConfig": "vitest-base.config.ts",
-            "isolate": true,
             "reporters": [
               ["default", {"summary": false}],
               ["junit", {"outputFile": "test-results/vitest-results.xml"}]
@@ -154,6 +153,7 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
+            "applySuppressions": true,
             "lintFilePatterns": [
               "src/**/*.ts",
               "src/**/*.html"

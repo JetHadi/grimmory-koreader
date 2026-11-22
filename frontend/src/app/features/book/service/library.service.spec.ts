@@ -5,9 +5,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {AuthService} from '../../../shared/service/auth.service';
 import {createAuthServiceStub, createQueryClientHarness, flushSignalAndQueryEffects} from '../../../core/testing/query-testing';
 import type {Library} from '../model/library.model';
-import {BookService} from './book.service';
 import {bookQueryKeys} from '../data/book-query-keys';
-import {shelfDefinitionQueryKeys} from '../data/shelf-definition-query-keys';
+import {shelfQueryKeys} from '../../shelf/data/shelf-query-keys';
 import {AUTHORS_QUERY_KEY} from '../../author-browser/service/author-query-keys';
 import {BOOKS_QUERY_KEY} from './book-query-keys';
 import {SHELVES_QUERY_KEY} from './shelf-query-keys';
@@ -29,17 +28,10 @@ describe('LibraryService', () => {
   let httpTestingController: HttpTestingController;
   let authService: ReturnType<typeof createAuthServiceStub>;
   let queryClientHarness: ReturnType<typeof createQueryClientHarness>;
-  let bookService: {
-    books: ReturnType<typeof vi.fn>;
-  };
 
   beforeEach(() => {
     authService = createAuthServiceStub();
     queryClientHarness = createQueryClientHarness();
-    bookService = {
-      books: vi.fn(() => []),
-    };
-
     vi.spyOn(queryClientHarness.queryClient, 'invalidateQueries').mockResolvedValue(undefined);
     vi.spyOn(queryClientHarness.queryClient, 'removeQueries').mockImplementation(() => undefined);
 
@@ -48,7 +40,6 @@ describe('LibraryService', () => {
         ...queryClientHarness.providers,
         LibraryService,
         {provide: AuthService, useValue: authService},
-        {provide: BookService, useValue: bookService},
       ],
     });
 
@@ -105,13 +96,13 @@ describe('LibraryService', () => {
     expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: LIBRARIES_QUERY_KEY, exact: true});
     expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: BOOKS_QUERY_KEY, exact: true});
     expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: bookQueryKeys.all()});
-    expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: shelfDefinitionQueryKeys.all()});
+    expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: shelfQueryKeys.all()});
     expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: SHELVES_QUERY_KEY, exact: true});
     expect(queryClientHarness.queryClient.invalidateQueries).toHaveBeenCalledWith({queryKey: AUTHORS_QUERY_KEY, exact: true});
     expect(queryClientHarness.queryClient.removeQueries).toHaveBeenCalledWith({queryKey: libraryFormatCountsQueryKey(4), exact: true});
   });
 
-  it('hydrates format counts through ensureQueryData', async () => {
+  it('hydrates format counts through query', async () => {
     httpTestingController.expectOne(req => req.url.endsWith('/api/v1/libraries')).flush([]);
 
     const resultPromise = new Promise<Record<string, number>>((resolve, reject) => {
@@ -124,13 +115,6 @@ describe('LibraryService', () => {
     request.flush({EPUB: 7, PDF: 2});
 
     await expect(resultPromise).resolves.toEqual({EPUB: 7, PDF: 2});
-
-    bookService.books.mockReturnValue([
-      {libraryId: 8, shelves: []},
-      {libraryId: 8, shelves: []},
-      {libraryId: 9, shelves: []},
-    ]);
-    expect(service.getBookCountValue(8)).toBe(2);
   });
 
   it('removes library queries when the auth token becomes null', () => {

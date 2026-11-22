@@ -19,8 +19,8 @@ import {
   LucideShare2,
   LucideSmartphone,
   LucideTag,
-  LucideTrash2,
-  LucideTriangleAlert,
+  LucideTrash,
+  LucideTriangleExclamationPoint,
   LucideX,
   LucideZap,
   type LucideIconData,
@@ -65,7 +65,7 @@ import { AppTabsComponent, type TabItem } from '../../shared/ui/tabs/app-tabs.co
 import { AppTagComponent } from '../../shared/ui/tag/app-tag.component';
 import { AppTextareaComponent } from '../../shared/ui/textarea/app-textarea.component';
 import { AppTooltipDirective } from '../../shared/ui/tooltip/app-tooltip.directive';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery } from '@tanstack/angular-query';
 import { BookQueryService } from '../book/data/book-query.service';
 import { EMPTY_FACET_SELECTION } from '../book/data/book-query-params';
 import { type BookSummary } from '../book/data/book-response.models';
@@ -136,10 +136,10 @@ interface ButtonExample {
     LucideEllipsisVertical,
     LucideFolderOpen,
     LucideDownload,
-    LucideTrash2,
+    LucideTrash,
     LucideSearch,
     LucideX,
-    LucideTriangleAlert,
+    LucideTriangleExclamationPoint,
     FormField,
   ],
   templateUrl: './design-system.component.html',
@@ -153,7 +153,6 @@ export class DesignSystemComponent {
 
   private readonly bookCardsQuery = injectQuery(() => this.bookQueryService.page({
     facets: EMPTY_FACET_SELECTION,
-    facetLogic: 'or',
     sort: [{ key: 'title', direction: 'asc' }],
     size: 4,
   }));
@@ -184,7 +183,7 @@ export class DesignSystemComponent {
   readonly iconCopy: LucideIconData = LucideCopy.icon;
   readonly iconPencil: LucideIconData = LucidePencil.icon;
   readonly iconDownload: LucideIconData = LucideDownload.icon;
-  readonly iconTrash: LucideIconData = LucideTrash2.icon;
+  readonly iconTrash: LucideIconData = LucideTrash.icon;
   readonly iconShare: LucideIconData = LucideShare2.icon;
   readonly iconFolderOpen: LucideIconData = LucideFolderOpen.icon;
 

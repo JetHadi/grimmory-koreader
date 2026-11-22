@@ -1,10 +1,11 @@
-import {Component, EventEmitter, inject, Input, Output} from '@angular/core';
+import {Component, inject, Input, output} from '@angular/core';
 import {TranslocoDirective, TranslocoPipe, TranslocoService} from '@jsverse/transloco';
 import {Book} from '../../../book/model/book.model';
 import {UrlHelperService} from '../../../../shared/service/url-helper.service';
 import {LanguageResolverService} from '../../../../shared/service/language-resolver.service';
 import {CoverComponent} from '../../../../shared/components/cover/cover.component';
 import {MetadataCatalogService} from '../../../../shared/metadata/metadata-catalog.service';
+import {METADATA_PROVIDER_SCORE_FIELDS} from '../../../../shared/metadata/metadata-fields';
 
 @Component({
   selector: 'app-reader-book-metadata-dialog',
@@ -14,13 +15,12 @@ import {MetadataCatalogService} from '../../../../shared/metadata/metadata-catal
   styleUrls: ['./metadata-dialog.component.scss']
 })
 export class ReaderBookMetadataDialogComponent {
-  @Input() book: Book | null = null;
-  @Output() closed = new EventEmitter<void>();
-
-  private urlHelperService = inject(UrlHelperService);
+  private readonly urlHelperService = inject(UrlHelperService);
   private readonly t = inject(TranslocoService);
   protected readonly catalog = inject(MetadataCatalogService);
   protected readonly languageResolver = inject(LanguageResolverService);
+  @Input() book: Book | null = null;
+  readonly closed = output<void>();
 
   get metadata() {
     return this.book?.metadata;
@@ -29,10 +29,13 @@ export class ReaderBookMetadataDialogComponent {
   get providerRatings() {
     const metadata = this.metadata;
     return this.catalog.providers().flatMap(provider => {
-      const rating = provider.book?.rating ? metadata?.[provider.book.rating] : undefined;
+      const score = (role: 'rating' | 'reviewCount') => {
+        const field = METADATA_PROVIDER_SCORE_FIELDS.find(candidate => candidate.provider === provider.id && candidate.providerRole === role);
+        return field ? metadata?.[field.name] : undefined;
+      };
+      const rating = score('rating');
       if (typeof rating !== 'number') return [];
-      const reviewCount = provider.book?.reviewCount ? metadata?.[provider.book.reviewCount] : undefined;
-      return [{labelKey: provider.labelKey, rating, reviewCount}];
+      return [{labelKey: provider.labelKey, rating, reviewCount: score('reviewCount')}];
     });
   }
 
