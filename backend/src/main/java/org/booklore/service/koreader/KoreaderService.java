@@ -384,6 +384,7 @@ public class KoreaderService {
     }
 
     private void applyAnnotationUpdate(AnnotationEntity existing, KoreaderAnnotationSyncItem item, String device) {
+        existing.setCfi(item.getLocation());
         existing.setText(item.getSelectedText());
         existing.setNote(item.getNoteContent());
         existing.setChapterTitle(item.getChapterTitle());
@@ -397,6 +398,7 @@ public class KoreaderService {
     }
 
     private void applyNoteUpdate(BookNoteV2Entity existing, KoreaderAnnotationSyncItem item) {
+        existing.setCfi(item.getLocation());
         existing.setSelectedText(item.getSelectedText());
         existing.setNoteContent(getIncomingNoteContent(item));
         existing.setChapterTitle(item.getChapterTitle());
@@ -427,7 +429,8 @@ public class KoreaderService {
     private boolean hasChanges(AnnotationEntity existing, KoreaderAnnotationSyncItem item, String device) {
         String incomingColor = item.getColor() == null ? "#FFFF00" : item.getColor();
 
-        return !Objects.equals(existing.getText(), item.getSelectedText())
+        return !Objects.equals(existing.getCfi(), item.getLocation())
+                || !Objects.equals(existing.getText(), item.getSelectedText())
                 || !Objects.equals(existing.getNote(), item.getNoteContent())
                 || !Objects.equals(existing.getChapterTitle(), item.getChapterTitle())
                 || !Objects.equals(existing.getColor(), incomingColor)
@@ -437,7 +440,8 @@ public class KoreaderService {
     private boolean hasChanges(BookNoteV2Entity existing, KoreaderAnnotationSyncItem item) {
         String incomingColor = item.getColor() == null ? "#FFC107" : item.getColor();
 
-        return !Objects.equals(existing.getSelectedText(), item.getSelectedText())
+        return !Objects.equals(existing.getCfi(), item.getLocation())
+                || !Objects.equals(existing.getSelectedText(), item.getSelectedText())
                 || !Objects.equals(existing.getNoteContent(), getIncomingNoteContent(item))
                 || !Objects.equals(existing.getChapterTitle(), item.getChapterTitle())
                 || !Objects.equals(existing.getColor(), incomingColor);
@@ -453,15 +457,37 @@ public class KoreaderService {
 
     private SyncResult syncAnnotationItem(BookEntity book, BookLoreUserEntity user, Long userId,
             KoreaderAnnotationSyncItem item, String device) {
+        // Entries synced before CFI conversion existed are stored under the raw KOReader
+        // position; newer ones under the converted CFI. Look up both so old entries are
+        // migrated in place instead of being duplicated.
+        String rawLocation = item.getLocation();
+        String cfi = convertLocationToCfi(book, item);
+
         AnnotationEntity existingAnnotation = annotationRepository
-                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .findByCfiAndBookIdAndUserId(rawLocation, book.getId(), userId)
                 .orElse(null);
         BookNoteV2Entity existingNote = bookNoteV2Repository
-                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .findByCfiAndBookIdAndUserId(rawLocation, book.getId(), userId)
                 .orElse(null);
         BookMarkEntity existingBookmark = bookMarkRepository
-                .findByCfiAndBookIdAndUserId(item.getLocation(), book.getId(), userId)
+                .findByCfiAndBookIdAndUserId(rawLocation, book.getId(), userId)
                 .orElse(null);
+
+        if (cfi != null) {
+            if (existingAnnotation == null) {
+                existingAnnotation = annotationRepository
+                        .findByCfiAndBookIdAndUserId(cfi, book.getId(), userId).orElse(null);
+            }
+            if (existingNote == null) {
+                existingNote = bookNoteV2Repository
+                        .findByCfiAndBookIdAndUserId(cfi, book.getId(), userId).orElse(null);
+            }
+            if (existingBookmark == null) {
+                existingBookmark = bookMarkRepository
+                        .findByCfiAndBookIdAndUserId(cfi, book.getId(), userId).orElse(null);
+            }
+            item.setLocation(cfi);
+        }
 
         boolean hadExistingEntry = existingAnnotation != null || existingNote != null || existingBookmark != null;
         SyncKind kind = determineSyncKind(item);
@@ -474,6 +500,42 @@ public class KoreaderService {
             case HIGHLIGHT -> syncHighlight(book, user, item, device, existingAnnotation, existingNote,
                     existingBookmark, hadExistingEntry);
         };
+    }
+
+    /**
+     * Converts a KOReader xpointer position into an EPUB CFI so the entry can be rendered
+     * and opened in the web reader. Returns null when the location is not an xpointer, the
+     * book is not an EPUB, or the conversion fails (the raw location is stored then).
+     */
+    private String convertLocationToCfi(BookEntity book, KoreaderAnnotationSyncItem item) {
+        String location = item.getLocation();
+        if (location == null || !location.startsWith("/body")) {
+            return null;
+        }
+
+        try {
+            BookFileEntity primaryFile = book.getPrimaryBookFile();
+            if (primaryFile == null || primaryFile.getBookType() != BookFileType.EPUB) {
+                return null;
+            }
+
+            String endLocation = item.getEndLocation();
+            String cfi = null;
+            if (endLocation != null && endLocation.startsWith("/body") && determineSyncKind(item) != SyncKind.BOOKMARK) {
+                try {
+                    cfi = epubCfiService.convertXPointerRangeToCfi(primaryFile.getFullFilePath(), location, endLocation);
+                } catch (Exception e) {
+                    log.debug("Range CFI conversion failed, falling back to start position: {}", e.getMessage());
+                }
+            }
+            if (cfi == null) {
+                cfi = epubCfiService.convertXPointerToCfi(primaryFile.getFullFilePath(), location);
+            }
+            return cfi == null || cfi.isBlank() || cfi.length() > 1000 ? null : cfi;
+        } catch (Exception e) {
+            log.debug("Failed to convert KOReader location to CFI: {}", e.getMessage());
+            return null;
+        }
     }
 
     private SyncResult syncHighlight(BookEntity book, BookLoreUserEntity user, KoreaderAnnotationSyncItem item,

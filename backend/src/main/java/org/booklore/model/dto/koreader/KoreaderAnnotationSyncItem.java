@@ -18,6 +18,10 @@ public class KoreaderAnnotationSyncItem {
     @Size(max = 1000, message = "location must not exceed 1000 characters")
     private String location;
 
+    /** Optional end position (KOReader pos1) used to build a range CFI for highlights. */
+    @Size(max = 1000, message = "endLocation must not exceed 1000 characters")
+    private String endLocation;
+
     @NotBlank(message = "selectedText is required")
     @Size(max = 5000, message = "selectedText must not exceed 5000 characters")
     private String selectedText;

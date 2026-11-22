@@ -595,6 +595,88 @@ class KoreaderServiceTest {
     }
 
     @Test
+    void syncAnnotations_convertsXPointerRangeToCfiAndMigratesExistingEntry() {
+        when(details.isSyncEnabled()).thenReturn(true);
+
+        var file = mock(BookFileEntity.class);
+        when(file.getBookType()).thenReturn(BookFileType.EPUB);
+        when(file.getFullFilePath()).thenReturn(Path.of("/books/a.epub"));
+        var book = mock(BookEntity.class);
+        when(book.getId()).thenReturn(80L);
+        when(book.getPrimaryBookFile()).thenReturn(file);
+        when(bookRepo.findByCurrentHash("hash")).thenReturn(Optional.of(book));
+
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+
+        String start = "/body/DocFragment[3]/body/p[2]/text().10";
+        String end = "/body/DocFragment[3]/body/p[2]/text().40";
+        String cfi = "epubcfi(/6/6!/4/4,/1:10,/1:40)";
+        when(epubCfiService.convertXPointerRangeToCfi(nullable(Path.class), eq(start), eq(end))).thenReturn(cfi);
+
+        var existing = new AnnotationEntity();
+        existing.setCfi(start);
+        existing.setText("quoted");
+        existing.setColor("#FFFF00");
+        existing.setStyle("highlight");
+        when(annotationRepository.findByCfiAndBookIdAndUserId(start, 80L, 42L)).thenReturn(Optional.of(existing));
+
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .annotations(List.of(KoreaderAnnotationSyncItem.builder()
+                        .location(start)
+                        .endLocation(end)
+                        .selectedText("quoted")
+                        .externalId("highlight::" + start)
+                        .build()))
+                .build();
+
+        var response = service.syncAnnotations(request);
+
+        assertEquals(1, response.getUpdated());
+        assertEquals(0, response.getCreated());
+        assertEquals(cfi, existing.getCfi());
+        verify(annotationRepository).save(eq(existing));
+    }
+
+    @Test
+    void syncAnnotations_keepsRawLocationWhenConversionFails() {
+        when(details.isSyncEnabled()).thenReturn(true);
+
+        var file = mock(BookFileEntity.class);
+        when(file.getBookType()).thenReturn(BookFileType.EPUB);
+        when(file.getFullFilePath()).thenReturn(Path.of("/books/a.epub"));
+        var book = mock(BookEntity.class);
+        when(book.getId()).thenReturn(81L);
+        when(book.getPrimaryBookFile()).thenReturn(file);
+        when(bookRepo.findByCurrentHash("hash")).thenReturn(Optional.of(book));
+
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+
+        String start = "/body/DocFragment[3]/body/p[2]/text().10";
+        when(epubCfiService.convertXPointerToCfi(nullable(Path.class), eq(start)))
+                .thenThrow(new IllegalStateException("broken epub"));
+
+        var request = KoreaderAnnotationSyncRequest.builder()
+                .document("hash")
+                .annotations(List.of(KoreaderAnnotationSyncItem.builder()
+                        .location(start)
+                        .selectedText("quoted")
+                        .build()))
+                .build();
+
+        var response = service.syncAnnotations(request);
+
+        assertEquals(1, response.getCreated());
+        var captor = org.mockito.ArgumentCaptor.forClass(AnnotationEntity.class);
+        verify(annotationRepository).save(captor.capture());
+        assertEquals(start, captor.getValue().getCfi());
+    }
+
+    @Test
     void syncAnnotations_returnsMatchedBookFalseWhenHashUnknown() {
         when(details.isSyncEnabled()).thenReturn(true);
         when(bookRepo.findByCurrentHash("missing")).thenReturn(Optional.empty());
