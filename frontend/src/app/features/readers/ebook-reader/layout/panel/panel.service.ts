@@ -67,7 +67,16 @@ export class ReaderLeftSidebarService {
   private loadNotes(): void {
     this.bookNoteV2Service.getNotesForBook(this.bookId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(notes => this._notes.set(notes));
+      .subscribe(notes => this.setNotes(notes));
+  }
+
+  private setNotes(notes: BookNoteV2[]): void {
+    this._notes.set(notes);
+    this.viewManager.setNoteMarks(notes.map(note => ({value: note.cfi, color: note.color})));
+  }
+
+  findNoteByCfi(cfi: string): BookNoteV2 | undefined {
+    return this._notes().find(note => note.cfi === cfi);
   }
 
   refreshNotes(): void {
@@ -113,7 +122,7 @@ export class ReaderLeftSidebarService {
     this.bookNoteV2Service.deleteNote(noteId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        this._notes.update(notes => notes.filter(note => note.id !== noteId));
+        this.setNotes(this._notes().filter(note => note.id !== noteId));
       });
   }
 

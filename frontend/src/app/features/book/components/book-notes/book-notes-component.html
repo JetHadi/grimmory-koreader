@@ -5,7 +5,7 @@
         <p-progressSpinner/>
         <span class="loading-text">Loading notes...</span>
       </div>
-    } @else if (notes.length === 0) {
+    } @else if (notes.length === 0 && readerNotes.length === 0) {
       <div class="empty-state">
         <div class="empty-state-icon">
           <p-button
@@ -27,60 +27,107 @@
     } @else {
       <div class="notes-scroll-container">
         <div class="notes-horizontal-list">
-          @for (note of notes; track note.id + '-' + note.createdAt + '-' + $index) {
-            <div class="note-card">
-              <div class="note-header">
-                <div class="note-header-inner">
-                  <div class="note-title-group">
-                    <h4 class="note-title">{{ note.title }}</h4>
-                    <div class="note-meta">
-                      <i class="pi pi-clock note-meta-icon"></i>
-                      <span class="note-meta-text">
-                        @if (note.createdAt !== note.updatedAt) {
-                          Updated {{ formatDate(note.updatedAt) }}
-                        } @else {
-                          Created {{ formatDate(note.createdAt) }}
-                        }
-                      </span>
+          @for (card of cards; track card.kind + '-' + card.note.id) {
+            @if (card.kind === 'book') {
+              @let note = card.note;
+                <div class="note-card">
+                  <div class="note-header">
+                    <div class="note-header-inner">
+                      <div class="note-title-group">
+                        <h4 class="note-title">{{ note.title }}</h4>
+                        <div class="note-meta">
+                          <i class="pi pi-clock note-meta-icon"></i>
+                          <span class="note-meta-text">
+                            @if (note.createdAt !== note.updatedAt) {
+                              Updated {{ formatDate(note.updatedAt) }}
+                            } @else {
+                              Created {{ formatDate(note.createdAt) }}
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="note-actions">
+                        <p-button
+                          icon="pi pi-pencil"
+                          size="small"
+                          severity="secondary"
+                          text
+                          (onClick)="openEditDialog(note)"
+                          pTooltip="Edit note"
+                          tooltipPosition="top"
+                          class="action-btn-hover" />
+                        <p-button
+                          icon="pi pi-trash"
+                          size="small"
+                          severity="danger"
+                          text
+                          (onClick)="deleteNote(note)"
+                          pTooltip="Delete note"
+                          tooltipPosition="top"
+                          class="action-btn-hover" />
+                      </div>
                     </div>
                   </div>
 
-                  <div class="note-actions">
-                    <p-button
-                      icon="pi pi-pencil"
-                      size="small"
-                      severity="secondary"
-                      text
-                      (onClick)="openEditDialog(note)"
-                      pTooltip="Edit note"
-                      tooltipPosition="top"
-                      class="action-btn-hover" />
-                    <p-button
-                      icon="pi pi-trash"
-                      size="small"
-                      severity="danger"
-                      text
-                      (onClick)="deleteNote(note)"
-                      pTooltip="Delete note"
-                      tooltipPosition="top"
-                      class="action-btn-hover" />
+                  <div class="note-content-area">
+                    <div class="note-body">{{ note.content }}</div>
+                    <div class="note-fade-overlay"></div>
+                  </div>
+                  <div class="note-bottom-glow"></div>
+                </div>
+            } @else {
+              @let note = card.note;
+              <div class="note-card">
+                <div class="note-header">
+                  <div class="note-header-inner">
+                    <div class="note-title-group">
+                      <h4 class="note-title">{{ readerNoteTitle(note) }}</h4>
+                      <div class="note-meta">
+                        <i class="pi pi-book note-meta-icon"></i>
+                        <span class="note-meta-text">
+                          From reader · {{ formatDate(note.updatedAt ?? note.createdAt) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="note-actions">
+                      <p-button
+                        icon="pi pi-pencil"
+                        size="small"
+                        severity="secondary"
+                        text
+                        (onClick)="openReaderEditDialog(note)"
+                        pTooltip="Edit note"
+                        tooltipPosition="top"
+                        class="action-btn-hover" />
+                      <p-button
+                        icon="pi pi-trash"
+                        size="small"
+                        severity="danger"
+                        text
+                        (onClick)="deleteReaderNote(note)"
+                        pTooltip="Delete note"
+                        tooltipPosition="top"
+                        class="action-btn-hover" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="note-content-area">
-                <div class="note-body">{{ note.content }}</div>
-                <div class="note-fade-overlay"></div>
+                <div class="note-content-area">
+                  <div class="note-body">@if (note.selectedText) {<blockquote class="note-quote">{{ note.selectedText }}</blockquote>}{{ note.noteContent }}</div>
+                  <div class="note-fade-overlay"></div>
+                </div>
+                <div class="note-bottom-glow"></div>
               </div>
-              <div class="note-bottom-glow"></div>
-            </div>
+            }
           }
         </div>
       </div>
     }
   </div>
 
-  @if (notes.length > 0) {
+  @if (notes.length > 0 || readerNotes.length > 0) {
     <div class="action-bar">
       <p-button
         outlined
@@ -190,6 +237,49 @@
           label="Update Note"
           icon="pi pi-save"
           (onClick)="updateNote()" />
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog
+    header="Edit Note"
+    [(visible)]="showReaderEditDialog"
+    [modal]="true"
+    [style]="{width: '500px'}"
+    [closable]="true"
+    [dismissableMask]="true">
+
+    <div class="dialog-form">
+      @if (selectedReaderNote?.selectedText; as quote) {
+        <blockquote class="note-quote">{{ quote }}</blockquote>
+      }
+      <div class="field">
+        <label for="reader-edit-content" class="field-label">Content</label>
+        <textarea
+          id="reader-edit-content"
+          pTextarea
+          [(ngModel)]="readerNoteContent"
+          placeholder="Enter your note content..."
+          [rows]="8"
+          class="field-input"
+          [autoResize]="true">
+        </textarea>
+      </div>
+    </div>
+
+    <ng-template #footer>
+      <div class="dialog-actions">
+        <p-button
+          label="Cancel"
+          severity="secondary"
+          outlined
+          (onClick)="cancelReaderEdit()" />
+        <p-button
+          outlined
+          severity="success"
+          label="Update Note"
+          icon="pi pi-save"
+          (onClick)="updateReaderNote()" />
       </div>
     </ng-template>
   </p-dialog>

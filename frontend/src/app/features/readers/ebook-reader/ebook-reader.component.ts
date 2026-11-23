@@ -394,6 +394,14 @@ export class EbookReaderComponent implements OnInit {
           case 'toggle-notes':
             this.leftSidebarService.toggle('notes');
             break;
+          case 'show-annotation': {
+            const value = event.detail?.value;
+            const note = value ? this.leftSidebarService.findNoteByCfi(value) : undefined;
+            if (note) {
+              this.leftSidebarService.editNote(note);
+            }
+            break;
+          }
           case 'escape-pressed':
             if (this.showShortcutsHelp()) {
               this.showShortcutsHelp.set(false);

@@ -37,6 +37,7 @@ describe('ReaderLeftSidebarService', () => {
     goTo: vi.fn(() => of(void 0)),
     search: vi.fn(() => asyncSearch()),
     clearSearch: vi.fn(),
+    setNoteMarks: vi.fn(),
   };
 
   beforeEach(() => {
@@ -49,6 +50,7 @@ describe('ReaderLeftSidebarService', () => {
     viewManager.search.mockReset();
     viewManager.search.mockImplementation(() => asyncSearch());
     viewManager.clearSearch.mockReset();
+    viewManager.setNoteMarks.mockReset();
 
     TestBed.configureTestingModule({
       providers: [
@@ -76,6 +78,19 @@ describe('ReaderLeftSidebarService', () => {
 
     service.setNotesSearchQuery('middle');
     expect(service.filteredNotes()).toEqual([notes[1]]);
+  });
+
+  it('marks note passages in the text and keeps the marks in sync on delete', () => {
+    expect(viewManager.setNoteMarks).toHaveBeenLastCalledWith([
+      {value: 'epubcfi(/6/2)', color: undefined},
+      {value: 'epubcfi(/6/4)', color: undefined},
+    ]);
+    expect(service.findNoteByCfi('epubcfi(/6/4)')).toEqual(notes[1]);
+
+    service.deleteNote(1);
+
+    expect(viewManager.setNoteMarks).toHaveBeenLastCalledWith([{value: 'epubcfi(/6/4)', color: undefined}]);
+    expect(service.findNoteByCfi('epubcfi(/6/2)')).toBeUndefined();
   });
 
   it('opens, closes, toggles, and schedules search from openWithSearch', async () => {

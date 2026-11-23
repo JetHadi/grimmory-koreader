@@ -1,7 +1,7 @@
 import {inject, Service} from '@angular/core';
 import {defer, from, Observable, of, throwError, timer} from 'rxjs';
 import {catchError, map, switchMap} from 'rxjs/operators';
-import {ReaderAnnotationService, Annotation} from '../features/annotations/annotation-renderer.service';
+import {ReaderAnnotationService, Annotation, NoteMark} from '../features/annotations/annotation-renderer.service';
 import {ReaderEventService, ViewEvent, TextSelection} from './event.service';
 import {PageInfo, ThemeInfo, PageDecorator} from '../shared/header-footer.util';
 import {EpubStreamingService, EpubBookInfo} from './epub-streaming.service';
@@ -277,6 +277,10 @@ export class ReaderViewManagerService {
 
   addAnnotations(annotations: Annotation[]): void {
     this.annotationService.addAnnotations(this.view, annotations);
+  }
+
+  setNoteMarks(marks: NoteMark[]): void {
+    this.annotationService.setNoteMarks(this.view, marks);
   }
 
   updateHeadersAndFooters(chapterName: string, pageInfo?: PageInfo, theme?: ThemeInfo, timeRemainingLabel?: string): void {

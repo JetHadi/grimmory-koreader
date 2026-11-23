@@ -5,6 +5,7 @@ import {ConfirmationService, MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
 
 import {BookNote, BookNoteService} from '../../../../shared/service/book-note.service';
+import {BookNoteV2, BookNoteV2Service} from '../../../../shared/service/book-note-v2.service';
 import {BookNotesComponent} from './book-notes-component';
 
 interface ConfirmationLike {
@@ -27,11 +28,30 @@ function createNote(id: number, overrides: Partial<BookNote> = {}): BookNote {
   };
 }
 
+function createReaderNote(id: number, overrides: Partial<BookNoteV2> = {}): BookNoteV2 {
+  return {
+    id,
+    userId: 7,
+    bookId: 42,
+    cfi: `epubcfi(/6/${id})`,
+    selectedText: `Quote ${id}`,
+    noteContent: `Reader content ${id}`,
+    createdAt: '2026-03-28T09:00:00.000Z',
+    updatedAt: '2026-03-28T09:00:00.000Z',
+    ...overrides,
+  };
+}
+
 describe('BookNotesComponent', () => {
   let component: BookNotesComponent;
   let bookNoteService: {
     getNotesForBook: ReturnType<typeof vi.fn>;
     createOrUpdateNote: ReturnType<typeof vi.fn>;
+    deleteNote: ReturnType<typeof vi.fn>;
+  };
+  let bookNoteV2Service: {
+    getNotesForBook: ReturnType<typeof vi.fn>;
+    updateNote: ReturnType<typeof vi.fn>;
     deleteNote: ReturnType<typeof vi.fn>;
   };
   let messageService: {
@@ -54,6 +74,11 @@ describe('BookNotesComponent', () => {
       createOrUpdateNote: vi.fn(),
       deleteNote: vi.fn(),
     };
+    bookNoteV2Service = {
+      getNotesForBook: vi.fn(() => of([])),
+      updateNote: vi.fn(),
+      deleteNote: vi.fn(),
+    };
     messageService = {
       add: vi.fn(),
     };
@@ -69,6 +94,7 @@ describe('BookNotesComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         {provide: BookNoteService, useValue: bookNoteService},
+        {provide: BookNoteV2Service, useValue: bookNoteV2Service},
         {provide: ConfirmationService, useValue: confirmationService},
         {provide: MessageService, useValue: messageService},
         {provide: TranslocoService, useValue: {translate}},
@@ -99,6 +125,47 @@ describe('BookNotesComponent', () => {
     expect(bookNoteService.getNotesForBook).toHaveBeenCalledWith(42);
     expect(component.notes.map(note => note.id)).toEqual([2, 3, 1]);
     expect(component.loading()).toBe(false);
+  });
+
+  it('loads reader notes alongside book notes and merges them by recency', () => {
+    const bookNote = createNote(1, {updatedAt: '2026-03-28T10:00:00.000Z'});
+    const synced = createReaderNote(5, {createdAt: '2026-03-28T12:00:00.000Z', updatedAt: undefined});
+    const older = createReaderNote(6, {updatedAt: '2026-03-28T08:00:00.000Z'});
+    bookNoteService.getNotesForBook.mockReturnValue(of([bookNote]));
+    bookNoteV2Service.getNotesForBook.mockReturnValue(of([older, synced]));
+
+    component.loadNotes();
+
+    expect(bookNoteV2Service.getNotesForBook).toHaveBeenCalledWith(42);
+    expect(component.cards.map(card => `${card.kind}-${card.note.id}`)).toEqual(['reader-5', 'book-1', 'reader-6']);
+  });
+
+  it('updates a reader note content and closes the dialog', () => {
+    const note = createReaderNote(5);
+    const updated = createReaderNote(5, {noteContent: 'Changed'});
+    component.readerNotes = [note];
+    bookNoteV2Service.updateNote.mockReturnValue(of(updated));
+
+    component.openReaderEditDialog(note);
+    component.readerNoteContent = 'Changed';
+    component.updateReaderNote();
+
+    expect(bookNoteV2Service.updateNote).toHaveBeenCalledWith(5, {noteContent: 'Changed'});
+    expect(component.readerNotes).toEqual([updated]);
+    expect(component.showReaderEditDialog).toBe(false);
+  });
+
+  it('deletes a reader note after confirmation', () => {
+    const note = createReaderNote(5, {chapterTitle: 'Chapter 1'});
+    component.readerNotes = [note, createReaderNote(6)];
+    bookNoteV2Service.deleteNote.mockReturnValue(of(void 0));
+
+    component.deleteReaderNote(note);
+    lastConfirmation?.accept?.();
+
+    expect(lastConfirmation?.message).toBe('book.notes.confirm.deleteMessage:{"title":"Chapter 1"}');
+    expect(bookNoteV2Service.deleteNote).toHaveBeenCalledWith(5);
+    expect(component.readerNotes.map(n => n.id)).toEqual([6]);
   });
 
   it('shows an error toast when loading notes fails', () => {

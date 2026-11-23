@@ -10,7 +10,14 @@ import {ProgressSpinner} from '@openng/optimus-ui/progressspinner';
 import {Tooltip} from '@openng/optimus-ui/tooltip';
 import {ConfirmationService, MessageService} from '@openng/optimus-ui/api';
 import {TranslocoService} from '@jsverse/transloco';
+import {forkJoin} from 'rxjs';
 import {BookNote, BookNoteService, CreateBookNoteRequest} from '../../../../shared/service/book-note.service';
+import {BookNoteV2, BookNoteV2Service} from '../../../../shared/service/book-note-v2.service';
+
+/** A card in the notes tab: either a free-form book note or a note attached to a passage in the reader. */
+export type NoteCard =
+  | {kind: 'book'; note: BookNote; sortTime: number}
+  | {kind: 'reader'; note: BookNoteV2; sortTime: number};
 
 @Component({
   selector: 'app-book-notes-component',
@@ -30,6 +37,7 @@ import {BookNote, BookNoteService, CreateBookNoteRequest} from '../../../../shar
 })
 export class BookNotesComponent implements OnInit, OnChanges {
   private readonly bookNoteService = inject(BookNoteService);
+  private readonly bookNoteV2Service = inject(BookNoteV2Service);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly messageService = inject(MessageService);
   private readonly destroyRef = inject(DestroyRef);
@@ -37,10 +45,15 @@ export class BookNotesComponent implements OnInit, OnChanges {
   @Input() bookId!: number;
 
   notes: BookNote[] = [];
+  /** Notes made on a passage in the reader, including ones synced from KOReader. */
+  readerNotes: BookNoteV2[] = [];
   readonly loading = signal(false);
   showCreateDialog = false;
   showEditDialog = false;
   selectedNote: BookNote | null = null;
+  showReaderEditDialog = false;
+  selectedReaderNote: BookNoteV2 | null = null;
+  readerNoteContent = '';
 
   newNote: CreateBookNoteRequest = {
     bookId: 0,
@@ -70,13 +83,17 @@ export class BookNotesComponent implements OnInit, OnChanges {
     if (!this.bookId) return;
 
     this.loading.set(true);
-    this.bookNoteService.getNotesForBook(this.bookId)
+    forkJoin({
+      notes: this.bookNoteService.getNotesForBook(this.bookId),
+      readerNotes: this.bookNoteV2Service.getNotesForBook(this.bookId)
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (notes) => {
+        next: ({notes, readerNotes}) => {
           this.notes = notes.sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
+          this.readerNotes = readerNotes;
           this.loading.set(false);
         },
         error: (error) => {
@@ -89,6 +106,18 @@ export class BookNotesComponent implements OnInit, OnChanges {
           });
         }
       });
+  }
+
+  get cards(): NoteCard[] {
+    const cards: NoteCard[] = [
+      ...this.notes.map(note => ({kind: 'book' as const, note, sortTime: new Date(note.updatedAt).getTime()})),
+      ...this.readerNotes.map(note => ({
+        kind: 'reader' as const,
+        note,
+        sortTime: new Date(note.updatedAt ?? note.createdAt).getTime()
+      }))
+    ];
+    return cards.sort((a, b) => b.sortTime - a.sortTime);
   }
 
   openCreateDialog(): void {
@@ -219,6 +248,90 @@ export class BookNotesComponent implements OnInit, OnChanges {
         });
       }
     });
+  }
+
+  openReaderEditDialog(note: BookNoteV2): void {
+    this.selectedReaderNote = note;
+    this.readerNoteContent = note.noteContent;
+    this.showReaderEditDialog = true;
+  }
+
+  cancelReaderEdit(): void {
+    this.showReaderEditDialog = false;
+    this.selectedReaderNote = null;
+    this.readerNoteContent = '';
+  }
+
+  updateReaderNote(): void {
+    const selected = this.selectedReaderNote;
+    if (!selected) return;
+    if (!this.readerNoteContent.trim()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: this.t.translate('book.notes.toast.validationSummary'),
+        detail: this.t.translate('book.notes.toast.validationDetail')
+      });
+      return;
+    }
+
+    this.bookNoteV2Service.updateNote(selected.id, {noteContent: this.readerNoteContent})
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedNote) => {
+          this.readerNotes = this.readerNotes.map(n => n.id === selected.id ? updatedNote : n);
+          this.cancelReaderEdit();
+          this.messageService.add({
+            severity: 'success',
+            summary: this.t.translate('common.success'),
+            detail: this.t.translate('book.notes.toast.updateSuccessDetail')
+          });
+        },
+        error: (error) => {
+          console.error('Failed to update note:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.t.translate('common.error'),
+            detail: this.t.translate('book.notes.toast.updateFailedDetail')
+          });
+        }
+      });
+  }
+
+  deleteReaderNote(note: BookNoteV2): void {
+    this.confirmationService.confirm({
+      key: 'deleteNote',
+      message: this.t.translate('book.notes.confirm.deleteMessage', {title: this.readerNoteTitle(note)}),
+      header: this.t.translate('book.notes.confirm.deleteHeader'),
+      icon: 'pi pi-exclamation-triangle',
+      acceptIcon: 'pi pi-trash',
+      rejectIcon: 'pi pi-times',
+      acceptButtonStyleClass: 'p-button-danger, p-button-outlined p-button-danger',
+      rejectButtonStyleClass: 'p-button-danger, p-button-outlined p-button-info',
+      accept: () => {
+        this.bookNoteV2Service.deleteNote(note.id).subscribe({
+          next: () => {
+            this.readerNotes = this.readerNotes.filter(n => n.id !== note.id);
+            this.messageService.add({
+              severity: 'success',
+              summary: this.t.translate('common.success'),
+              detail: this.t.translate('book.notes.toast.deleteSuccessDetail')
+            });
+          },
+          error: (error) => {
+            console.error('Failed to delete note:', error);
+            this.messageService.add({
+              severity: 'error',
+              summary: this.t.translate('common.error'),
+              detail: this.t.translate('book.notes.toast.deleteFailedDetail')
+            });
+          }
+        });
+      }
+    });
+  }
+
+  readerNoteTitle(note: BookNoteV2): string {
+    return note.chapterTitle?.trim() || 'Reader note';
   }
 
   cancelCreate(): void {

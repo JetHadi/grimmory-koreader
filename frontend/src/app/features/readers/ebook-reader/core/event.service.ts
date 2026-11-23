@@ -62,7 +62,7 @@ export type ViewEvent =
   | { type: 'error'; detail?: unknown }
   | { type: 'middle-single-tap' }
   | { type: 'draw-annotation'; detail: DrawAnnotationEventDetail }
-  | { type: 'show-annotation'; detail?: unknown }
+  | { type: 'show-annotation'; detail?: { value?: string } }
   | { type: 'text-selected'; detail: TextSelection; popupPosition: PopupPosition }
   | { type: 'text-deselected' }
   | { type: 'toggle-fullscreen' }
@@ -195,7 +195,7 @@ export class ReaderEventService {
     });
 
     this.view.addEventListener('show-annotation', (event: Event) => {
-      const e = event as CustomEvent<unknown>;
+      const e = event as CustomEvent<{ value?: string } | undefined>;
       this.eventSubject.next({type: 'show-annotation', detail: e.detail});
     });
   }

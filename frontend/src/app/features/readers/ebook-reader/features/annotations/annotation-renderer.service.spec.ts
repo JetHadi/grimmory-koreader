@@ -214,6 +214,53 @@ describe('ReaderAnnotationService', () => {
     expect(fallbackGroup.getAttribute('fill')).toBe('yellow');
   });
 
+  it('marks note passages, keeps highlight styles on shared passages, and clears removed notes', async () => {
+    const view = {
+      addAnnotation: vi.fn().mockResolvedValue(undefined),
+      deleteAnnotation: vi.fn().mockResolvedValue(undefined),
+      showAnnotation: vi.fn().mockResolvedValue(undefined),
+    };
+    const noteCfi = 'epubcfi(/6/10!/4/2,/1:0,/1:9)';
+    const sharedCfi = 'epubcfi(/6/10!/4/6,/1:0,/1:5)';
+    service.addAnnotations(view, [{value: sharedCfi, color: '#22c55e', style: 'underline'}]);
+    view.addAnnotation.mockClear();
+
+    service.setNoteMarks(view, [
+      {value: noteCfi, color: '#2563eb'},
+      {value: sharedCfi},
+      {value: '/body/DocFragment[3]/body/p[1]/text().0'},
+    ]);
+
+    expect(view.addAnnotation).toHaveBeenCalledTimes(1);
+    expect(view.addAnnotation).toHaveBeenCalledWith({value: noteCfi});
+    expect(service.getAnnotationStyle(noteCfi)).toEqual({color: '#2563eb', style: 'note'});
+    expect(service.getAnnotationStyle(sharedCfi)).toEqual({color: '#22c55e', style: 'underline'});
+    expect(service.getAllAnnotations().map(a => a.value)).toEqual([sharedCfi, noteCfi]);
+
+    // Removing the highlight on the shared passage redraws it as a note instead of clearing it.
+    await firstValueFrom(service.deleteAnnotation(view, sharedCfi));
+    expect(view.deleteAnnotation).not.toHaveBeenCalled();
+    expect(view.addAnnotation).toHaveBeenLastCalledWith({value: sharedCfi});
+    expect(service.getAnnotationStyle(sharedCfi)).toEqual({color: '#FFC107', style: 'note'});
+
+    service.setNoteMarks(view, [{value: sharedCfi}]);
+    expect(view.deleteAnnotation).toHaveBeenCalledWith({value: noteCfi});
+    expect(service.getAnnotationStyle(noteCfi)).toBeUndefined();
+  });
+
+  it('draws notes as a highlight with an underline', () => {
+    const group = service.getOverlayerDrawFunction('note')(
+      asRectList([{left: 10, top: 20, bottom: 40, width: 50, height: 20}]),
+      {color: '#2563eb'}
+    );
+
+    const [fill, line] = Array.from(group.children);
+    expect(group.getAttribute('fill')).toBe('#2563eb');
+    expect(fill.getAttribute('height')).toBe('20');
+    expect(line.getAttribute('y')).toBe('38');
+    expect(line.getAttribute('height')).toBe('2');
+  });
+
   it('resets all cached annotations and styles', () => {
     service.addAnnotations(undefined, [
       {value: 'epubcfi(/6/10!/4/2:0)', color: '#22c55e', style: 'highlight'},

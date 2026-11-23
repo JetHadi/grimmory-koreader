@@ -10,6 +10,16 @@ export interface Annotation {
   style?: AnnotationStyle;
 }
 
+/** A note's passage, drawn in the text as a highlight with an underline. */
+export interface NoteMark {
+  value: string;
+  color?: string;
+}
+
+export type RenderedAnnotationStyle = AnnotationStyle | 'note';
+
+const DEFAULT_NOTE_COLOR = '#FFC107';
+
 interface AnnotationView {
   addAnnotation(annotation: { value: string }): Promise<{ index: number; label: string } | undefined> | void;
   deleteAnnotation(annotation: { value: string }): Promise<void>;
@@ -20,6 +30,7 @@ interface AnnotationView {
 export class ReaderAnnotationService {
   private readonly annotationStyles = new Map<string, { color: string; style: AnnotationStyle }>();
   private allAnnotations: Annotation[] = [];
+  private readonly noteMarks = new Map<string, string>();
 
   private isRenderableAnnotationValue(value: string | null | undefined): value is string {
     const trimmed = value?.trim();
@@ -49,6 +60,11 @@ export class ReaderAnnotationService {
 
     this.annotationStyles.delete(cfi);
     this.allAnnotations = this.allAnnotations.filter(a => a.value !== cfi);
+
+    if (this.noteMarks.has(cfi)) {
+      // A note sits on the same passage: redraw it as a note instead of clearing the mark.
+      return defer(() => from(Promise.resolve(view.addAnnotation({value: cfi})).then(() => undefined)));
+    }
 
     return defer(() => from(view.deleteAnnotation({value: cfi})));
   }
@@ -80,11 +96,42 @@ export class ReaderAnnotationService {
     });
   }
 
-  getAnnotationStyle(cfi: string): { color: string; style: AnnotationStyle } | undefined {
-    return this.annotationStyles.get(cfi);
+  /**
+   * Replaces the set of note passages marked in the text. A highlight on the exact same
+   * passage keeps its own style; the note mark shows again once that highlight is removed.
+   */
+  setNoteMarks(view: AnnotationView | null | undefined, marks: NoteMark[]): void {
+    const next = new Map<string, string>();
+    for (const mark of marks) {
+      if (this.isRenderableAnnotationValue(mark.value)) {
+        next.set(mark.value, mark.color || DEFAULT_NOTE_COLOR);
+      }
+    }
+
+    const removed = [...this.noteMarks.keys()].filter(cfi => !next.has(cfi));
+    const changed = [...next].filter(([cfi, color]) => this.noteMarks.get(cfi) !== color).map(([cfi]) => cfi);
+
+    this.noteMarks.clear();
+    next.forEach((color, cfi) => this.noteMarks.set(cfi, color));
+
+    for (const cfi of removed) {
+      if (!this.annotationStyles.has(cfi)) {
+        void view?.deleteAnnotation({value: cfi});
+      }
+    }
+    for (const cfi of changed) {
+      if (!this.annotationStyles.has(cfi)) {
+        void view?.addAnnotation({value: cfi});
+      }
+    }
   }
 
-  getOverlayerDrawFunction(style: AnnotationStyle): (rects: DOMRectList, options: { color?: string }) => SVGElement {
+  getAnnotationStyle(cfi: string): { color: string; style: RenderedAnnotationStyle } | undefined {
+    const noteColor = this.noteMarks.get(cfi);
+    return this.annotationStyles.get(cfi) ?? (noteColor ? {color: noteColor, style: 'note'} : undefined);
+  }
+
+  getOverlayerDrawFunction(style: RenderedAnnotationStyle): (rects: DOMRectList, options: { color?: string }) => SVGElement {
     const createSVGElement = (tag: string): SVGElement =>
       document.createElementNS('http://www.w3.org/2000/svg', tag);
 
@@ -141,6 +188,29 @@ export class ReaderAnnotationService {
           return g;
         };
 
+      case 'note':
+        return (rects: DOMRectList, options: { color?: string; width?: number }) => {
+          const {color = DEFAULT_NOTE_COLOR, width: strokeWidth = 2} = options;
+          const g = createSVGElement('g');
+          g.setAttribute('fill', color);
+          for (const {left, top, bottom, height, width} of Array.from(rects)) {
+            const fill = createSVGElement('rect');
+            fill.setAttribute('x', String(left));
+            fill.setAttribute('y', String(top));
+            fill.setAttribute('height', String(height));
+            fill.setAttribute('width', String(width));
+            fill.style.opacity = 'var(--overlayer-highlight-opacity, .3)';
+            fill.style.mixBlendMode = 'var(--overlayer-highlight-blend-mode, multiply)';
+            const line = createSVGElement('rect');
+            line.setAttribute('x', String(left));
+            line.setAttribute('y', String(bottom - strokeWidth));
+            line.setAttribute('height', String(strokeWidth));
+            line.setAttribute('width', String(width));
+            g.append(fill, line);
+          }
+          return g;
+        };
+
       case 'highlight':
       default:
         return (rects: DOMRectList, options: { color?: string } = {}) => {
@@ -162,12 +232,17 @@ export class ReaderAnnotationService {
     }
   }
 
+  /** Everything to redraw when a section loads: highlights plus note passages. */
   getAllAnnotations(): Annotation[] {
-    return [...this.allAnnotations];
+    const noteOnly = [...this.noteMarks.keys()]
+      .filter(cfi => !this.annotationStyles.has(cfi))
+      .map(cfi => ({value: cfi}));
+    return [...this.allAnnotations, ...noteOnly];
   }
 
   resetAnnotations(): void {
     this.annotationStyles.clear();
     this.allAnnotations = [];
+    this.noteMarks.clear();
   }
 }

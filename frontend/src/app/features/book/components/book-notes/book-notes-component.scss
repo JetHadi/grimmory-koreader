@@ -257,6 +257,15 @@
   }
 }
 
+.note-quote {
+  margin: 0 0 0.6563rem;
+  padding-left: 0.6563rem;
+  border-left: 3px solid color-mix(in srgb, var(--color-primary), transparent 40%);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;
